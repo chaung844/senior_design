@@ -21,7 +21,7 @@
 
 ## Teammates
 
-- [Chau Nguyen](https://github.com/chaung844) - Computer Science Senior - *pending email address*
+- [Chau Nguyen](https://github.com/chaung844) - Computer Science Senior - nguye2cu@mail.uc.edu
 - [Tiep Tran](https://github.com/polskiTran) - Computer Science Senior - tran2tp@mail.uc.edu
 - [Jack Nguyen](https://github.com/Jack51003) - Computer Science Senior - *pending email address*
 
