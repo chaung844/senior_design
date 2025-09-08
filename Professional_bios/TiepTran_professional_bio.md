@@ -1,0 +1,18 @@
+- ### Contacts
+	- *Tiep Tran*
+	- *tran2tp@mail.uc.edu*
+- ### Experiences / Project
+	- Software Development Intern @ *Medpace* Fall 2022
+	- Software Development Intern @ *Medpace* Summer 2023
+	- Software Development Intern @ *Medpace* Summer 2024
+	- EEP Summer 2025 - *Sumitup* - Digital Tech Newsletters Garden + Agent Assistant ([github](https://github.com/polskiTran/EEP25-Sumitup))
+- ### Project Sought
+	- AI/ML projects
+		- Diffusion-based Generation
+			- Why text prefer Auto-Regression and images/audio prefer Diffusion
+		- ...
+	- AI Agents Devs/Experiment
+		- Context engineering
+    		- How to optimize context given to AI agent 
+  		- ...
+  
