@@ -1,6 +1,7 @@
 - ### Contacts
-	- *Tiep Tran*
-	- *tran2tp@mail.uc.edu*
+	- Name - *Tiep Tran*
+	- Email - *tran2tp@mail.uc.edu* 
+	- Links - https://tieptran.com/ // https://github.com/polskiTran // https://www.linkedin.com/in/tran2tp/
 - ### Experiences / Project
 	- Software Development Intern @ *Medpace* Fall 2022
 	- Software Development Intern @ *Medpace* Summer 2023
