@@ -11,11 +11,22 @@
 ## Project focus:
 
 ### Problem 
-  - 
+  - Cross-check receipts with bank statements.
+  - Ensure the receipt amount matches the bank statement amount.
+  - If a receipt is missing or mismatched, a warning system should alert the owner.
+  - When amounts match, purchases must be classified into specific categories.
+  - Purchases then need to be added into a Vendor Expense Claim Excel sheet with detailed purchase information.
 ### Proposed Solution 
-  - 
+  - Develop a system that can automatically:
+    - Match receipts to corresponding bank statement entries.
+    - Detect and flag missing or mismatched receipts.
+    - Predict categories for valid purchases using NLP/ML methods.
+    - Populate a structured Vendor Expense Claim Excel sheet with validated and classified data.
+
 ### Proposed Stack
-  - 
+  - Python NLP libraries (e.g., spaCy, NLTK, or Hugging Face Transformers)
+  - Internal AI tool provided by Midea
+  - AWS services (e.g., AWS Bedrock for LLMs, AWS S3 for file storage, AWS Lambda for automation, etc.)
 
 ## Roles:
 - Jack Nguyen: Developer
