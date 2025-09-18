@@ -11,13 +11,11 @@
 ## Project focus:
 
 ### Problem 
-  - During a lecture, you might miss some important professor note -> You record the lecture audio -> Plain MP3 lecture audio file is so hard to work with (not easy to find a concept, have to scroll back and forward, no transcript, background audio on top of the lecture).
+  - 
 ### Proposed Solution 
-  - An app that takes in the MP3 audio file, performs audio diarization/segmentation (isolates only the professor's voice), speech to text, and a chatbot based on processed lecture knowledge base.
+  - 
 ### Proposed Stack
-  - AI models: speaker dizaration model (speaker recognition), speech-to-text model, LLM
-  - Database for parsed lecture note knowledge base
-  - Web app for user interactivity
+  - 
 
 ## Roles:
 - Jack Nguyen: Developer

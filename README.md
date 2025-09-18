@@ -28,5 +28,4 @@
 
 ## Project Overview
 
-- *pending project approval from [Midea](https://mailuc-my.sharepoint.com/:p:/g/personal/tran2tp_mail_uc_edu/Eco2b7lw3Q9Ntb0eswqJq_UBNOusbNZco1s2Mnr52X-n2A?e=bap2SZ)*
-- 
+- [Midea](https://mailuc-my.sharepoint.com/:p:/g/personal/tran2tp_mail_uc_edu/Eco2b7lw3Q9Ntb0eswqJq_UBNOusbNZco1s2Mnr52X-n2A?e=bap2SZ) sponsored project: A system to automate the matching process for bank statements along with receipts. 
