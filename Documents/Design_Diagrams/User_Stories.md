@@ -1,0 +1,3 @@
+- As a user, I want to upload receipts and bank statements, and the system can automatically cross-check them for accuracy.
+- As a user, I want to be alerted if there are missing or mismatched receipts.
+- As a user, I want the system to automatically categorize the purchases and export them into a structured Vendor Expense Claim Excel sheet.
