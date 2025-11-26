@@ -41,7 +41,7 @@
     - [Tiep Tran's Biography](./Professional_bios/TiepTran_professional_bio.md)
     - [Jack Nguyen's Biography](./Professional_bios/LongNguyen_professional_bio.md)
     - [Chau Nguyen's Biography](./Professional_bios/ChauNguyen_professional_bio.md)
-9. Budget
+9. [Budget](./Documents/budget.md)
 10. Appendix
 
 ## Team Names (Including Advisor) and Project Abstract
