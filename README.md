@@ -43,6 +43,7 @@
     - [Chau Nguyen's Biography](./Professional_bios/ChauNguyen_professional_bio.md)
 9. [Budget](./Documents/budget.md)
 10. Appendix
+    - [Midea project proposal slides](https://mailuc-my.sharepoint.com/:p:/g/personal/tran2tp_mail_uc_edu/Eco2b7lw3Q9Ntb0eswqJq_UBNOusbNZco1s2Mnr52X-n2A?e=bap2SZ)
     - [Link to team planner used for task assignment and project tracking](https://github.com/users/chaung844/projects/1/views/3)
 
 ## Team Names (Including Advisor) and Project Abstract
