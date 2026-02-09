@@ -1,5 +1,5 @@
 site_name: Matcha Docs
-site_url: https://matcha-docs.com # to be changed
+site_url: https://chaung844.github.io/senior_design/
 extra_css:
     - stylesheets/extra.css
 theme:
