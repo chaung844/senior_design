@@ -1,0 +1,42 @@
+site_name: Matcha Docs
+site_url: https://matcha-docs.com # to be changed
+extra_css:
+    - stylesheets/extra.css
+theme:
+    font:
+        text: Roboto
+        code: Roboto Mono
+    name: material
+    palette:
+        # Palette toggle for automatic mode
+        - media: "(prefers-color-scheme)"
+          toggle:
+              icon: material/brightness-auto
+              name: Switch to light mode
+
+        # Palette toggle for light mode
+        - media: "(prefers-color-scheme: light)"
+          scheme: matcha
+          toggle:
+              icon: material/brightness-7
+              name: Switch to dark mode
+
+        # Palette toggle for dark mode
+        - media: "(prefers-color-scheme: dark)"
+          scheme: slate
+          toggle:
+              icon: material/brightness-4
+              name: Switch to system preference
+    features:
+        - navigation.instant
+        - navigation.instant.prefetch
+        - navigation.instant.progress
+        - navigation.tracking
+        # - navigation.footer
+extra:
+    generator: false
+    # social:
+    #     - icon: fontawesome/brands/github
+    #       link: https://github.com/chaung844/senior_design
+repo_name: JaPolCha/Matcha-Capstone
+repo_url: https://github.com/chaung844/senior_design
