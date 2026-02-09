@@ -4,6 +4,7 @@ import io
 import mimetypes
 import os
 import sys
+from concurrent.futures import ThreadPoolExecutor
 
 from dotenv import load_dotenv
 from openai import OpenAI
@@ -54,11 +55,12 @@ def encode_pil_image(pil_image):
 
 def process_pdf(pdf_path, max_pages=6, resize=False):
     """
-    Converts PDF pages to base64 images.
+    Converts PDF pages to base64 images, processing pages in parallel for performance.
 
     Args:
         pdf_path (str): Path to the PDF file.
         max_pages (int): Maximum number of pages to convert.
+        resize (bool): Whether to resize large images to fit within 1024x1024.
 
     Returns:
         list: List of base64 Data URI strings for each page image.
@@ -73,12 +75,15 @@ def process_pdf(pdf_path, max_pages=6, resize=False):
         images = convert_from_path(pdf_path, first_page=1, last_page=max_pages)
         print(f"(>) Extracted {len(images)} pages.")
 
-        base64_images = []
-        for i, img in enumerate(images):
+        def _process_image_helper(img):
             # Resize if huge to avoid hitting token limits
             if resize and (img.width > 1024 or img.height > 1024):
                 img.thumbnail((1024, 1024))
-            base64_images.append(encode_pil_image(img))
+            return encode_pil_image(img)
+
+        # Process images in parallel to speed up encoding and resizing
+        with ThreadPoolExecutor() as executor:
+            base64_images = list(executor.map(_process_image_helper, images))
 
         return base64_images
     except Exception as e:
@@ -163,7 +168,7 @@ def main():
 
     # --- PDF loading and image extraction ---
     if args.pdf:
-        pdf_images = process_pdf(args.pdf, max_pages=6)
+        pdf_images = process_pdf(args.pdf, max_pages=6, resize=False)
         for i, img_data in enumerate(pdf_images):
             print(f"    - Attaching PDF Page {i + 1}")
             user_content.append({"type": "image_url", "image_url": {"url": img_data}})
@@ -236,5 +241,5 @@ if __name__ == "__main__":
 
     """
     uv run test_client.py \
-    --prompt "Explain Quantum Computing in soccer terms." 
+    --prompt "Explain Quantum Computing in soccer terms."
     """
