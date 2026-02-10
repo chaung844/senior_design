@@ -4,7 +4,7 @@
 **Matcha** is an *AI-Assisted Bank Statement Reconciliation System* aims to reduce manual processing time while improving accuracy. Given user-uploaded bank statement and receipts, Matcha automatically extract structured transaction data using a Vision Language Model (VLM), eliminating the need for traditional Optical Character Recognition (OCR) and Natural Language Processing (NLP) pipline. Matcha then reconciles each bank transaction with its corresponding receipt, flags discrepancies, and triggers an alert workflow for administrative review - ensuring accuracy while keeping a human in the loop.
 
 ## How to use
-To begin using Matha as an end user, head over to our website [working title], start by making an admin account (Google SSO or email and password signup). Upload your first reconciliation task documents which must includes:
+To begin using Matcha as an end user, head over to our website [working title], start by making an admin account (Google SSO or email and password signup). Upload your first reconciliation task documents which must includes:
 
 - Bank statement (PDFs)
 - Receipts (PDFs or scanned images)
