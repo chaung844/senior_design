@@ -40,3 +40,7 @@ extra:
     #       link: https://github.com/chaung844/senior_design
 repo_name: JaPolCha/Matcha-Capstone
 repo_url: https://github.com/chaung844/senior_design
+markdown_extensions:
+    - admonition
+    - pymdownx.details
+    - pymdownx.superfences
