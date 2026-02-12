@@ -84,6 +84,10 @@ class Settings(BaseSettings):
         """Fully-qualified Bedrock OpenAI-compatible endpoint."""
         return f"https://bedrock-runtime.{self.aws_region}.amazonaws.com/openai/v1"
 
+    def bedrock_health_check_url(self) -> str:
+        """Bedrock health check endpoint."""
+        return f"https://bedrock.{self.aws_region}.amazonaws.com/foundation-models"
+
 
 @lru_cache
 def get_settings() -> Settings:
@@ -92,7 +96,7 @@ def get_settings() -> Settings:
 
     Usage::
 
-        from app.config import get_settings
+        from config import get_settings
 
         settings = get_settings()
         print(settings.aws_region)

@@ -7,21 +7,28 @@
 - `AWS S3` fpr storing objects (e.g, PDFs, Images)
 
 ## Directory
+- Based on [Structuring a FastAPI Project: Best Practices](https://dev.to/mohammad222pr/structuring-a-fastapi-project-best-practices-53l6) 
 ```shell
 src/backend/
 ├── app/                        # Main application source code
 │   ├── __init__.py
 │   ├── main.py                 # App entry point (FastAPI instance)
-│   ├── call_model.py           # Calling model via AWS Bedrock API
 │   ├── config.py               # Server configuration file by Pydantic
+│   ├── models/                 # Database models
+│   │   └── __init__.py
+│   ├── routers/                # API endpoints
+│   │   └── __init__.py
+│   ├── schemas/                # Schemas for Pydantic data validation
+│   │   └── __init__.py
+│   ├── services/               # Business logic
+│   │   ├── __init__.py
+│   │   └── aws_services.py     # AWS services
 │   └── utils/                  # Utility functions
 │       ├── __init__.py
-│       ├── lm_utils.py         
-│   ├── routers/                
-│       ├── __init__.py
+│       └── lm_utils.py         
 ├── safe/                       # Sensitive data zone. Files in this directory should never be commited
 │   ├── prompts/                # System instruction (refer below on how to get prompts data)
-│   ├── samples/                # Sample bank statements + receipts  (refer below on how to get prompts data)
+│   └── samples/                # Sample bank statements + receipts  (refer below on how to get prompts data)
 ├── .env.example                # Example Environment variables
 ├── .gitignore                  # Files to ignore (venv, db, pyc)
 ├── pyproject.toml              # Project metadata & dependencies (Managed by uv)
@@ -31,7 +38,7 @@ src/backend/
 
 > *How to get `safe/` data?*
 >
-> System prompt should be shared with teammates via google docs sheet (for now in search of better secrets management option).
+> System prompt should be shared with teammates via Matcha-Config google docs (for now, in search of better secrets management option).
 >
 > Sample data should be shared with teammates via project advisor from Midea.
 
@@ -48,3 +55,6 @@ uv sync
 uv run uvicorn app.main:app --reload
 ```
 - From the localhost link, append `/docs` to get swagger UI
+
+## Notes
+- Currently, AWS Bedrock foundation model is invoked via OpenAI-Compatible API call. Future features involve deeper integration with AWS (.e.g, S3, RDS, ...) may need to use [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)([installation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)) - AWS Python SDK.
