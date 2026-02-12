@@ -1,15 +1,16 @@
+# py cache
+__pycache__/
+
+# environment variables
 .env
 
+# virtual environment
 .venv
 
 # data integrity
 *.sqlite3
 *.db
 *.log
-sample/
-output_images/
-__pycache__/
-safe/
 
 # macOS
 .DS_Store

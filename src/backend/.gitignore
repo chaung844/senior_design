@@ -1,0 +1,7 @@
+# system prompts
+*/prompts/*
+!*/prompts/.gitkeep
+
+# sensitive data
+*/samples/*
+!*/samples/.gitkeep
