@@ -1,0 +1,59 @@
+from typing import List, Optional
+from sqlalchemy import String, Enum, ForeignKey, Numeric
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+from decimal import Decimal
+from datetime import date
+from app.models.base import Base, TimestampMixin
+from app.schemas.enums import MatchStatus
+
+class BankStatement(Base, TimestampMixin):
+    __tablename__ = "bank_statements"
+
+    statement_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    month: Mapped[int] = mapped_column(nullable=False)
+    year: Mapped[int] = mapped_column(nullable=False)
+    account_holder: Mapped[str] = mapped_column(String(255), nullable=False)
+    account_number_last4: Mapped[str] = mapped_column(String(4), nullable=False)
+    total_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2),nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
+
+    file_path: Mapped[str] = mapped_column(String(255), nullable=False)
+
+    uploaded_by: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+    )
+
+    uploader: Mapped[Optional["User"]] = relationship("User", back_populates="uploaded_statements")
+    lines: Mapped[List["BankStatementLine"]] = relationship(
+        "BankStatementLine",
+        back_populates="bank_statement",
+        cascade="all, delete-orphan"
+    )
+
+
+class BankStatementLine(Base, TimestampMixin):
+    __tablename__ = "bank_statement_lines"
+
+    line_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+
+    statement_id: Mapped[int] = mapped_column(
+        ForeignKey("bank_statements.statement_id", ondelete="CASCADE"),
+        nullable=False
+    )
+    line_number: Mapped[int] = mapped_column(nullable=False)
+    reference_number: Mapped[str] = mapped_column(String(255), nullable=False)
+    transaction_date: Mapped[date] = mapped_column(nullable=False)
+    posting_date: Mapped[date] = mapped_column(nullable=False)
+    description: Mapped[str] = mapped_column(String(512), nullable=False)
+    mcc: Mapped[str] = mapped_column(String(10), nullable=True)
+    charge: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
+    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
+
+    match_status: Mapped[MatchStatus] = mapped_column(
+        Enum(MatchStatus, name="statement_line_match_status_enum", native_enum=False), 
+        nullable=False, 
+        default=MatchStatus.unmatched
+    )
+
+    bank_statement: Mapped["BankStatement"] = relationship("BankStatement", back_populates="lines")
