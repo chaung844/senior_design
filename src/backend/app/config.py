@@ -87,6 +87,12 @@ class Settings(BaseSettings):
     def bedrock_health_check_url(self) -> str:
         """Bedrock health check endpoint."""
         return f"https://bedrock.{self.aws_region}.amazonaws.com/foundation-models"
+    
+    # ── Database configuration ──────────────────────────────────────────────
+    database_url: SecretStr = Field(
+        ...,
+        description="Database connection URL"
+    )
 
 
 @lru_cache

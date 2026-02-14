@@ -5,11 +5,14 @@
 - `Pydantic` for data validation
 - `AWS RDS ` for relational database manaement
 - `AWS S3` fpr storing objects (e.g, PDFs, Images)
+- `PostgreSQL 16` (local via `Docker` / prod via `AWS RDS`)
+- `SQLAlchemy` (ORM) & `Alembic` (Migration)
 
 ## Directory
 - Based on [Structuring a FastAPI Project: Best Practices](https://dev.to/mohammad222pr/structuring-a-fastapi-project-best-practices-53l6) 
 ```shell
 src/backend/
+├── alembic/                    # Database migration history 
 ├── app/                        # Main application source code
 │   ├── __init__.py
 │   ├── main.py                 # App entry point (FastAPI instance)
@@ -31,6 +34,9 @@ src/backend/
 │   └── samples/                # Sample bank statements + receipts  (refer below on how to get prompts data)
 ├── .env.example                # Example Environment variables
 ├── .gitignore                  # Files to ignore (venv, db, pyc)
+├── alembic.ini                # Alembic configuration
+├── docker-compose.yml          # Local infrastructure (PostgreSQL)
+├── seed.py                     # Database seeding script
 ├── pyproject.toml              # Project metadata & dependencies (Managed by uv)
 ├── uv.lock                     # Exact dependency versions (Managed by uv)
 └── README.md
@@ -48,8 +54,17 @@ src/backend/
 ```bash
 uv sync
 ```
+- Start the local database:
+```bash
+docker compose up -d
+```
 - Refer to `.env.example` file for how to setup `.env`
 > Note that you only need to put in AWS Bedrock API key, other variables value can be derived from `config.py` default value.
+- Apply database migrations and (optional) seed test data:
+```bash
+uv run alembic upgrade head
+uv run seed.py
+```
 - Run the server
 ```bash
 uv run uvicorn app.main:app --reload
