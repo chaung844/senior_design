@@ -2,7 +2,7 @@ from typing import List
 from sqlalchemy import String, Enum, event 
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base, TimestampMixin
-from app.schemas.enums import UserRole
+from app.enums import UserRole
 
 class User(Base, TimestampMixin):
     __tablename__ = "users"

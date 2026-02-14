@@ -4,7 +4,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from decimal import Decimal
 from datetime import date
 from app.models.base import Base, TimestampMixin
-from app.schemas.enums import MatchStatus
+from app.enums import MatchStatus
 
 class Receipt(Base, TimestampMixin):
     __tablename__ = "receipts"

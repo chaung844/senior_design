@@ -3,7 +3,7 @@ from datetime import date, datetime
 from .user import UserRead
 from typing import Optional
 from decimal import Decimal
-from .enums import MatchStatus
+from app.enums import MatchStatus
 
 class ReceiptBase(BaseModel):
     vendor: str
