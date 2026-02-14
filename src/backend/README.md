@@ -31,10 +31,10 @@ src/backend/
 │       └── lm_utils.py         
 ├── safe/                       # Sensitive data zone. Files in this directory should never be commited
 │   ├── prompts/                # System instruction (refer below on how to get prompts data)
-│   └── samples/                # Sample bank statements + receipts  (refer below on how to get prompts data)
+│   └── samples/                # Sample bank statements + receipts  (refer below on how to get sample data)
 ├── .env.example                # Example Environment variables
 ├── .gitignore                  # Files to ignore (venv, db, pyc)
-├── alembic.ini                # Alembic configuration
+├── alembic.ini                 # Alembic configuration
 ├── docker-compose.yml          # Local infrastructure (PostgreSQL)
 ├── seed.py                     # Database seeding script
 ├── pyproject.toml              # Project metadata & dependencies (Managed by uv)
