@@ -43,7 +43,11 @@ class Settings(BaseSettings):
     aws_region: str = Field(default="us-east-1", description="AWS region")
 
     # ── Model Configuration ───────────────────────────────────────────
-    model_id: str = Field(
+    llm_model_id: str = Field(
+        default="deepseek.v3.2",
+        description="Bedrock model identifier",
+    )
+    vlm_model_id: str = Field(
         default="qwen.qwen3-vl-235b-a22b",
         description="Bedrock model identifier",
     )
@@ -77,6 +81,10 @@ class Settings(BaseSettings):
         default="safe/prompts/categorizing_instructions.md",
         description="Relative path (under base_path) to system instruction file for categorizing receipts purchases",
     )
+    bankstatement_metadata_parsing_instruction_path: str = Field(
+        default="safe/prompts/bankstatement_metadata_parsing_instructions.md",
+        description="Relative path (under base_path) to system instruction file for parsing bank statement metadata",
+    )
 
     # ── Convenience helpers ───────────────────────────────────────────
     @property
@@ -87,12 +95,9 @@ class Settings(BaseSettings):
     def bedrock_health_check_url(self) -> str:
         """Bedrock health check endpoint."""
         return f"https://bedrock.{self.aws_region}.amazonaws.com/foundation-models"
-    
+
     # ── Database configuration ──────────────────────────────────────────────
-    database_url: SecretStr = Field(
-        ...,
-        description="Database connection URL"
-    )
+    database_url: SecretStr = Field(..., description="Database connection URL")
 
 
 @lru_cache

@@ -1,7 +1,10 @@
 import os
+import pprint
 import sys
+from typing import Any, Dict
 
 from openai import OpenAI
+from PIL import Image
 
 from app.config import get_settings
 from app.utils.llm_utils import (
@@ -65,7 +68,8 @@ def _build_message(system_instruction_path, data_path=None, prompt=None):
             or data_path.endswith(".jpeg")
         ):
             try:
-                image_uri = encode_pil_image(data_path)
+                pil_image = Image.open(data_path)
+                image_uri = encode_pil_image(pil_image)
                 user_content.append(
                     {"type": "image_url", "image_url": {"url": image_uri}}
                 )
@@ -146,42 +150,144 @@ def call_model(
     return completion.choices[0].message.content
 
 
+def model_parse_image(image_data_path) -> Dict[str, Any]:
+    """
+    Parse an image using the Vision Language Model (VLM).
+
+    Args:
+        image_data_path (str): Path to the image file.
+
+    Returns:
+        str: Parsed content from the image.
+    """
+    try:
+        response = call_model(
+            settings.vlm_model_id,
+            settings.receipt_parsing_instruction_path,
+            data_path=image_data_path,
+        )
+    except Exception as e:
+        raise ValueError(f"(!) Error invoking model API for image parsing: {e}")
+
+    # parse completion
+    if response:
+        sanitized_content = sanitize_llm_output(response)
+        parsed_content = parse_yaml(sanitized_content)
+        return parsed_content
+    else:
+        return {}
+
+
+def model_parse_pdf(pdf_data_path) -> Dict[str, Any]:
+    """
+    Parse a PDF using the Vision Language Model (VLM).
+
+    Args:
+        pdf_data_path (str): Path to the PDF file.
+
+    Returns:
+        Dict[str, Any]: Parsed content from the PDF.
+    """
+    try:
+        reponse = call_model(
+            settings.vlm_model_id,
+            settings.receipt_parsing_instruction_path,
+            data_path=pdf_data_path,
+        )
+    except Exception as e:
+        raise ValueError(f"(!) Error invoking model API for PDF parsing: {e}")
+
+    # parse completion
+    if reponse:
+        sanitized_content = sanitize_llm_output(reponse)
+        parsed_content = parse_yaml(sanitized_content)
+        return parsed_content
+    else:
+        return {}
+
+
+def model_categorize_transaction(transaction_content) -> Dict[str, Any]:
+    """
+    Categorize a transaction based on its content using LLM.
+
+    Args:
+        transaction_content (Dict[str, Any]): Parsed content from the transaction.
+
+    Returns:
+        Dict[str, Any]: Categorized transaction type.
+    """
+    try:
+        reponse = call_model(
+            settings.vlm_model_id,
+            settings.categorizing_instruction_path,
+        )
+    except Exception as e:
+        raise ValueError(f"(!) Error invoking model API for categorization: {e}")
+
+    if reponse:
+        sanitized_content = sanitize_llm_output(reponse)
+        parsed_content = parse_yaml(sanitized_content)
+        return parsed_content
+    else:
+        return {}
+
+
+def model_parse_bank_statement_metadata(file_path: str) -> Dict[str, Any]:
+    """
+    Parse a bank statement metadata using VLM.
+
+    Args:
+        file_path (str): Path to the bank statement file.
+
+    Returns:
+        Dict[str, Any]: Parsed metadata from the bank statement.
+    """
+    try:
+        reponse = call_model(
+            settings.vlm_model_id,
+            settings.bankstatement_metadata_parsing_instruction_path,
+            data_path=file_path,
+        )
+    except Exception as e:
+        raise ValueError(
+            f"(!) Error invoking model API for parsing bank statement: {e}"
+        )
+
+    if reponse:
+        sanitized_content = sanitize_llm_output(reponse)
+        parsed_content = parse_yaml(sanitized_content)
+        return parsed_content
+    else:
+        return {}
+
+
 if __name__ == "__main__":
     from pprint import pprint
 
     PROMPT = "What is your knowledge cutoff date"
     IMAGE_PATH = "samples/receipts/receipt_1.jpg"
     PDF_PATH = "samples/receipts/receipt_9.pdf"
+    BANK_STATEMENT_PATH = "samples/bank_statements/bank_statement_1.pdf"
 
     # fuse path with base directory
     IMAGE_PATH = os.path.join(settings.base_path, IMAGE_PATH)
     PDF_PATH = os.path.join(settings.base_path, PDF_PATH)
+    BANK_STATEMENT_PATH = os.path.join(settings.base_path, BANK_STATEMENT_PATH)
 
-    # get parsed receipt content
-    receipt_content = call_model(
-        settings.model_id,
-        settings.receipt_parsing_instruction_path,
-        data_path=PDF_PATH,
-    )
-    receipt_content = sanitize_llm_output(receipt_content)
-    print(receipt_content)
-    print("=== END OF RESPONSE ===")
+    # # test vlm parse image
+    # transaction_content = model_parse_image(IMAGE_PATH)
+    # pprint(transaction_content)
+    # # get cat
+    # expense_type = model_categorize_transaction(transaction_content)
+    # pprint(expense_type)
 
-    # get expense type
-    expense_type = call_model(
-        settings.model_id,
-        settings.categorizing_instruction_path,
-        prompt=receipt_content,
-    )
-    expense_type = sanitize_llm_output(expense_type)
-    print(expense_type)
-    print("=== END OF RESPONSE ===")
+    # # test vlm parse pdf
+    # transaction_content = model_parse_pdf(PDF_PATH)
+    # pprint(transaction_content)
+    # # get cat
+    # expense_type = model_categorize_transaction(transaction_content)
+    # pprint(expense_type)
 
-    # Try parsing YAML content
-    parsed_receipt_content_yaml = parse_yaml(receipt_content)
-    parsed_expense_type_yaml = parse_yaml(expense_type)
-    print("\n(*)Parsed yaml content:")
-
-    pprint(parsed_receipt_content_yaml)
-    print("(*) Expense type:")
-    pprint(parsed_expense_type_yaml)
+    # test bankstatement metadata parsing
+    metadata = model_parse_bank_statement_metadata(BANK_STATEMENT_PATH)
+    pprint(metadata)
