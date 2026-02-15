@@ -60,6 +60,11 @@ docker compose up -d
 ```
 - Refer to `.env.example` file for how to setup `.env`
 > Note that you only need to put in AWS Bedrock API key, other variables value can be derived from `config.py` default value.
+
+- Generate alembic versioning
+```bash
+uv run alembic revision --autogenerate
+```
 - Apply database migrations and (optional) seed test data:
 ```bash
 uv run alembic upgrade head

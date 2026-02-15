@@ -29,9 +29,9 @@ def sanitize_charge_amount(raw_content):
     return sanitized
 
 
-def validate_pdf(path):
+def validate_bankstatement_pdf(path):
     """
-    Validate a PDF file by checking its contents.
+    Validate a bank statement PDF file by checking its contents.
 
     Args:
       path: The path to the PDF file.
@@ -146,7 +146,7 @@ def parse_statement(path) -> pd.DataFrame:
     Returns:
         DataFrame: DataFrame containing the parsed transactions.
     """
-    validate_pdf(path)
+    validate_bankstatement_pdf(path)
 
     with pdfplumber.open(path) as pdf:
         # bank = detect_bank(pdf)
