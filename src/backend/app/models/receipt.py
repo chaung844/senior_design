@@ -1,10 +1,13 @@
-from typing import List, Optional
-from sqlalchemy import String, Enum, ForeignKey, Numeric
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from decimal import Decimal
 from datetime import date
-from app.models.base import Base, TimestampMixin
+from decimal import Decimal
+from typing import Optional
+
+from sqlalchemy import Enum, ForeignKey, Numeric, String
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
 from app.enums import MatchStatus
+from app.models.base import Base, TimestampMixin
+
 
 class Receipt(Base, TimestampMixin):
     __tablename__ = "receipts"
@@ -15,21 +18,25 @@ class Receipt(Base, TimestampMixin):
     invoice_number: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     billing_date: Mapped[date] = mapped_column(nullable=False)
     charged_amount: Mapped[Decimal] = mapped_column(Numeric(15, 2), nullable=False)
-    billing_to_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    account_charged_last4: Mapped[str] = mapped_column(String(4), nullable=False)
-    currency: Mapped[str] = mapped_column(String(3), nullable=False, default="USD", server_default="USD")
-    file_path: Mapped[str] = mapped_column(String(255), nullable=False) # S3 path
+    currency: Mapped[str] = mapped_column(
+        String(3), nullable=False, default="USD", server_default="USD"
+    )
+    file_path: Mapped[str] = mapped_column(String(255), nullable=False)  # S3 path
     description: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
-    expense_type: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
+    expense_type: Mapped[Optional[str]] = mapped_column(
+        String(255), nullable=True
+    )  # might need to change to enum later
 
     match_status: Mapped[MatchStatus] = mapped_column(
-        Enum(MatchStatus, name="receipt_match_status_enum", native_enum=False), 
-        nullable=False, 
-        default=MatchStatus.unmatched
+        Enum(MatchStatus, name="receipt_match_status_enum", native_enum=False),
+        nullable=False,
+        default=MatchStatus.unmatched,
     )
 
     uploaded_by: Mapped[Optional[int]] = mapped_column(
         ForeignKey("users.user_id", ondelete="SET NULL"),
     )
 
-    uploader: Mapped[Optional["User"]] = relationship("User", back_populates="uploaded_receipts")
+    uploader: Mapped[Optional["User"]] = relationship(
+        "User", back_populates="uploaded_receipts"
+    )
