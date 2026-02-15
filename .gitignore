@@ -17,3 +17,6 @@ __pycache__/
 
 # Node
 node_modules/
+
+# cursor 
+.cursor/

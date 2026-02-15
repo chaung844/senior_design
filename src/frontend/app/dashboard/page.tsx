@@ -75,11 +75,10 @@ export default function Page() {
             <button
                 key="account"
                 onClick={handleBackToAccount}
-                className={`text-xs transition-colors ${
-                    selection.level === "account"
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                }`}
+                className={`text-xs transition-colors ${selection.level === "account"
+                    ? "text-foreground font-medium"
+                    : "text-muted-foreground hover:text-foreground"
+                    }`}
             >
                 {account?.name ?? "Account"}
             </button>,
@@ -95,11 +94,10 @@ export default function Page() {
                 <button
                     key="year"
                     onClick={handleBackToYear}
-                    className={`text-xs font-mono transition-colors ${
-                        selection.level === "year"
-                            ? "text-foreground font-medium"
-                            : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    className={`text-xs font-mono transition-colors ${selection.level === "year"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                        }`}
                 >
                     {selection.year}
                 </button>,
@@ -202,7 +200,7 @@ export default function Page() {
                         <SidebarTrigger className="-ml-1" />
                         <Separator
                             orientation="vertical"
-                            className="mr-1 h-4!"
+                            className="mr-1 data-vertical:h-4 data-vertical:self-center"
                         />
                         {renderBreadcrumb()}
                     </header>

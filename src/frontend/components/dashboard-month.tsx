@@ -18,7 +18,6 @@ import {
     TableHeader,
     TableRow,
 } from "@/components/ui/table";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -360,11 +359,10 @@ export function DashboardMonth({
                                 Net Flow
                             </span>
                             <span
-                                className={`text-2xl font-bold tabular-nums font-mono ${
-                                    netFlow >= 0
-                                        ? "text-primary"
-                                        : "text-destructive"
-                                }`}
+                                className={`text-2xl font-bold tabular-nums font-mono ${netFlow >= 0
+                                    ? "text-primary"
+                                    : "text-destructive"
+                                    }`}
                             >
                                 {netFlow >= 0 ? "+" : ""}
                                 {formatCurrency(netFlow, account.currency)}
@@ -395,7 +393,7 @@ export function DashboardMonth({
                                     </CardTitle>
                                     <CardDescription>
                                         {filteredTransactions.length ===
-                                        monthData.transactions.length
+                                            monthData.transactions.length
                                             ? `Showing all ${formatNumber(filteredTransactions.length)} transactions`
                                             : `Showing ${formatNumber(filteredTransactions.length)} of ${formatNumber(monthData.transactions.length)} transactions`}
                                     </CardDescription>
@@ -481,165 +479,164 @@ export function DashboardMonth({
                             </div>
                         </CardHeader>
                         <CardContent>
-                            <ScrollArea className="max-h-[600px]">
-                                <Table>
-                                    <TableHeader>
+
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead className="w-[80px]">
+                                            Status
+                                        </TableHead>
+                                        <TableHead className="w-[100px]">
+                                            Date
+                                        </TableHead>
+                                        <TableHead className="w-[140px]">
+                                            Reference
+                                        </TableHead>
+                                        <TableHead>Description</TableHead>
+                                        <TableHead>Category</TableHead>
+                                        <TableHead className="text-right">
+                                            Debit
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            Credit
+                                        </TableHead>
+                                        <TableHead className="text-right">
+                                            Balance
+                                        </TableHead>
+                                        <TableHead className="w-[80px] text-center">
+                                            Confidence
+                                        </TableHead>
+                                        <TableHead className="w-[140px]">
+                                            Matched Ledger
+                                        </TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {filteredTransactions.length === 0 ? (
                                         <TableRow>
-                                            <TableHead className="w-[80px]">
-                                                Status
-                                            </TableHead>
-                                            <TableHead className="w-[100px]">
-                                                Date
-                                            </TableHead>
-                                            <TableHead className="w-[140px]">
-                                                Reference
-                                            </TableHead>
-                                            <TableHead>Description</TableHead>
-                                            <TableHead>Category</TableHead>
-                                            <TableHead className="text-right">
-                                                Debit
-                                            </TableHead>
-                                            <TableHead className="text-right">
-                                                Credit
-                                            </TableHead>
-                                            <TableHead className="text-right">
-                                                Balance
-                                            </TableHead>
-                                            <TableHead className="w-[80px] text-center">
-                                                Confidence
-                                            </TableHead>
-                                            <TableHead className="w-[140px]">
-                                                Matched Ledger
-                                            </TableHead>
+                                            <TableCell
+                                                colSpan={10}
+                                                className="h-24 text-center text-muted-foreground"
+                                            >
+                                                No transactions found.
+                                            </TableCell>
                                         </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {filteredTransactions.length === 0 ? (
-                                            <TableRow>
-                                                <TableCell
-                                                    colSpan={10}
-                                                    className="h-24 text-center text-muted-foreground"
-                                                >
-                                                    No transactions found.
-                                                </TableCell>
-                                            </TableRow>
-                                        ) : (
-                                            filteredTransactions.map((txn) => (
-                                                <TableRow key={txn.id}>
-                                                    <TableCell>
-                                                        {txn.matched ? (
-                                                            <Badge
-                                                                variant="default"
-                                                                className="text-[9px] h-4 px-1.5"
-                                                            >
-                                                                <HugeiconsIcon
-                                                                    icon={
-                                                                        Tick02Icon
-                                                                    }
-                                                                    strokeWidth={
-                                                                        2.5
-                                                                    }
-                                                                    className="size-2.5 mr-0.5"
-                                                                />
-                                                                Match
-                                                            </Badge>
-                                                        ) : (
-                                                            <Badge
-                                                                variant="outline"
-                                                                className="text-[9px] h-4 px-1.5 text-muted-foreground"
-                                                            >
-                                                                <HugeiconsIcon
-                                                                    icon={
-                                                                        Alert02Icon
-                                                                    }
-                                                                    strokeWidth={
-                                                                        2
-                                                                    }
-                                                                    className="size-2.5 mr-0.5"
-                                                                />
-                                                                None
-                                                            </Badge>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="tabular-nums font-mono text-xs">
-                                                        {txn.date}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className="font-mono text-[11px] text-muted-foreground">
-                                                            {txn.reference}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <span className="text-xs">
-                                                            {txn.description}
-                                                        </span>
-                                                    </TableCell>
-                                                    <TableCell>
+                                    ) : (
+                                        filteredTransactions.map((txn) => (
+                                            <TableRow key={txn.id}>
+                                                <TableCell>
+                                                    {txn.matched ? (
                                                         <Badge
-                                                            variant="secondary"
+                                                            variant="default"
                                                             className="text-[9px] h-4 px-1.5"
                                                         >
-                                                            {txn.category}
-                                                        </Badge>
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums font-mono text-xs">
-                                                        {txn.debit !== null ? (
-                                                            <span className="text-destructive">
-                                                                {formatCurrency(
-                                                                    txn.debit,
-                                                                    account.currency,
-                                                                )}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground/40">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums font-mono text-xs">
-                                                        {txn.credit !== null ? (
-                                                            <span className="text-primary">
-                                                                {formatCurrency(
-                                                                    txn.credit,
-                                                                    account.currency,
-                                                                )}
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-muted-foreground/40">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-right tabular-nums font-mono text-xs">
-                                                        {formatCurrency(
-                                                            txn.balance,
-                                                            account.currency,
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell className="text-center">
-                                                        {getConfidenceBadge(
-                                                            txn.matchConfidence,
-                                                        )}
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        {txn.matchedWith ? (
-                                                            <span className="font-mono text-[10px] text-muted-foreground">
-                                                                {
-                                                                    txn.matchedWith
+                                                            <HugeiconsIcon
+                                                                icon={
+                                                                    Tick02Icon
                                                                 }
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-[10px] text-muted-foreground/40">
-                                                                —
-                                                            </span>
-                                                        )}
-                                                    </TableCell>
-                                                </TableRow>
-                                            ))
-                                        )}
-                                    </TableBody>
-                                </Table>
-                            </ScrollArea>
+                                                                strokeWidth={
+                                                                    2.5
+                                                                }
+                                                                className="size-2.5 mr-0.5"
+                                                            />
+                                                            Match
+                                                        </Badge>
+                                                    ) : (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className="text-[9px] h-4 px-1.5 text-muted-foreground"
+                                                        >
+                                                            <HugeiconsIcon
+                                                                icon={
+                                                                    Alert02Icon
+                                                                }
+                                                                strokeWidth={
+                                                                    2
+                                                                }
+                                                                className="size-2.5 mr-0.5"
+                                                            />
+                                                            None
+                                                        </Badge>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="tabular-nums font-mono text-xs">
+                                                    {txn.date}
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="font-mono text-[11px] text-muted-foreground">
+                                                        {txn.reference}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <span className="text-xs">
+                                                        {txn.description}
+                                                    </span>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Badge
+                                                        variant="secondary"
+                                                        className="text-[9px] h-4 px-1.5"
+                                                    >
+                                                        {txn.category}
+                                                    </Badge>
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums font-mono text-xs">
+                                                    {txn.debit !== null ? (
+                                                        <span className="text-destructive">
+                                                            {formatCurrency(
+                                                                txn.debit,
+                                                                account.currency,
+                                                            )}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground/40">
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums font-mono text-xs">
+                                                    {txn.credit !== null ? (
+                                                        <span className="text-primary">
+                                                            {formatCurrency(
+                                                                txn.credit,
+                                                                account.currency,
+                                                            )}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-muted-foreground/40">
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-right tabular-nums font-mono text-xs">
+                                                    {formatCurrency(
+                                                        txn.balance,
+                                                        account.currency,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell className="text-center">
+                                                    {getConfidenceBadge(
+                                                        txn.matchConfidence,
+                                                    )}
+                                                </TableCell>
+                                                <TableCell>
+                                                    {txn.matchedWith ? (
+                                                        <span className="font-mono text-[10px] text-muted-foreground">
+                                                            {
+                                                                txn.matchedWith
+                                                            }
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] text-muted-foreground/40">
+                                                            —
+                                                        </span>
+                                                    )}
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    )}
+                                </TableBody>
+                            </Table>
                         </CardContent>
                     </Card>
                 </TabsContent>
@@ -678,10 +675,10 @@ export function DashboardMonth({
                                         const catMatchRate =
                                             cat.count > 0
                                                 ? Math.round(
-                                                      (cat.matched /
-                                                          cat.count) *
-                                                          1000,
-                                                  ) / 10
+                                                    (cat.matched /
+                                                        cat.count) *
+                                                    1000,
+                                                ) / 10
                                                 : 0;
                                         return (
                                             <TableRow key={cat.category}>

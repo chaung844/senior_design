@@ -108,7 +108,7 @@ export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
                         </span>
                     </div>
                 </div>
-                <SidebarSeparator />
+                <SidebarSeparator className="mx-0 data-horizontal:w-auto" />
                 <div className="px-2 pt-1">
                     <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">
                         Account Book
@@ -144,7 +144,7 @@ export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
                 </div>
             </SidebarHeader>
 
-            <SidebarSeparator />
+            <SidebarSeparator className="data-horizontal:w-auto" />
 
             <SidebarContent>
                 <ScrollArea className="flex-1">
@@ -320,7 +320,7 @@ export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
                 </ScrollArea>
             </SidebarContent>
 
-            <SidebarSeparator />
+            <SidebarSeparator className="data-horizontal:w-auto" />
 
             <SidebarFooter>
                 <div className="px-2 py-1 text-[10px] text-muted-foreground">

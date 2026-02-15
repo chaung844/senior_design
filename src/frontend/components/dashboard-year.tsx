@@ -189,11 +189,10 @@ export function DashboardYear({
                             </span>
                         </CardDescription>
                         <CardTitle
-                            className={`text-2xl font-bold tabular-nums ${
-                                netFlow >= 0
+                            className={`text-2xl font-bold tabular-nums ${netFlow >= 0
                                     ? "text-primary"
                                     : "text-destructive"
-                            }`}
+                                }`}
                         >
                             {netFlow >= 0 ? "+" : ""}
                             {formatCurrency(netFlow, account.currency)}
@@ -409,8 +408,8 @@ export function DashboardYear({
                                                         ? "default"
                                                         : monthData.matchRate >=
                                                             70
-                                                          ? "secondary"
-                                                          : "destructive"
+                                                            ? "secondary"
+                                                            : "destructive"
                                                 }
                                                 className="text-[10px] h-4 px-1.5 tabular-nums"
                                             >

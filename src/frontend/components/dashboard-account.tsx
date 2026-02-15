@@ -288,9 +288,9 @@ export function DashboardAccount({
                         <div className="text-2xl font-bold tabular-nums">
                             {latestYear
                                 ? formatCurrency(
-                                      latestYear.closingBalance,
-                                      account.currency,
-                                  )
+                                    latestYear.closingBalance,
+                                    account.currency,
+                                )
                                 : "—"}
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -384,12 +384,12 @@ export function DashboardAccount({
                                                 <Badge
                                                     variant={
                                                         yearData.overallMatchRate >=
-                                                        90
+                                                            90
                                                             ? "default"
                                                             : yearData.overallMatchRate >=
                                                                 70
-                                                              ? "secondary"
-                                                              : "destructive"
+                                                                ? "secondary"
+                                                                : "destructive"
                                                     }
                                                     className="text-[10px] h-4 px-1.5 tabular-nums"
                                                 >
@@ -426,7 +426,7 @@ export function DashboardAccount({
                                                 {reconciledMonths}/
                                                 {yearData.months.length}
                                                 {reconciledMonths ===
-                                                yearData.months.length ? (
+                                                    yearData.months.length ? (
                                                     <HugeiconsIcon
                                                         icon={Tick02Icon}
                                                         strokeWidth={2.5}
