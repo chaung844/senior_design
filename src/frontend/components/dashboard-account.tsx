@@ -20,6 +20,15 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import {
+    ChartContainer,
+    ChartTooltip,
+    ChartTooltipContent,
+    ChartLegend,
+    ChartLegendContent,
+    type ChartConfig,
+} from "@/components/ui/chart";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import {
     type AccountBook,
     formatCurrency,
     formatNumber,
@@ -36,6 +45,17 @@ import {
     MoneySendSquareIcon,
     BarChartIcon,
 } from "@hugeicons/core-free-icons";
+
+const reconciliationChartConfig = {
+    matched: {
+        label: "Matched",
+        color: "var(--chart-1)",
+    },
+    unmatched: {
+        label: "Unmatched",
+        color: "var(--chart-4)",
+    },
+} satisfies ChartConfig;
 
 interface DashboardAccountProps {
     account: AccountBook;
@@ -299,6 +319,68 @@ export function DashboardAccount({
                     </CardContent>
                 </Card>
             </div>
+
+            {/* Reconciliation Overview Chart */}
+            {/* <Card>
+                <CardHeader>
+                    <CardTitle>Reconciliation Overview</CardTitle>
+                    <CardDescription>
+                        Matched vs unmatched transactions per year
+                    </CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <ChartContainer
+                        config={reconciliationChartConfig}
+                        className="h-[250px] w-full"
+                    >
+                        <BarChart
+                            accessibilityLayer
+                            data={allYears
+                                .map((y) => ({
+                                    year: String(y.year),
+                                    matched: y.totalMatched,
+                                    unmatched: y.totalUnmatched,
+                                }))
+                                .reverse()}
+                        >
+                            <CartesianGrid vertical={false} />
+                            <XAxis
+                                dataKey="year"
+                                tickLine={false}
+                                tickMargin={10}
+                                axisLine={false}
+                            />
+                            <YAxis
+                                tickLine={false}
+                                axisLine={false}
+                                tickFormatter={(value) =>
+                                    formatNumber(value)
+                                }
+                            />
+                            <ChartTooltip
+                                content={
+                                    <ChartTooltipContent hideLabel />
+                                }
+                            />
+                            <ChartLegend
+                                content={<ChartLegendContent />}
+                            />
+                            <Bar
+                                dataKey="matched"
+                                stackId="a"
+                                fill="var(--color-matched)"
+                                radius={[0, 0, 0, 0]}
+                            />
+                            <Bar
+                                dataKey="unmatched"
+                                stackId="a"
+                                fill="var(--color-unmatched)"
+                                radius={[4, 4, 0, 0]}
+                            />
+                        </BarChart>
+                    </ChartContainer>
+                </CardContent>
+            </Card> */}
 
             {/* Yearly Breakdown Table */}
             <Card>

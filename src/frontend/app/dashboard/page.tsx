@@ -19,7 +19,7 @@ import {
     getYearData,
     getMonthData,
 } from "@/lib/mock-data";
-import { ScrollArea } from "@/components/ui/scroll-area";
+
 
 export default function Page() {
     const [selection, setSelection] = React.useState<Selection>({
@@ -184,7 +184,10 @@ export default function Page() {
         }
 
         return (
-            <DashboardAccount account={account} onYearClick={handleYearClick} />
+            <DashboardAccount
+                account={account}
+                onYearClick={handleYearClick}
+            />
         );
     }
 
@@ -195,8 +198,8 @@ export default function Page() {
                     selection={selection}
                     onSelectionChange={setSelection}
                 />
-                <SidebarInset>
-                    <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4">
+                <SidebarInset className="h-dvh overflow-y-auto">
+                    <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4 sticky top-0 z-20 bg-background">
                         <SidebarTrigger className="-ml-1" />
                         <Separator
                             orientation="vertical"
@@ -204,9 +207,9 @@ export default function Page() {
                         />
                         {renderBreadcrumb()}
                     </header>
-                    <ScrollArea className="flex-1">
-                        <main className="p-6">{renderContent()}</main>
-                    </ScrollArea>
+                    <main className="p-6">
+                        {renderContent()}
+                    </main>
                 </SidebarInset>
             </SidebarProvider>
         </TooltipProvider>
