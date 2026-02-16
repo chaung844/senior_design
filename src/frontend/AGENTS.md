@@ -31,6 +31,8 @@ The project lives at `src/frontend/` within a monorepo that also contains `src/b
 | Class Utilities  | `clsx` + `tailwind-merge` (via the `cn()` helper)               |
 | Font             | **JetBrains Mono** (loaded via `next/font/google`)              |
 | Linting          | **ESLint 9** with `eslint-config-next` (core-web-vitals + typescript) |
+| Data / tables    | **TanStack React Table** (`@tanstack/react-table`) — used by the shared `DataTable` component |
+| Charts           | **Recharts** — used for dashboard visualizations (e.g. in dashboard-year, dashboard-month) |
 
 ---
 
@@ -65,25 +67,40 @@ src/frontend/
 │   │   └── _signup/
 │   │       └── page.tsx    # Original signup form, preserved but unrouted (client component)
 │   └── dashboard/
-│       └── page.tsx        # Main dashboard view (client component)
+│       ├── layout.tsx      # Dashboard layout (sidebar, breadcrumb; client)
+│       ├── page.tsx        # Redirects to first account
+│       ├── [accountId]/
+│       │   ├── page.tsx    # Account-level view
+│       │   ├── [year]/
+│       │   │   ├── page.tsx    # Year-level view
+│       │   │   └── [month]/
+│       │   │       └── page.tsx    # Month-level view
+│       │   └── ...
+│       └── ...
 ├── components/
 │   ├── ui/                 # shadcn/ui primitives (DO NOT edit manually)
 │   │   ├── button.tsx
 │   │   ├── card.tsx
+│   │   ├── chart.tsx
+│   │   ├── dialog.tsx
 │   │   ├── sidebar.tsx
+│   │   ├── skeleton.tsx
 │   │   ├── table.tsx
 │   │   ├── tabs.tsx
-│   │   └── ... (23 components)
+│   │   └── ... (25 components)
 │   ├── app-sidebar.tsx        # Main sidebar navigation with account/year/month tree
 │   ├── dashboard-account.tsx  # Account-level dashboard view
 │   ├── dashboard-year.tsx     # Year-level dashboard view
 │   ├── dashboard-month.tsx    # Month-level dashboard with transaction table
+│   ├── data-table.tsx         # Generic data table (sorting, filtering, pagination; TanStack Table)
+│   ├── upload-dialog.tsx      # File upload dialog (drag-and-drop); statement/ledger uploads
 │   ├── component-example.tsx  # shadcn component showcase
 │   └── example.tsx            # Example wrapper utilities
 ├── hooks/
 │   └── use-mobile.ts       # Responsive breakpoint hook (768px)
 ├── lib/
 │   ├── utils.ts            # `cn()` class merging utility
+│   ├── dashboard-routes.ts # Dashboard URL helpers (selectionToPath, parseDashboardPath)
 │   └── mock-data.ts        # Mock data generators and domain types
 ├── public/                 # Static assets (SVGs)
 ├── components.json         # shadcn/ui configuration
@@ -106,14 +123,19 @@ src/frontend/
 
 #### Route Map
 
-| Route           | File                          | Type     | Description                                      |
-| --------------- | ----------------------------- | -------- | ------------------------------------------------ |
-| `/`             | `app/page.tsx`                | Server   | Redirects to `/landing-page`                     |
-| `/landing-page` | `app/landing-page/page.tsx`   | Server   | Public marketing page (minimalistic, Modal.com-inspired) |
-| `/auth/login`   | `app/auth/login/page.tsx`     | Client   | Login form (email + password)                    |
-| `/auth/signup`  | `app/auth/signup/page.tsx`    | Server   | WIP notice — registration currently closed       |
-| *(unrouted)*    | `app/auth/_signup/page.tsx`   | Client   | Original signup form, preserved for future use   |
-| `/dashboard`    | `app/dashboard/page.tsx`      | Client   | Main reconciliation dashboard with sidebar       |
+| Route           | File                                          | Type     | Description                                      |
+| --------------- | --------------------------------------------- | -------- | ------------------------------------------------ |
+| `/`             | `app/page.tsx`                                | Server   | Redirects to `/landing-page`                     |
+| `/landing-page` | `app/landing-page/page.tsx`                   | Server   | Public marketing page (minimalistic, Modal.com-inspired) |
+| `/auth/login`   | `app/auth/login/page.tsx`                     | Client   | Login form (email + password)                    |
+| `/auth/signup`  | `app/auth/signup/page.tsx`                    | Server   | WIP notice — registration currently closed       |
+| *(unrouted)*    | `app/auth/_signup/page.tsx`                   | Client   | Original signup form, preserved for future use   |
+| `/dashboard`    | `app/dashboard/page.tsx`                       | Server   | Redirects to first account (`/dashboard/[accountId]`) |
+| `/dashboard/[accountId]` | `app/dashboard/[accountId]/page.tsx`   | Client   | Account-level dashboard view (drill-down entry)  |
+| `/dashboard/[accountId]/[year]` | `app/dashboard/[accountId]/[year]/page.tsx` | Client | Year-level dashboard view                        |
+| `/dashboard/[accountId]/[year]/[month]` | `app/dashboard/[accountId]/[year]/[month]/page.tsx` | Client | Month-level dashboard view (transactions) |
+
+Dashboard drill-down state is URL-driven: the path reflects the current account/year/month, so refreshing the page keeps the same view. The shared layout (`app/dashboard/layout.tsx`) derives selection from the pathname and renders the sidebar and breadcrumb; navigation uses `router.push` to update the URL.
 
 ### Path Aliases
 
@@ -135,6 +157,11 @@ import { AppSidebar } from "@/components/app-sidebar";
 | `lib/`             | Utilities, helpers, data layer                   | **Yes**   |
 
 **Do NOT manually edit files in `components/ui/`.** These are generated by shadcn and may be overwritten. If you need to customize a shadcn component, extend or wrap it in `components/`.
+
+### Key Application Components
+
+- **DataTable** — Generic, type-parameterized table built on TanStack React Table; supports sorting, column filters, pagination, optional toolbar and row click. Used for transaction lists in the month view and for year-level summary tables.
+- **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, ledger files) with drag-and-drop and configurable accept types. Used in year and month dashboard views; `onUpload` is the integration point for a future backend.
 
 ### Adding New shadcn/ui Components
 
@@ -181,14 +208,15 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 ### State Management
 
-- Currently uses **React `useState`** for local component state.
-- The main `Selection` state is lifted to the root `Page` component and passed down via props.
+- Currently uses **React `useState`** for local component state where needed.
+- **Dashboard selection** (account, year, month) is **URL-driven**: the pathname (e.g. `/dashboard/acc-1/2024/3`) is the source of truth. The dashboard layout parses the path via `lib/dashboard-routes.ts` (`parseDashboardPath`, `pathToSelection`) and passes the derived `Selection` to the sidebar and breadcrumb; changing selection is done via `router.push(selectionToPath(...))`, not local state. This allows deep links and preserves the current view on refresh.
 - No external state management library is in use.
 
 ### Data Layer
 
 - Currently uses **mock data** generated in `lib/mock-data.ts`. No real API calls yet.
 - Helper functions: `getAccountBook()`, `getYearData()`, `getMonthData()`, `formatCurrency()`, `formatNumber()`.
+- `DataTable` is used to render transaction and summary tables; `UploadDialog` is the intended entry point for file-based ingestion (to be wired to the backend).
 - When integrating a real backend, replace mock data calls with API fetches while keeping the same type interfaces.
 
 ---
@@ -223,7 +251,7 @@ The dashboard uses a **drill-down** pattern:
 2. **Year level** (`DashboardYear`) — Monthly breakdown for a selected year.
 3. **Month level** (`DashboardMonth`) — Transaction table for a selected month.
 
-Navigation state is tracked via the `Selection` type and a breadcrumb in the header. The `AppSidebar` provides a tree-based navigation alternative.
+Navigation state is tracked in the URL (e.g. `/dashboard/[accountId]/[year]/[month]`). The dashboard layout derives `Selection` from the path and passes it to the breadcrumb and `AppSidebar`; sidebar and breadcrumb navigate via `router.push`. The `AppSidebar` provides a tree-based navigation alternative.
 
 ---
 
@@ -294,3 +322,14 @@ No test framework is currently configured. When adding tests:
 - Environment variables should be placed in `.env.local` (gitignored).
 - Prefix client-side env vars with `NEXT_PUBLIC_`.
 - The project is deployable to **Vercel** or any platform supporting Next.js.
+
+---
+
+## Maintaining AGENTS.md
+
+Keep this file in sync with the codebase when making structural or stack changes:
+
+- **Directory structure** — Update when adding or removing top-level directories or notable files (e.g. new app routes, new components in `components/`, new hooks or lib modules).
+- **Tech stack** — Update when adding major UI or data dependencies; keep in sync with `package.json`.
+- **Route map** — Update when adding or changing routes.
+- **Key application components** — Update when introducing or removing shared components (e.g. new tables, dialogs, or layout components).
