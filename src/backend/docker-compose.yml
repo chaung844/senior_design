@@ -1,15 +1,37 @@
 services:
-  db:
-    image: postgres:16
-    container_name: matcha_db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: matcha_db
-    ports:
-      - "5434:5432"
-    volumes:
-      - db_data:/var/lib/postgresql/data
+    db:
+        image: postgres:16
+        container_name: matcha_db
+        environment:
+            POSTGRES_USER: postgres
+            POSTGRES_PASSWORD: postgres
+            POSTGRES_DB: matcha_db
+        ports:
+            - "5434:5432"
+        volumes:
+            - db_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U postgres"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    backend:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        container_name: matcha_backend
+        env_file:
+            - .env
+        environment:
+            DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/matcha_db
+        ports:
+            - "8000:8000"
+        volumes:
+            - ./safe:/app/safe
+        depends_on:
+            db:
+                condition: service_healthy
 
 volumes:
-  db_data:
+    db_data:
