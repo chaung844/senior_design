@@ -23,9 +23,10 @@ class AccountBook(Base, TimestampMixin):
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
 
     user: Mapped["User"] = relationship(back_populates="account_books")
-    transactions: Mapped[List["Transaction"]] = relationship(
-        back_populates="account_book"
-    )
+    # Comment out unused transactions
+    # transactions: Mapped[List["Transaction"]] = relationship(
+    #     back_populates="account_book"
+    # )
     bank_statements: Mapped[List["BankStatement"]] = relationship(
         "BankStatement", back_populates="account", cascade="all, delete-orphan"
     )
