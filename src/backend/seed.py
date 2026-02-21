@@ -9,27 +9,41 @@ from sqlalchemy import select
 from app.database import AsyncSessionLocal, engine
 from app.enums import UserRole
 from app.models import User
+from app.utils.security import hash_password
+
 
 async def seed_users():
     # Define the data to seed
     users_to_seed = [
         {
-            "name": "Hellooooo World",
-            "email": "helloooooo@example.com",
-            "password_hash": "fake_hash_1",
+            "name": "Dev One",
+            "email": "dev1@example.com",
+            "password": "passworddev1!",
+            "role": UserRole.developer,
+        },
+        {
+            "name": "Dev Two",
+            "email": "dev2@example.com",
+            "password": "passworddev2!",
+            "role": UserRole.developer,
+        },
+        {
+            "name": "Admin One",
+            "email": "admin1@example.com",
+            "password": "passwordadmin1!",
             "role": UserRole.admin,
         },
         {
-            "name": "User Test",
-            "email": "test@example.com",
-            "password_hash": "fake_hash_2",
-            "role": UserRole.viewer,
+            "name": "Admin Two",
+            "email": "admin2@example.com",
+            "password": "passwordadmin2!",
+            "role": UserRole.admin,
         },
         {
-            "name": "Dev Test",
-            "email": "dev@example.com",
-            "password_hash": "fake_hash_3",
-            "role": UserRole.developer,
+            "name": "Viewer One",
+            "email": "viewer1@example.com",
+            "password": "passwordviewer1!",
+            "role": UserRole.viewer,
         },
     ]
 
@@ -42,11 +56,20 @@ async def seed_users():
                 result = await session.execute(stmt)
                 existing_user = result.scalar_one_or_none()
 
-                if not existing_user:
-                    session.add(User(**user_data))
-                    new_users_count += 1
-                else:
+                if existing_user:
                     print(f"User {user_data['email']} already exists. Skipping.")
+                    continue
+
+                password_hash = hash_password(user_data["password"])
+                session.add(
+                    User(
+                        name=user_data["name"],
+                        email=user_data["email"],
+                        password_hash=password_hash,
+                        role=user_data["role"],
+                    )
+                )
+                new_users_count += 1
 
             if new_users_count > 0:
                 await session.commit()
@@ -61,6 +84,7 @@ async def seed_users():
             await session.close()
 
     await engine.dispose()
+
 
 if __name__ == "__main__":
     asyncio.run(seed_users())
