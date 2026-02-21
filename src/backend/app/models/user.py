@@ -26,12 +26,21 @@ class User(Base, TimestampMixin):
         server_default=func.now(), onupdate=func.now(), nullable=False
     )
 
+    # Relationships
     uploaded_statements: Mapped[List["BankStatement"]] = relationship(
         "BankStatement", back_populates="uploader", cascade="save-update, merge"
     )
 
     uploaded_receipts: Mapped[List["Receipt"]] = relationship(
         "Receipt", back_populates="uploader", cascade="save-update, merge"
+    )
+
+    uploaded_documents: Mapped[List["Document"]] = relationship(
+        "Document", back_populates="uploader", cascade="save-update, merge"
+    )
+
+    account_books: Mapped[List["AccountBook"]] = relationship(
+        "AccountBook", back_populates="user", cascade="save-update, merge"
     )
 
     def __repr__(self) -> str:

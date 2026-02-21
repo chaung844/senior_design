@@ -21,7 +21,9 @@ class Receipt(Base, TimestampMixin):
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="USD", server_default="USD"
     )
-    file_path: Mapped[str] = mapped_column(String(255), nullable=False)  # S3 path
+    document: Mapped[Optional["Document"]] = relationship(
+        "Document", backref="receipt", uselist=False, cascade="all, delete-orphan"
+    )
     description: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     expense_type: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True
