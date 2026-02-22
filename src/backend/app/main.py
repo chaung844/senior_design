@@ -1,5 +1,3 @@
-import os
-
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -10,15 +8,6 @@ app = FastAPI(title="Matcha Backend")
 settings = get_settings()
 
 cors_origins = settings.cors_origins
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[o.strip() for o in cors_origins],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000").strip().split(",")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[o.strip() for o in cors_origins],
