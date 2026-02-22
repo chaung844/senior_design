@@ -1,13 +1,15 @@
 from datetime import datetime
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Enum, String, event, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import UserRole
-from app.models.account_book import AccountBook
 from app.models.base import Base, TimestampMixin
-from app.models.document import Document
+
+if TYPE_CHECKING:
+    from app.models.account_book import AccountBook
+    from app.models.document import Document
 
 
 class User(Base, TimestampMixin):

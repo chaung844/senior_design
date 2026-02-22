@@ -1,14 +1,16 @@
 from datetime import datetime
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import DocumentStatus, DocumentType
 from app.models.base import Base, TimestampMixin
-from app.models.receipt import Receipt
-from app.models.statement import BankStatement
-from app.models.user import User
+
+if TYPE_CHECKING:
+    from app.models.receipt import Receipt
+    from app.models.statement import BankStatement
+    from app.models.user import User
 
 
 class Document(Base, TimestampMixin):

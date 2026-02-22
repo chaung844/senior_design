@@ -1,14 +1,16 @@
 from datetime import date
 from decimal import Decimal
-from typing import List, Optional
+from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
-from app.models.account_book import AccountBook
 from app.models.base import Base, TimestampMixin
-from app.models.document import Document
+
+if TYPE_CHECKING:
+    from app.models.account_book import AccountBook
+    from app.models.document import Document
 
 
 class BankStatement(Base, TimestampMixin):
