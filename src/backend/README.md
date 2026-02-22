@@ -80,7 +80,7 @@ uv run seed.py
 ```
 - Run the server
 ```bash
-uv run uvicorn app.main:app --reload
+uv run uvicorn app.main:app --reload --loop uvloop --http httptools
 ```
 - From the localhost link, append `/docs` to get swagger UI
 
