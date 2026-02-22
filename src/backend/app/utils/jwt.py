@@ -1,5 +1,7 @@
 from datetime import datetime, timedelta, timezone
-from jose import jwt
+
+import jwt
+
 from app.config import get_settings
 
 settings = get_settings()
@@ -20,5 +22,6 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> s
         settings.jwt_secret_key.get_secret_value(),
         algorithm=settings.jwt_algorithm,
     )
+    # PyJWT >= 2.x always returns str; no decode() needed
 
     return encoded_jwt
