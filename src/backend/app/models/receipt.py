@@ -1,13 +1,15 @@
 from datetime import date
 from decimal import Decimal
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
 from app.models.base import Base, TimestampMixin
-from app.models.document import Document
+
+if TYPE_CHECKING:
+    from app.models.document import Document
 
 
 class Receipt(Base, TimestampMixin):

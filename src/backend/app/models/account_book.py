@@ -1,12 +1,14 @@
-from typing import List
+from typing import TYPE_CHECKING, List
 
 from sqlalchemy import Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import AccountType
 from app.models.base import Base, TimestampMixin
-from app.models.statement import BankStatement
-from app.models.user import User
+
+if TYPE_CHECKING:
+    from app.models.statement import BankStatement
+    from app.models.user import User
 
 
 class AccountBook(Base, TimestampMixin):
