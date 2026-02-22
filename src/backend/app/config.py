@@ -41,6 +41,12 @@ class Settings(BaseSettings):
         description="AWS Bedrock API key (required)",
     )
     aws_region: str = Field(default="us-east-1", description="AWS region")
+    aws_access_key_id: str = Field(..., description="AWS Access Key ID")
+    aws_secret_access_key: SecretStr = Field(..., description="AWS Secret Access Key")
+    s3_bucket_name: str = Field(..., description="S3 bucket name for document storage")
+    aws_sqs_url: str = Field(
+        ..., description="AWS SQS URL for document processing queue"
+    )
 
     # ── Model Configuration ───────────────────────────────────────────
     llm_model_id: str = Field(

@@ -5,6 +5,8 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import AccountType
 from app.models.base import Base, TimestampMixin
+from app.models.statement import BankStatement
+from app.models.user import User
 
 
 class AccountBook(Base, TimestampMixin):

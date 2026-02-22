@@ -1,9 +1,13 @@
 from datetime import datetime
 from typing import List
-from sqlalchemy import String, Enum, event, func
+
+from sqlalchemy import Enum, String, event, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from app.models.base import Base, TimestampMixin
+
 from app.enums import UserRole
+from app.models.account_book import AccountBook
+from app.models.base import Base, TimestampMixin
+from app.models.document import Document
 
 
 class User(Base, TimestampMixin):
