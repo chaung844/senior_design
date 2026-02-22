@@ -8,8 +8,10 @@ import {
     SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { Separator } from "@/components/ui/separator";
+import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
+import { useAuth } from "@/lib/auth";
 import {
     pathToSelection,
     selectionToPath,
@@ -23,12 +25,36 @@ export default function DashboardLayout({
 }) {
     const pathname = usePathname();
     const router = useRouter();
+    const { user, loading: authLoading } = useAuth();
     const firstAccountId = accountBooks[0]?.id ?? "";
 
     const selection = React.useMemo(
         () => pathToSelection(pathname, firstAccountId),
         [pathname, firstAccountId],
     );
+
+    const handleSelectionChange = React.useCallback(
+        (newSelection: Parameters<typeof selectionToPath>[0]) => {
+            router.push(selectionToPath(newSelection));
+        },
+        [router],
+    );
+
+    React.useEffect(() => {
+        if (authLoading) return;
+        if (!user) router.replace("/auth/login");
+    }, [user, authLoading, router]);
+
+    if (authLoading) {
+        return (
+            <div className="flex h-dvh items-center justify-center">
+                <Skeleton className="h-8 w-48" />
+            </div>
+        );
+    }
+    if (!user) {
+        return null;
+    }
 
     const account = getAccountBook(selection.accountId);
 
@@ -112,13 +138,6 @@ export default function DashboardLayout({
 
         return <div className="flex items-center gap-1.5">{parts}</div>;
     }
-
-    const handleSelectionChange = React.useCallback(
-        (newSelection: Parameters<typeof selectionToPath>[0]) => {
-            router.push(selectionToPath(newSelection));
-        },
-        [router],
-    );
 
     return (
         <TooltipProvider>

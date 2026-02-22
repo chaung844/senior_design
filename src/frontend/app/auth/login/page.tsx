@@ -1,20 +1,39 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { useAuth } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 
 export default function LoginPage() {
+    const router = useRouter();
+    const { user, loading: authLoading, login } = useAuth();
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
+    const [error, setError] = useState<string | null>(null);
+    const [submitting, setSubmitting] = useState(false);
 
-    const handleSubmit = (e: React.FormEvent) => {
+    useEffect(() => {
+        if (authLoading) return;
+        if (user) router.replace("/dashboard");
+    }, [user, authLoading, router]);
+
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        // TODO: integrate with backend auth
-        console.log("login", { email, password });
+        setError(null);
+        setSubmitting(true);
+        try {
+            await login(email, password);
+            router.replace("/dashboard");
+        } catch (err) {
+            setError(err instanceof Error ? err.message : "Invalid email or password");
+        } finally {
+            setSubmitting(false);
+        }
     };
 
     return (
@@ -40,6 +59,12 @@ export default function LoginPage() {
             {/* Form */}
             <main className="flex-1 flex items-center justify-center px-6">
                 <div className="w-full max-w-sm space-y-8 -mt-20">
+                    {authLoading ? (
+                        <p className="text-sm text-muted-foreground text-center">
+                            Loading…
+                        </p>
+                    ) : (
+                        <>
                     <div className="space-y-2 text-center">
                         <h1 className="text-lg font-semibold tracking-tight">
                             Welcome back
@@ -50,6 +75,11 @@ export default function LoginPage() {
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
+                        {error && (
+                            <p className="text-sm text-destructive text-center">
+                                {error}
+                            </p>
+                        )}
                         <div className="space-y-1.5">
                             <Label htmlFor="email">Email</Label>
                             <Input
@@ -84,8 +114,12 @@ export default function LoginPage() {
                             />
                         </div>
 
-                        <Button type="submit" className="w-full">
-                            Log in
+                        <Button
+                            type="submit"
+                            className="w-full"
+                            disabled={submitting || authLoading}
+                        >
+                            {submitting ? "Logging in…" : "Log in"}
                         </Button>
                     </form>
 
@@ -103,6 +137,8 @@ export default function LoginPage() {
                             </Button>
                         </p>
                     </div>
+                        </>
+                    )}
                 </div>
             </main>
         </div>

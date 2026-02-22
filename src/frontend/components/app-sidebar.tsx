@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useRouter } from "next/navigation";
 import {
     Sidebar,
     SidebarContent,
@@ -30,8 +31,10 @@ import {
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/lib/auth";
 import { accountBooks, type Selection } from "@/lib/mock-data";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -42,6 +45,7 @@ import {
     DashboardSquare01Icon,
     Tick02Icon,
     Alert02Icon,
+    LogoutIcon,
 } from "@hugeicons/core-free-icons";
 
 interface AppSidebarProps {
@@ -50,9 +54,16 @@ interface AppSidebarProps {
 }
 
 export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
+    const router = useRouter();
+    const { logout } = useAuth();
     const currentAccount = accountBooks.find(
         (a) => a.id === selection.accountId,
     );
+
+    const handleLogout = () => {
+        logout();
+        router.replace("/auth/login");
+    };
 
     const handleAccountChange = (accountId: string) => {
         onSelectionChange({
@@ -323,13 +334,26 @@ export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
             <SidebarSeparator className="data-horizontal:w-auto" />
 
             <SidebarFooter>
-                <div className="px-2 py-1 text-[10px] text-muted-foreground">
-                    <div className="flex items-center justify-between">
+                <div className="px-2 py-1 space-y-2">
+                    <div className="text-[10px] text-muted-foreground flex items-center justify-between">
                         <span>Last synced</span>
                         <span className="font-mono">
                             {currentAccount?.lastUpdated ?? "—"}
                         </span>
                     </div>
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start gap-2 text-muted-foreground"
+                        onClick={handleLogout}
+                    >
+                        <HugeiconsIcon
+                            icon={LogoutIcon}
+                            strokeWidth={2}
+                            className="size-4"
+                        />
+                        Log out
+                    </Button>
                 </div>
             </SidebarFooter>
         </Sidebar>
