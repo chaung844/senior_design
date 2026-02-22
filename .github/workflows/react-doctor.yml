@@ -13,9 +13,11 @@ jobs:
             - uses: actions/checkout@v4
               with:
                   fetch-depth: 0 # Required for diff mode [page:1]
+            # - name: React Doctor # 0.0.1 version has a score output bug
+            #   uses: millionco/react-doctor@0.0.1
+            #   with:
+            #       directory: src/frontend
+            #       # github-token: ${{ secrets.GITHUB_TOKEN }} # Posts findings as PR comment [page:1]
+            #       verbose: True
             - name: React Doctor
-              uses: millionco/react-doctor@0.0.1
-              with:
-                  directory: src/frontend
-                  # github-token: ${{ secrets.GITHUB_TOKEN }} # Posts findings as PR comment [page:1]
-                  verbose: True
+              run: npx -y react-doctor@latest src/frontend --verbose
