@@ -13,7 +13,9 @@ class BankStatement(Base, TimestampMixin):
     __tablename__ = "bank_statements"
 
     statement_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
-
+    account_id: Mapped[int] = mapped_column(
+        ForeignKey("account_books.account_id"), nullable=False
+    )
     month: Mapped[int] = mapped_column(nullable=False)
     year: Mapped[int] = mapped_column(nullable=False)
     account_number_last4: Mapped[str] = mapped_column(String(4), nullable=False)
@@ -21,20 +23,16 @@ class BankStatement(Base, TimestampMixin):
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="USD", server_default="USD"
     )
-
-    file_path: Mapped[str] = mapped_column(String(255), nullable=False)
-
-    uploaded_by: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("users.user_id", ondelete="SET NULL"),
-    )
-
-    uploader: Mapped[Optional["User"]] = relationship(
-        "User", back_populates="uploaded_statements"
+    document: Mapped[Optional["Document"]] = relationship(
+        "Document", back_populates="bank_statement", uselist=False
     )
     lines: Mapped[List["BankStatementLine"]] = relationship(
         "BankStatementLine",
         back_populates="bank_statement",
         cascade="all, delete-orphan",
+    )
+    account: Mapped["AccountBook"] = relationship(
+        "AccountBook", back_populates="bank_statements"
     )
 
 

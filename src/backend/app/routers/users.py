@@ -6,10 +6,8 @@ from app.database import get_db
 from app.schemas.user import UserRead
 from app.models.user import User
 
-router = APIRouter(
-    prefix="/users",
-    tags=["users"]
-)
+router = APIRouter(prefix="/users", tags=["users"])
+
 
 @router.get("/{user_id}", response_model=UserRead)
 async def read_user(user_id: int, db: AsyncSession = Depends(get_db)):

@@ -99,6 +99,13 @@ class Settings(BaseSettings):
     # ── Database configuration ──────────────────────────────────────────────
     database_url: SecretStr = Field(..., description="Database connection URL")
 
+    # ── Auth / JWT ──────────────────────────────────────────────────────────
+    jwt_secret_key: SecretStr = Field(..., description="JWT signing secret key")
+    jwt_algorithm: str = Field(default="HS256", description="JWT signing algorithm")
+    access_token_expire_minutes: int = Field(
+        default=1440, description="Access token expiration time in minutes"
+    )
+
 
 @lru_cache
 def get_settings() -> Settings:

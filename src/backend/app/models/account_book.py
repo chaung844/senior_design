@@ -1,4 +1,3 @@
-from datetime import date
 from typing import List
 
 from sqlalchemy import Enum, ForeignKey, String
@@ -21,11 +20,13 @@ class AccountBook(Base, TimestampMixin):
         String(3), nullable=False, default="USD", server_default="USD"
     )
     account_number_last4: Mapped[str] = mapped_column(String(4), nullable=False)
-    created_at: Mapped[date] = mapped_column(default=date.today)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
 
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), nullable=False)
     user: Mapped["User"] = relationship(back_populates="account_books")
-
-    transactions: Mapped[List["Transaction"]] = relationship(
-        back_populates="account_book"
+    # Comment out unused transactions
+    # transactions: Mapped[List["Transaction"]] = relationship(
+    #     back_populates="account_book"
+    # )
+    bank_statements: Mapped[List["BankStatement"]] = relationship(
+        "BankStatement", back_populates="account", cascade="all, delete-orphan"
     )

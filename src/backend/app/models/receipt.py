@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 from typing import Optional
 
-from sqlalchemy import Enum, ForeignKey, Numeric, String
+from sqlalchemy import Enum, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
@@ -21,7 +21,6 @@ class Receipt(Base, TimestampMixin):
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="USD", server_default="USD"
     )
-    file_path: Mapped[str] = mapped_column(String(255), nullable=False)  # S3 path
     description: Mapped[Optional[str]] = mapped_column(String(512), nullable=True)
     expense_type: Mapped[Optional[str]] = mapped_column(
         String(255), nullable=True
@@ -32,11 +31,7 @@ class Receipt(Base, TimestampMixin):
         nullable=False,
         default=MatchStatus.unmatched,
     )
-
-    uploaded_by: Mapped[Optional[int]] = mapped_column(
-        ForeignKey("users.user_id", ondelete="SET NULL"),
-    )
-
-    uploader: Mapped[Optional["User"]] = relationship(
-        "User", back_populates="uploaded_receipts"
+    # uploaded by and file path from document table
+    document: Mapped[Optional["Document"]] = relationship(
+        "Document", back_populates="receipt", uselist=False
     )

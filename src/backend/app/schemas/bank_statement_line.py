@@ -3,6 +3,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from app.enums import MatchStatus
 
+
 class BankStatementLineBase(BaseModel):
     line_number: int
     reference_number: str
@@ -11,6 +12,7 @@ class BankStatementLineBase(BaseModel):
     description: str
     mcc: str
     charge: Decimal
+
 
 class BankStatementLineRead(BankStatementLineBase):
     line_id: int
