@@ -18,7 +18,10 @@ import {
     Upload04Icon,
     Cancel01Icon,
     File01Icon,
+    Tick02Icon,
+    Alert02Icon,
 } from "@hugeicons/core-free-icons";
+import type { UploadFileResult } from "@/hooks/use-document-upload";
 
 interface UploadDialogProps {
     trigger?: React.ReactNode;
@@ -27,7 +30,10 @@ interface UploadDialogProps {
     accept: string;
     acceptLabel: string;
     multiple?: boolean;
-    onUpload?: (files: File[]) => void;
+    onUpload?: (files: File[]) => void | Promise<UploadFileResult[]>;
+    isUploading?: boolean;
+    uploadResults?: UploadFileResult[];
+    onOpenChange?: (open: boolean) => void;
 }
 
 function formatFileSize(bytes: number): string {
@@ -44,6 +50,9 @@ export function UploadDialog({
     acceptLabel,
     multiple = true,
     onUpload,
+    isUploading = false,
+    uploadResults = [],
+    onOpenChange: onOpenChangeProp,
 }: UploadDialogProps) {
     const [open, setOpen] = React.useState(false);
     const [files, setFiles] = React.useState<File[]>([]);
@@ -103,21 +112,41 @@ export function UploadDialog({
         }
     }
 
-    function handleUpload() {
+    async function handleUpload() {
         if (files.length === 0) return;
-        onUpload?.(files);
-        setFiles([]);
-        setOpen(false);
+        const result = onUpload?.(files);
+        if (result instanceof Promise) {
+            await result;
+            // Progress and close are handled via uploadResults + useEffect
+        } else {
+            setFiles([]);
+            setOpen(false);
+        }
     }
 
     function handleOpenChange(nextOpen: boolean) {
         setOpen(nextOpen);
+        onOpenChangeProp?.(nextOpen);
         if (!nextOpen) {
             setFiles([]);
             setIsDragging(false);
             dragCounter.current = 0;
         }
     }
+
+    // Close dialog when upload finishes and all succeeded
+    const prevUploadingRef = React.useRef(false);
+    React.useEffect(() => {
+        const wasUploading = prevUploadingRef.current;
+        prevUploadingRef.current = isUploading;
+        if (wasUploading && !isUploading && uploadResults.length > 0) {
+            const allDone = uploadResults.every((r) => r.status === "done");
+            if (allDone) {
+                setOpen(false);
+                setFiles([]);
+            }
+        }
+    }, [isUploading, uploadResults]);
 
     return (
         <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -142,9 +171,10 @@ export function UploadDialog({
                 {/* Drop zone */}
                 <div
                     role="button"
-                    tabIndex={0}
-                    onClick={() => inputRef.current?.click()}
+                    tabIndex={isUploading ? -1 : 0}
+                    onClick={() => !isUploading && inputRef.current?.click()}
                     onKeyDown={(e) => {
+                        if (isUploading) return;
                         if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
                             inputRef.current?.click();
@@ -155,7 +185,9 @@ export function UploadDialog({
                     onDragOver={handleDragOver}
                     onDrop={handleDrop}
                     className={cn(
-                        "flex flex-col items-center justify-center gap-2 rounded-none border-2 border-dashed px-4 py-8 text-center transition-colors cursor-pointer",
+                        "flex flex-col items-center justify-center gap-2 rounded-none border-2 border-dashed px-4 py-8 text-center transition-colors",
+                        isUploading && "pointer-events-none opacity-60",
+                        !isUploading && "cursor-pointer",
                         isDragging
                             ? "border-primary bg-primary/5"
                             : "border-muted-foreground/25 hover:border-muted-foreground/50",
@@ -201,57 +233,115 @@ export function UploadDialog({
                 {/* File list */}
                 {files.length > 0 && (
                     <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto">
-                        {files.map((file, i) => (
-                            <div
-                                key={`${file.name}-${file.size}-${i}`}
-                                className="flex items-center gap-2 rounded-none border border-border px-2.5 py-1.5"
-                            >
-                                <HugeiconsIcon
-                                    icon={File01Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5 shrink-0 text-muted-foreground"
-                                />
-                                <span className="flex-1 truncate text-xs">
-                                    {file.name}
-                                </span>
-                                <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
-                                    {formatFileSize(file.size)}
-                                </span>
-                                <Button
-                                    variant="ghost"
-                                    size="icon-xs"
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        removeFile(i);
-                                    }}
-                                    className="shrink-0"
+                        {files.map((file, i) => {
+                            const result = uploadResults[i];
+                            const status = result?.status;
+                            const isPending =
+                                !status || status === "pending";
+                            const isInProgress =
+                                status === "uploading" ||
+                                status === "confirming";
+                            const isDone = status === "done";
+                            const isError = status === "error";
+                            return (
+                                <div
+                                    key={`${file.name}-${file.size}-${i}`}
+                                    className="flex items-center gap-2 rounded-none border border-border px-2.5 py-1.5"
                                 >
                                     <HugeiconsIcon
-                                        icon={Cancel01Icon}
+                                        icon={File01Icon}
                                         strokeWidth={2}
-                                        className="size-3"
+                                        className="size-3.5 shrink-0 text-muted-foreground"
                                     />
-                                    <span className="sr-only">Remove</span>
-                                </Button>
-                            </div>
-                        ))}
+                                    <span className="flex-1 min-w-0 truncate text-xs">
+                                        {file.name}
+                                    </span>
+                                    {isInProgress && (
+                                        <span
+                                            className="size-3.5 shrink-0 border-2 border-primary border-t-transparent rounded-full animate-spin"
+                                            aria-hidden
+                                        />
+                                    )}
+                                    {isDone && (
+                                        <HugeiconsIcon
+                                            icon={Tick02Icon}
+                                            strokeWidth={2.5}
+                                            className="size-3.5 shrink-0 text-primary"
+                                            aria-label="Uploaded"
+                                        />
+                                    )}
+                                    {isError && (
+                                        <HugeiconsIcon
+                                            icon={Alert02Icon}
+                                            strokeWidth={2}
+                                            className="size-3.5 shrink-0 text-destructive"
+                                            aria-label="Error"
+                                        />
+                                    )}
+                                    {!result && (
+                                        <span className="shrink-0 text-[10px] tabular-nums text-muted-foreground">
+                                            {formatFileSize(file.size)}
+                                        </span>
+                                    )}
+                                    {isError && result?.error && (
+                                        <span className="shrink-0 max-w-[120px] truncate text-[10px] text-destructive">
+                                            {result.error}
+                                        </span>
+                                    )}
+                                    {!isInProgress && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon-xs"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                removeFile(i);
+                                            }}
+                                            className="shrink-0"
+                                        >
+                                            <HugeiconsIcon
+                                                icon={Cancel01Icon}
+                                                strokeWidth={2}
+                                                className="size-3"
+                                            />
+                                            <span className="sr-only">
+                                                Remove
+                                            </span>
+                                        </Button>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 )}
 
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
+                        <Button
+                            variant="outline"
+                            disabled={isUploading}
+                        >
+                            Cancel
+                        </Button>
                     </DialogClose>
                     <Button
                         onClick={handleUpload}
-                        disabled={files.length === 0}
+                        disabled={files.length === 0 || isUploading}
                     >
-                        <HugeiconsIcon
-                            icon={Upload04Icon}
-                            strokeWidth={2}
-                            className="size-3.5"
-                        />
-                        Upload {files.length > 0 && `(${files.length})`}
+                        {isUploading ? (
+                            <span
+                                className="size-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"
+                                aria-hidden
+                            />
+                        ) : (
+                            <HugeiconsIcon
+                                icon={Upload04Icon}
+                                strokeWidth={2}
+                                className="size-3.5"
+                            />
+                        )}
+                        {isUploading
+                            ? "Uploading…"
+                            : `Upload${files.length > 0 ? ` (${files.length})` : ""}`}
                     </Button>
                 </DialogFooter>
             </DialogContent>

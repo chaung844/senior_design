@@ -34,6 +34,7 @@ import {
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { UploadDialog } from "@/components/upload-dialog";
+import { useDocumentUpload } from "@/hooks/use-document-upload";
 
 interface DashboardMonthProps {
     account: AccountBook;
@@ -347,6 +348,13 @@ export function DashboardMonth({
     monthData,
     onBack,
 }: DashboardMonthProps) {
+    const {
+        uploadFiles,
+        isUploading,
+        results: uploadResults,
+        reset: resetUpload,
+    } = useDocumentUpload("receipt");
+
     const [filter, setFilter] = React.useState<FilterMode>("all");
     const [searchQuery, setSearchQuery] = React.useState("");
     const [activeTab, setActiveTab] = React.useState("transactions");
@@ -542,8 +550,11 @@ export function DashboardMonth({
                             accept=".png,.jpg,.jpeg,.pdf"
                             acceptLabel="PNG, JPEG, JPG, or PDF"
                             multiple
-                            onUpload={(files) => {
-                                console.log("Receipts:", files);
+                            onUpload={uploadFiles}
+                            isUploading={isUploading}
+                            uploadResults={uploadResults}
+                            onOpenChange={(open) => {
+                                if (!open) resetUpload();
                             }}
                         />
                     </div>

@@ -43,6 +43,7 @@ import { Button } from "@/components/ui/button";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { UploadDialog } from "@/components/upload-dialog";
+import { useDocumentUpload } from "@/hooks/use-document-upload";
 
 const monthlyChartConfig = {
     matched: {
@@ -230,6 +231,13 @@ export function DashboardYear({
     onMonthClick,
     onBack,
 }: DashboardYearProps) {
+    const {
+        uploadFiles,
+        isUploading,
+        results: uploadResults,
+        reset: resetUpload,
+    } = useDocumentUpload("bank_statement");
+
     const months = React.useMemo(
         () => yearData.months.slice().sort((a, b) => a.month - b.month),
         [yearData.months],
@@ -301,8 +309,11 @@ export function DashboardYear({
                             accept=".pdf,.csv,.xlsx,.xls"
                             acceptLabel="PDF, CSV, or Excel"
                             multiple
-                            onUpload={(files) => {
-                                console.log("Statements:", files);
+                            onUpload={uploadFiles}
+                            isUploading={isUploading}
+                            uploadResults={uploadResults}
+                            onOpenChange={(open) => {
+                                if (!open) resetUpload();
                             }}
                         />
                     </div>
