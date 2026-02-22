@@ -7,6 +7,7 @@ located in the project root (src/backend/.env).
 
 from functools import lru_cache  # caching for efficient settings retrieval
 from pathlib import Path
+from typing import List
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -34,13 +35,16 @@ class Settings(BaseSettings):
     host: str = Field(default="0.0.0.0", description="Server bind host")
     port: int = Field(default=8000, description="Server bind port")
     base_path: Path = Field(default=Path("safe/"), description="Base data directory")
+    cors_origins: List[str] = Field(
+        default=["http://localhost:3000", "http://127.0.0.1:3000"]
+    )
 
     # ── AWS / Model Secrets ───────────────────────────────────────────
     aws_bedrock_api_key: SecretStr = Field(
         ...,
         description="AWS Bedrock API key (required)",
     )
-    aws_region: str = Field(default="us-east-1", description="AWS region")
+    aws_region: str = Field(default="us-east-2", description="AWS region")
     aws_access_key_id: str = Field(..., description="AWS Access Key ID")
     aws_secret_access_key: SecretStr = Field(..., description="AWS Secret Access Key")
     s3_bucket_name: str = Field(..., description="S3 bucket name for document storage")

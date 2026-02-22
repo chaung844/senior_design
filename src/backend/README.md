@@ -89,6 +89,24 @@ uv run uvicorn app.main:app --reload --loop uvloop --http httptools
 ## Notes
 - Currently, AWS Bedrock foundation model is invoked via OpenAI-Compatible API call. Future features involve deeper integration with AWS (.e.g, S3, RDS, ...) may need to use [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)([installation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)) - AWS Python SDK.
 
+### S3 CORS (required for document upload)
+
+The frontend uploads files **directly to S3** using presigned PUT URLs. The browser enforces CORS, so the S3 bucket must allow your frontend origin. Otherwise you will see: *"Fetch API cannot load presigned url s3 due to access control checks"*.
+
+1. **Edit `s3-cors.json`** in this directory: add your production frontend origin to `AllowedOrigins` (e.g. `https://your-app.vercel.app`). The file already includes `http://localhost:3000` and `http://127.0.0.1:3000` for local dev.
+
+2. **Apply the CORS configuration** to your bucket (replace `YOUR_BUCKET_NAME` with the value of `S3_BUCKET_NAME` from your `.env`):
+
+   ```bash
+   aws s3api put-bucket-cors --bucket YOUR_BUCKET_NAME --cors-configuration file://s3-cors.json
+   ```
+
+3. **Verify** in the AWS Console: S3 → your bucket → Permissions → Cross-origin resource sharing (CORS).
+
+**If you get "Preflight response is not successful. Status code: 500"**  
+- Re-apply the CORS config above (e.g. `aws s3api put-bucket-cors ...`). The sample uses `AllowedHeaders: ["*"]` so the browser’s preflight headers are accepted.  
+- If the bucket is behind **CloudFront**, enable CORS for the distribution (e.g. use the “CORS-S3Origin” origin request policy) and allow the `OPTIONS` method and `Origin`, `Access-Control-Request-Headers`, `Access-Control-Request-Method` headers so the preflight reaches S3 correctly.
+
 ## App workflows
 
 - user upload docs
