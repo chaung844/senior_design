@@ -6,7 +6,9 @@ from sqlalchemy import Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
+from app.models.account_book import AccountBook
 from app.models.base import Base, TimestampMixin
+from app.models.document import Document
 
 
 class BankStatement(Base, TimestampMixin):

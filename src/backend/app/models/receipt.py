@@ -7,6 +7,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
 from app.models.base import Base, TimestampMixin
+from app.models.document import Document
 
 
 class Receipt(Base, TimestampMixin):

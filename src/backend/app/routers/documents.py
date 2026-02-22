@@ -1,18 +1,19 @@
 import uuid
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.schemas.document import (
-    DocumentUploadRequest,
-    DocumentUploadResponse,
-    DocumentConfirmResponse,
-)
+from app.enums import DocumentStatus
 from app.models.document import Document
 from app.models.user import User
+from app.schemas.document import (
+    DocumentConfirmResponse,
+    DocumentUploadRequest,
+    DocumentUploadResponse,
+)
 from app.services.aws_services import AWSService
 from app.utils.auth import get_current_user
-
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -83,7 +84,7 @@ async def confirm_upload(
             status_code=500, detail="Failed to enqueue document for processing"
         )
 
-    doc.status = "pending_processing"
+    doc.status = DocumentStatus.pending_processing
     await db.commit()
 
     return doc
