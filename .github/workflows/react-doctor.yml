@@ -12,9 +12,10 @@ jobs:
         steps:
             - uses: actions/checkout@v4
               with:
-                  directory: src/frontend
                   fetch-depth: 0 # Required for diff mode [page:1]
             - name: React Doctor
               uses: millionco/react-doctor@0.0.1
               with:
-                  github-token: ${{ secrets.GITHUB_TOKEN }} # Posts findings as PR comment [page:1]
+                  directory: src/frontend
+                  # github-token: ${{ secrets.GITHUB_TOKEN }} # Posts findings as PR comment [page:1]
+                  verbose: True
