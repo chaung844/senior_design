@@ -89,6 +89,28 @@ uv run uvicorn app.main:app --reload --loop uvloop --http httptools
 ## Notes
 - Currently, AWS Bedrock foundation model is invoked via OpenAI-Compatible API call. Future features involve deeper integration with AWS (.e.g, S3, RDS, ...) may need to use [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)([installation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)) - AWS Python SDK.
 
+### Docker compose routine for local dev
+```bash
+# ---- start ----
+docker compose up -d
+
+# ---- stop temporarily ----
+docker compose stop
+
+# ---- resume from stop ----
+docker compose start
+
+# ---- remove (excluding the mounted volume) ----
+docker compose down
+
+# ---- remove (including the mounted volume) ----
+# down - Stops and removes containers/networks from this Compose project
+# -v / --volumes - Removes named volumes declared in your Compose file + anonymous volumes attached to those containers
+# --rmi all - Removes all images used by services in this specific Compose file (both local/untagged and tagged images)​
+# --remove-orphans - Removes containers from other Compose projects that use the same project name
+docker compose down -v --rmi all --remove-orphans
+```
+
 ### S3 CORS (required for document upload)
 
 The frontend uploads files **directly to S3** using presigned PUT URLs. The browser enforces CORS, so the S3 bucket must allow your frontend origin. Otherwise you will see: *"Fetch API cannot load presigned url s3 due to access control checks"*.
