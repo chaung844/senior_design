@@ -1,12 +1,13 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.database import get_db
-from app.enums import MatchStatus
+from app.enums import MatchStatus, UserRole
+from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
 from app.models.statement import BankStatement, BankStatementLine
 from app.models.user import User
@@ -23,7 +24,7 @@ from app.schemas.bank_statement_line import (
 from app.schemas.document import FileUrlResponse
 from app.services.aws_services import AWSService
 from app.utils.auth import get_current_user
-from app.utils.ownership import get_owned_statement, get_owned_statement_line
+from app.utils.access import get_owned_statement, get_owned_statement_line
 
 router = APIRouter(prefix="/statements", tags=["statements"])
 
@@ -72,15 +73,32 @@ def _statement_to_detail(stmt: BankStatement) -> BankStatementDetailRead:
 
 @router.get("", response_model=BankStatementListResponse)
 async def list_statements(
+    account_id: Optional[int] = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    base_filter = (
-        Document.uploaded_by == current_user.user_id,
-        Document.deleted_at.is_(None),
-    )
+    base_filter = [Document.deleted_at.is_(None)]
+
+    if current_user.role == UserRole.developer:
+        pass
+    else:
+        member_account_ids = (
+            select(AccountBookMember.account_id)
+            .where(AccountBookMember.user_id == current_user.user_id)
+            .correlate(None)
+            .scalar_subquery()
+        )
+        base_filter.append(
+            or_(
+                Document.uploaded_by == current_user.user_id,
+                Document.account_id.in_(member_account_ids),
+            )
+        )
+
+    if account_id is not None:
+        base_filter.append(Document.account_id == account_id)
 
     count_stmt = (
         select(func.count())
@@ -177,7 +195,7 @@ async def update_statement_line(
     current_user: User = Depends(get_current_user),
 ):
     line = await get_owned_statement_line(
-        statement_id, line_id, current_user, db
+        statement_id, line_id, current_user, db, write=True
     )
 
     update_data = body.model_dump(exclude_unset=True)

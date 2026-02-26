@@ -1,12 +1,13 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.database import get_db
-from app.enums import MatchStatus
+from app.enums import MatchStatus, UserRole
+from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
 from app.models.receipt import Receipt
 from app.models.user import User
@@ -14,7 +15,7 @@ from app.schemas.document import FileUrlResponse
 from app.schemas.receipt import ReceiptListResponse, ReceiptRead, ReceiptUpdate
 from app.services.aws_services import AWSService
 from app.utils.auth import get_current_user
-from app.utils.ownership import get_owned_receipt
+from app.utils.access import get_owned_receipt
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
 
@@ -42,17 +43,34 @@ def _receipt_to_read(receipt: Receipt) -> ReceiptRead:
 @router.get("", response_model=ReceiptListResponse)
 async def list_receipts(
     match_status: Optional[MatchStatus] = Query(default=None),
+    account_id: Optional[int] = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    base_filter = (
-        Document.uploaded_by == current_user.user_id,
-        Document.deleted_at.is_(None),
-    )
+    base_filter = [Document.deleted_at.is_(None)]
+
+    if current_user.role == UserRole.developer:
+        pass
+    else:
+        member_account_ids = (
+            select(AccountBookMember.account_id)
+            .where(AccountBookMember.user_id == current_user.user_id)
+            .correlate(None)
+            .scalar_subquery()
+        )
+        base_filter.append(
+            or_(
+                Document.uploaded_by == current_user.user_id,
+                Document.account_id.in_(member_account_ids),
+            )
+        )
+
     if match_status is not None:
-        base_filter = (*base_filter, Receipt.match_status == match_status)
+        base_filter.append(Receipt.match_status == match_status)
+    if account_id is not None:
+        base_filter.append(Document.account_id == account_id)
 
     count_stmt = (
         select(func.count())
@@ -99,7 +117,7 @@ async def update_receipt(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    receipt = await get_owned_receipt(receipt_id, current_user, db)
+    receipt = await get_owned_receipt(receipt_id, current_user, db, write=True)
 
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:

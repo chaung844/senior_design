@@ -3,11 +3,12 @@ from datetime import datetime
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import DocumentStatus, DocumentType
+from app.enums import DocumentStatus, DocumentType, UserRole
+from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
 from app.models.user import User
 from app.schemas.document import (
@@ -19,10 +20,16 @@ from app.schemas.document import (
 )
 from app.services.aws_services import AWSService
 from app.utils.auth import get_current_user
+from app.utils.access import get_owned_document
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
 aws_service = AWSService()
+
+
+def _viewer_guard(user: User) -> None:
+    if user.role == UserRole.viewer:
+        raise HTTPException(status_code=403, detail="Viewers have read-only access")
 
 
 @router.post("/upload-url", response_model=DocumentUploadResponse)
@@ -31,6 +38,8 @@ async def get_upload_url(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    _viewer_guard(current_user)
+
     file_uuid = str(uuid.uuid4())
     s3_key = f"{file_uuid}_{request.file_name}"
     new_doc = Document(
@@ -65,13 +74,9 @@ async def confirm_upload(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    doc = await db.get(Document, document_id)
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
-    if doc.uploaded_by != current_user.user_id:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to access this document"
-        )
+    _viewer_guard(current_user)
+
+    doc = await get_owned_document(document_id, current_user, db, write=True)
 
     if not aws_service.verify_s3_upload(doc.s3_key):
         raise HTTPException(
@@ -101,37 +106,40 @@ async def confirm_upload(
     return doc
 
 
-async def _get_owned_document(
-    document_id: int, user: User, db: AsyncSession
-) -> Document:
-    doc = await db.get(Document, document_id)
-    if not doc or doc.deleted_at is not None:
-        raise HTTPException(status_code=404, detail="Document not found")
-    if doc.uploaded_by != user.user_id:
-        raise HTTPException(
-            status_code=403, detail="Not authorized to access this document"
-        )
-    return doc
-
-
 @router.get("", response_model=DocumentListResponse)
 async def list_documents(
     status: Optional[DocumentStatus] = Query(default=None),
     document_type: Optional[DocumentType] = Query(default=None),
+    account_id: Optional[int] = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    base_filter = (
-        Document.uploaded_by == current_user.user_id,
-        Document.deleted_at.is_(None),
-    )
+    base_filter = [Document.deleted_at.is_(None)]
+
+    if current_user.role == UserRole.developer:
+        pass  # developer sees all
+    else:
+        member_account_ids = (
+            select(AccountBookMember.account_id)
+            .where(AccountBookMember.user_id == current_user.user_id)
+            .correlate(None)
+            .scalar_subquery()
+        )
+        base_filter.append(
+            or_(
+                Document.uploaded_by == current_user.user_id,
+                Document.account_id.in_(member_account_ids),
+            )
+        )
 
     if status is not None:
-        base_filter = (*base_filter, Document.status == status)
+        base_filter.append(Document.status == status)
     if document_type is not None:
-        base_filter = (*base_filter, Document.document_type == document_type)
+        base_filter.append(Document.document_type == document_type)
+    if account_id is not None:
+        base_filter.append(Document.account_id == account_id)
 
     total_query = select(func.count()).select_from(Document).where(*base_filter)
     total = (await db.execute(total_query)).scalar_one()
@@ -160,7 +168,7 @@ async def get_document(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    return await _get_owned_document(document_id, current_user, db)
+    return await get_owned_document(document_id, current_user, db)
 
 
 @router.delete("/{document_id}", status_code=204)
@@ -170,7 +178,9 @@ async def delete_document(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    doc = await _get_owned_document(document_id, current_user, db)
+    _viewer_guard(current_user)
+
+    doc = await get_owned_document(document_id, current_user, db, write=True)
     doc.deleted_at = datetime.now()
     await db.commit()
 
