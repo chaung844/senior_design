@@ -95,6 +95,14 @@ class AWSService:
         except ClientError as e:
             logging.error(f"SQS delete error: {e}")
 
+    def delete_s3_object(self, s3_key: str) -> bool:
+        try:
+            self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
+            return True
+        except ClientError as e:
+            logging.error(f"Error deleting S3 object: {e}")
+            return False
+
     def extend_visibility_timeout(self, receipt_handle: str, timeout: int = 120):
         try:
             self.sqs_client.change_message_visibility(

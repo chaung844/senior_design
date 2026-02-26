@@ -193,7 +193,7 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > *Goal: Users can track processing progress and view their uploaded documents.*
 
 #### Document Status (`/documents`)
-- [ ] `GET /documents` — *(Authenticated)* List all documents for the current user. Supports query params:
+- [ ] `GET /documents` — *(Authenticated)* List all documents for the current user (reference user_id from JWT). Supports query params:
     - `?status=pending_upload|pending_processing|processing|parsed|failed`
     - `?document_type=receipt|bank_statement`
 - [ ] `GET /documents/{document_id}` — *(Authenticated)* Get a single document's details and current processing status.

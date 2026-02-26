@@ -51,6 +51,7 @@ class Document(Base, TimestampMixin):
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
     # Relationships
     uploader: Mapped[Optional["User"]] = relationship(
         "User", back_populates="uploaded_documents"
