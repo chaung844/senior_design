@@ -1,8 +1,9 @@
 from .user import UserBase, UserCreate, UserLogin, UserRead, Token
-from .bank_statement import BankStatementBase, BankStatementRead
-from .bank_statement_line import BankStatementLineBase, BankStatementLineRead
+from .bank_statement import BankStatementRead, BankStatementDetailRead, BankStatementListResponse
+from .bank_statement_line import BankStatementLineRead, BankStatementLineUpdate, BankStatementLineListResponse
+from .receipt import ReceiptRead, ReceiptUpdate, ReceiptListResponse
+from .document import FileUrlResponse
 from app.enums import UserRole, MatchStatus
-from .receipt import ReceiptBase, ReceiptRead
 
 __all__ = [
     "UserBase",
@@ -10,12 +11,16 @@ __all__ = [
     "UserLogin",
     "UserRead",
     "Token",
-    "BankStatementBase",
     "BankStatementRead",
-    "BankStatementLineBase",
+    "BankStatementDetailRead",
+    "BankStatementListResponse",
     "BankStatementLineRead",
+    "BankStatementLineUpdate",
+    "BankStatementLineListResponse",
     "UserRole",
     "MatchStatus",
-    "ReceiptBase",
     "ReceiptRead",
+    "ReceiptUpdate",
+    "ReceiptListResponse",
+    "FileUrlResponse",
 ]

@@ -6,23 +6,36 @@ from pydantic import BaseModel, ConfigDict
 
 from app.enums import MatchStatus
 
-from .user import UserRead
 
-
-class ReceiptBase(BaseModel):
+class ReceiptRead(BaseModel):
+    receipt_id: int
     vendor: str
     invoice_number: Optional[str] = None
     billing_date: date
     charged_amount: Decimal
-    currency: str = "USD"
-
-
-class ReceiptRead(ReceiptBase):
-    receipt_id: int
-    uploaded_by: UserRead
-    created_at: datetime
-    file_path: str  # S3 path
+    currency: str
     description: Optional[str] = None
     expense_type: Optional[str] = None
     match_status: MatchStatus
+    created_at: datetime
+    document_id: Optional[int] = None
+    file_name: Optional[str] = None
+
     model_config = ConfigDict(from_attributes=True)
+
+
+class ReceiptUpdate(BaseModel):
+    vendor: Optional[str] = None
+    invoice_number: Optional[str] = None
+    billing_date: Optional[date] = None
+    charged_amount: Optional[Decimal] = None
+    currency: Optional[str] = None
+    description: Optional[str] = None
+    expense_type: Optional[str] = None
+
+
+class ReceiptListResponse(BaseModel):
+    receipts: list[ReceiptRead]
+    total: int
+    offset: int
+    limit: int

@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config import get_settings
-from app.routers import auth, documents, users
+from app.routers import auth, documents, receipts, statements, users
 
 app = FastAPI(title="Matcha Backend")
 settings = get_settings()
@@ -19,6 +19,8 @@ app.add_middleware(
 app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(documents.router)
+app.include_router(receipts.router)
+app.include_router(statements.router)
 
 
 @app.get("/")

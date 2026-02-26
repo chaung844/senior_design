@@ -95,6 +95,19 @@ class AWSService:
         except ClientError as e:
             logging.error(f"SQS delete error: {e}")
 
+    def generate_presigned_get_url(
+        self, s3_key: str, expires_in: int = 3600
+    ) -> str | None:
+        try:
+            return self.s3_client.generate_presigned_url(
+                "get_object",
+                Params={"Bucket": self.bucket_name, "Key": s3_key},
+                ExpiresIn=expires_in,
+            )
+        except ClientError as e:
+            logging.error(f"Error generating presigned GET URL: {e}")
+            return None
+
     def delete_s3_object(self, s3_key: str) -> bool:
         try:
             self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)

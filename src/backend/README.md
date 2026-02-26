@@ -193,11 +193,11 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > *Goal: Users can track processing progress and view their uploaded documents.*
 
 #### Document Status (`/documents`)
-- [ ] `GET /documents` — *(Authenticated)* List all documents for the current user (reference user_id from JWT). Supports query params:
+- [x] `GET /documents` — *(Authenticated)* List all documents for the current user (reference user_id from JWT). Supports query params:
     - `?status=pending_upload|pending_processing|processing|parsed|failed`
     - `?document_type=receipt|bank_statement`
-- [ ] `GET /documents/{document_id}` — *(Authenticated)* Get a single document's details and current processing status.
-- [ ] `DELETE /documents/{document_id}` — *(Authenticated)* Soft-delete a document (marks as deleted; removes S3 object in background).
+- [x] `GET /documents/{document_id}` — *(Authenticated)* Get a single document's details and current processing status.
+- [x] `DELETE /documents/{document_id}` — *(Authenticated)* Soft-delete a document (marks as deleted; removes S3 object in background).
 
 #### Batch / Job Status (`/jobs`)
 - [ ] `POST /jobs` — *(Authenticated)* Create a reconciliation job/batch grouping a set of uploaded document IDs together.
@@ -213,20 +213,20 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > *Goal: Users can view and correct AI-parsed results before reconciliation.*
 
 #### Receipts (`/receipts`)
-- [ ] `GET /receipts` — *(Authenticated)* List parsed receipts for the current user.
+- [x] `GET /receipts` — *(Authenticated)* List parsed receipts for the current user.
     - `?match_status=unmatched|perfect_matched|bundle_matched|manual`
     - `?job_id=123`
-- [ ] `GET /receipts/{receipt_id}` — *(Authenticated)* Get full receipt details (parsed vendor, amount, date, expense type, S3 file URL).
-- [ ] `PATCH /receipts/{receipt_id}` — *(Authenticated)* Manually correct parsed receipt fields (vendor, amount, date, etc.) before reconciliation.
-- [ ] `GET /receipts/{receipt_id}/file-url` — *(Authenticated)* Generate a presigned GET URL for viewing/downloading the original receipt file from S3.
+- [x] `GET /receipts/{receipt_id}` — *(Authenticated)* Get full receipt details (parsed vendor, amount, date, expense type, S3 file URL).
+- [x] `PATCH /receipts/{receipt_id}` — *(Authenticated)* Manually correct parsed receipt fields (vendor, amount, date, etc.) before reconciliation.
+- [x] `GET /receipts/{receipt_id}/file-url` — *(Authenticated)* Generate a presigned GET URL for viewing/downloading the original receipt file from S3.
 
 #### Bank Statements (`/statements`)
-- [ ] `GET /statements` — *(Authenticated)* List parsed bank statements.
-- [ ] `GET /statements/{statement_id}` — *(Authenticated)* Get statement metadata + all parsed line items.
-- [ ] `GET /statements/{statement_id}/lines` — *(Authenticated)* List all parsed line items for a statement.
+- [x] `GET /statements` — *(Authenticated)* List parsed bank statements.
+- [x] `GET /statements/{statement_id}` — *(Authenticated)* Get statement metadata + all parsed line items.
+- [x] `GET /statements/{statement_id}/lines` — *(Authenticated)* List all parsed line items for a statement.
     - `?match_status=unmatched|perfect_matched|bundle_matched|manual`
-- [ ] `PATCH /statements/{statement_id}/lines/{line_id}` — *(Authenticated)* Manually correct a parsed statement line (description, vendor, amount, date).
-- [ ] `GET /statements/{statement_id}/file-url` — *(Authenticated)* Presigned GET URL for the original bank statement PDF.
+- [x] `PATCH /statements/{statement_id}/lines/{line_id}` — *(Authenticated)* Manually correct a parsed statement line (description, vendor, amount, date).
+- [x] `GET /statements/{statement_id}/file-url` — *(Authenticated)* Presigned GET URL for the original bank statement PDF.
 
 ---
 

@@ -47,3 +47,8 @@ class DocumentListResponse(BaseModel):
     total: int
     offset: int
     limit: int
+
+
+class FileUrlResponse(BaseModel):
+    url: str
+    expires_in: int
