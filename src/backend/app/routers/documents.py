@@ -147,7 +147,10 @@ async def list_documents(
     documents = result.scalars().all()
 
     return DocumentListResponse(
-        documents=documents, total=total, offset=offset, limit=limit
+        documents=[DocumentRead.model_validate(doc) for doc in documents],
+        total=total,
+        offset=offset,
+        limit=limit,
     )
 
 
