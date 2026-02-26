@@ -163,8 +163,8 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > *Goal: Users can log in and upload documents. This is the minimum for any demo.*
 
 #### Authentication (`/auth`)
-- [ ] `POST /auth/login` — Validates credentials (email + password) and returns a JWT access token.
-- [ ] `GET /auth/me` — Returns the current user's profile and role from the JWT.
+- [x] `POST /auth/login` — Validates credentials (email + password) and returns a JWT access token.
+- [x] `GET /auth/me` — Returns the current user's profile and role from the JWT.
 
 > For now, we will **not** allow new-user registration. The following accounts should be seeded in the DB via `seed.py`:
 > - `dev1`, `dev2`, `admin1`, `admin2`
@@ -172,14 +172,14 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > Reference: [FastAPI Security — OAuth2 + JWT](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/) — use `pwdlib` with Argon2 for hashing.
 
 #### Document Upload (`/documents`)
-- [ ] `POST /documents/upload-url` — *(Authenticated)*
+- [x] `POST /documents/upload-url` — *(Authenticated)*
     - Accepts: `{ file_name, file_type, document_type }` where `document_type` is `"receipt"` or `"bank_statement"`.
     - Logic:
         1. Generates a unique S3 object key (e.g., `user_{id}/{uuid}.pdf`).
         2. Calls `boto3` to generate a **presigned PUT URL** for direct client → S3 upload.
         3. Creates a `documents` row in PostgreSQL with `status = "pending_upload"`.
     - Returns: `{ upload_url, document_id, s3_key }`.
-- [ ] `POST /documents/{document_id}/confirm-upload` — *(Authenticated)*
+- [x] `POST /documents/{document_id}/confirm-upload` — *(Authenticated)*
     - Client calls this after successfully uploading to S3.
     - Logic:
         1. Verifies the object exists in S3 (HEAD request).
