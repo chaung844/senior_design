@@ -163,8 +163,8 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > *Goal: Users can log in and upload documents. This is the minimum for any demo.*
 
 #### Authentication (`/auth`)
-- [ ] `POST /auth/login` — Validates credentials (email + password) and returns a JWT access token.
-- [ ] `GET /auth/me` — Returns the current user's profile and role from the JWT.
+- [x] `POST /auth/login` — Validates credentials (email + password) and returns a JWT access token.
+- [x] `GET /auth/me` — Returns the current user's profile and role from the JWT.
 
 > For now, we will **not** allow new-user registration. The following accounts should be seeded in the DB via `seed.py`:
 > - `dev1`, `dev2`, `admin1`, `admin2`
@@ -172,14 +172,14 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > Reference: [FastAPI Security — OAuth2 + JWT](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/) — use `pwdlib` with Argon2 for hashing.
 
 #### Document Upload (`/documents`)
-- [ ] `POST /documents/upload-url` — *(Authenticated)*
+- [x] `POST /documents/upload-url` — *(Authenticated)*
     - Accepts: `{ file_name, file_type, document_type }` where `document_type` is `"receipt"` or `"bank_statement"`.
     - Logic:
         1. Generates a unique S3 object key (e.g., `user_{id}/{uuid}.pdf`).
         2. Calls `boto3` to generate a **presigned PUT URL** for direct client → S3 upload.
         3. Creates a `documents` row in PostgreSQL with `status = "pending_upload"`.
     - Returns: `{ upload_url, document_id, s3_key }`.
-- [ ] `POST /documents/{document_id}/confirm-upload` — *(Authenticated)*
+- [x] `POST /documents/{document_id}/confirm-upload` — *(Authenticated)*
     - Client calls this after successfully uploading to S3.
     - Logic:
         1. Verifies the object exists in S3 (HEAD request).
@@ -193,11 +193,11 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > *Goal: Users can track processing progress and view their uploaded documents.*
 
 #### Document Status (`/documents`)
-- [ ] `GET /documents` — *(Authenticated)* List all documents for the current user. Supports query params:
+- [x] `GET /documents` — *(Authenticated)* List all documents for the current user (reference user_id from JWT). Supports query params:
     - `?status=pending_upload|pending_processing|processing|parsed|failed`
     - `?document_type=receipt|bank_statement`
-- [ ] `GET /documents/{document_id}` — *(Authenticated)* Get a single document's details and current processing status.
-- [ ] `DELETE /documents/{document_id}` — *(Authenticated)* Soft-delete a document (marks as deleted; removes S3 object in background).
+- [x] `GET /documents/{document_id}` — *(Authenticated)* Get a single document's details and current processing status.
+- [x] `DELETE /documents/{document_id}` — *(Authenticated)* Soft-delete a document (marks as deleted; removes S3 object in background).
 
 #### Batch / Job Status (`/jobs`)
 - [ ] `POST /jobs` — *(Authenticated)* Create a reconciliation job/batch grouping a set of uploaded document IDs together.
@@ -213,20 +213,20 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 > *Goal: Users can view and correct AI-parsed results before reconciliation.*
 
 #### Receipts (`/receipts`)
-- [ ] `GET /receipts` — *(Authenticated)* List parsed receipts for the current user.
+- [x] `GET /receipts` — *(Authenticated)* List parsed receipts for the current user.
     - `?match_status=unmatched|perfect_matched|bundle_matched|manual`
     - `?job_id=123`
-- [ ] `GET /receipts/{receipt_id}` — *(Authenticated)* Get full receipt details (parsed vendor, amount, date, expense type, S3 file URL).
-- [ ] `PATCH /receipts/{receipt_id}` — *(Authenticated)* Manually correct parsed receipt fields (vendor, amount, date, etc.) before reconciliation.
-- [ ] `GET /receipts/{receipt_id}/file-url` — *(Authenticated)* Generate a presigned GET URL for viewing/downloading the original receipt file from S3.
+- [x] `GET /receipts/{receipt_id}` — *(Authenticated)* Get full receipt details (parsed vendor, amount, date, expense type, S3 file URL).
+- [x] `PATCH /receipts/{receipt_id}` — *(Authenticated)* Manually correct parsed receipt fields (vendor, amount, date, etc.) before reconciliation.
+- [x] `GET /receipts/{receipt_id}/file-url` — *(Authenticated)* Generate a presigned GET URL for viewing/downloading the original receipt file from S3.
 
 #### Bank Statements (`/statements`)
-- [ ] `GET /statements` — *(Authenticated)* List parsed bank statements.
-- [ ] `GET /statements/{statement_id}` — *(Authenticated)* Get statement metadata + all parsed line items.
-- [ ] `GET /statements/{statement_id}/lines` — *(Authenticated)* List all parsed line items for a statement.
+- [x] `GET /statements` — *(Authenticated)* List parsed bank statements.
+- [x] `GET /statements/{statement_id}` — *(Authenticated)* Get statement metadata + all parsed line items.
+- [x] `GET /statements/{statement_id}/lines` — *(Authenticated)* List all parsed line items for a statement.
     - `?match_status=unmatched|perfect_matched|bundle_matched|manual`
-- [ ] `PATCH /statements/{statement_id}/lines/{line_id}` — *(Authenticated)* Manually correct a parsed statement line (description, vendor, amount, date).
-- [ ] `GET /statements/{statement_id}/file-url` — *(Authenticated)* Presigned GET URL for the original bank statement PDF.
+- [x] `PATCH /statements/{statement_id}/lines/{line_id}` — *(Authenticated)* Manually correct a parsed statement line (description, vendor, amount, date).
+- [x] `GET /statements/{statement_id}/file-url` — *(Authenticated)* Presigned GET URL for the original bank statement PDF.
 
 ---
 
@@ -254,20 +254,42 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 ---
 
 ### Tier 5 — Account Books & Admin
-> *Goal: Multi-account support and administrative controls.*
+> *Goal: Multi-account support, role-based access control, and administrative controls.*
+
+#### Role Permission Matrix
+
+| Capability | Developer | Admin | Viewer |
+|---|---|---|---|
+| Manage global users (CRUD) | Yes | — | — |
+| Create / edit / delete account books | Yes | Own only | — |
+| Add viewers to account book | Yes (any) | Viewers only | — |
+| Upload / modify / delete documents | Yes | Own account books | — |
+| View documents, receipts, statements | All | Own account books | Shared account books (read-only) |
+| Export | Yes | Yes | Yes |
+
+#### Developer — User Management (`/admin/users`)
+
+All endpoints require `developer` role.
+
+- [x] `GET /admin/users` — List all users. Supports `?role=admin|developer|viewer` and `?is_active=true|false` filters.
+- [x] `POST /admin/users` — Create a new user `{ name, email, password, role }`. Only developers can assign any role including `admin`.
+- [x] `GET /admin/users/{user_id}` — Get a single user's details.
+- [x] `PATCH /admin/users/{user_id}` — Update user fields (name, email, role, is_active). Supports password reset via `{ new_password }`.
+- [x] `DELETE /admin/users/{user_id}` — Soft-deactivate a user (`is_active = false`). Does not delete data.
 
 #### Account Books (`/accounts`)
-- [ ] `POST /accounts` — *(Authenticated)* Create a new account book (bank name, account type, last 4 digits).
-- [ ] `GET /accounts` — *(Authenticated)* List all account books for the current user.
-- [ ] `GET /accounts/{account_id}` — *(Authenticated)* Get account book details.
-- [ ] `PATCH /accounts/{account_id}` — *(Authenticated)* Update account book details.
-- [ ] `DELETE /accounts/{account_id}` — *(Authenticated)* Delete an account book.
 
-#### Admin — User Management (`/admin`)
-- [ ] `GET /admin/users` — *(Admin only)* List all users.
-- [ ] `POST /admin/users` — *(Admin only)* Create a new user (name, email, password, role).
-- [ ] `PATCH /admin/users/{user_id}` — *(Admin only)* Update a user's role or reset password.
-- [ ] `DELETE /admin/users/{user_id}` — *(Admin only)* Deactivate a user account.
+- [x] `POST /accounts` — *(Admin, Developer)* Create account book `{ bank_name, account_name, account_type, currency, account_number_last4 }`. Auto-creates an `owner` membership for the creator.
+- [x] `GET /accounts` — *(Any authenticated)* List accessible account books. Developer sees all; admin sees owned; viewer sees shared.
+- [x] `GET /accounts/{account_id}` — *(Any authenticated)* Get account book details (if user has access).
+- [x] `PATCH /accounts/{account_id}` — *(Owner admin or Developer)* Update account book details.
+- [x] `DELETE /accounts/{account_id}` — *(Owner admin or Developer)* Soft-delete account book.
+
+#### Account Book Members (`/accounts/{account_id}/members`)
+
+- [x] `GET /accounts/{account_id}/members` — *(Owner admin, Developer)* List all members of an account book.
+- [x] `POST /accounts/{account_id}/members` — *(Owner admin, Developer)* Add a user as viewer `{ user_id }`. Admin can only add viewers (not other admins — must delegate to developer). Developers cannot be added (implicit access).
+- [x] `DELETE /accounts/{account_id}/members/{user_id}` — *(Owner admin, Developer)* Remove a viewer from account book. Cannot remove the owner.
 
 ---
 
@@ -292,11 +314,11 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 
 ---
 
-### New Models / Enums Needed
+### Models & Enums
 
-The endpoint plan above assumes the following additions to the data layer:
+Data layer models implemented so far:
 
-#### `Document` model (new)
+#### `Document` model
 | Column | Type | Notes |
 |--------|------|-------|
 | `document_id` | `int` PK | |
@@ -305,12 +327,23 @@ The endpoint plan above assumes the following additions to the data layer:
 | `s3_key` | `str` | S3 object key |
 | `status` | `enum` | `pending_upload`, `pending_processing`, `processing`, `parsed`, `failed` |
 | `uploaded_by` | `int` FK → users | |
-| `job_id` | `int` FK → jobs | nullable, assigned when grouped |
+| `account_id` | `int` FK → account_books | nullable |
 | `receipt_id` | `int` FK → receipts | nullable, set after parsing |
 | `statement_id` | `int` FK → bank_statements | nullable, set after parsing |
 | `error_message` | `str` | nullable, set on failure |
+| `deleted_at` | `datetime` | nullable, soft-delete |
 
-#### `Job` model (new)
+#### `AccountBookMember` model (Tier 5)
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `int` PK | |
+| `account_id` | `int` FK → account_books | CASCADE on delete |
+| `user_id` | `int` FK → users | CASCADE on delete |
+| `role` | `enum` | `owner`, `viewer` |
+| `created_at` | `datetime` | |
+| | | UNIQUE(`account_id`, `user_id`) |
+
+#### `Job` model (Tier 2 — not yet implemented)
 | Column | Type | Notes |
 |--------|------|-------|
 | `job_id` | `int` PK | |
@@ -318,8 +351,13 @@ The endpoint plan above assumes the following additions to the data layer:
 | `status` | `enum` | `pending`, `processing`, `reconciling`, `completed`, `failed` |
 | `created_by` | `int` FK → users | |
 
-#### New Enums
+#### Enums
 - `DocumentStatus`: `pending_upload`, `pending_processing`, `processing`, `parsed`, `failed`
+- `DocumentType`: `receipt`, `bank_statement`
+- `UserRole`: `admin`, `developer`, `viewer`
+- `AccountType`: `checking`, `credit_card`
+- `AccountBookRole`: `owner`, `viewer`
+- `MatchStatus`: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`
 - `JobStatus`: `pending`, `processing`, `reconciling`, `completed`, `failed`
 
 ---

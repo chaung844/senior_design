@@ -34,6 +34,10 @@ class Document(Base, TimestampMixin):
         default=DocumentStatus.pending_upload,
     )
     error_message: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    account_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("account_books.account_id", ondelete="SET NULL"),
+        nullable=True,
+    )
     receipt_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("receipts.receipt_id", ondelete="SET NULL"),
         nullable=True,
@@ -47,6 +51,7 @@ class Document(Base, TimestampMixin):
     updated_at: Mapped[datetime] = mapped_column(
         server_default=func.now(), onupdate=func.now(), nullable=False
     )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
     # Relationships
     uploader: Mapped[Optional["User"]] = relationship(
         "User", back_populates="uploaded_documents"

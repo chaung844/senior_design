@@ -34,5 +34,22 @@ services:
     #         db:
     #             condition: service_healthy
 
+    # worker:
+    #     build:
+    #         context: .
+    #         dockerfile: Dockerfile
+    #         args:
+    #             ENTRYPOINT: worker
+    #     container_name: matcha_worker
+    #     env_file:
+    #         - .env
+    #     environment:
+    #         DATABASE_URL: postgresql+asyncpg://postgres:postgres@db:5432/matcha_db
+    #     volumes:
+    #         - ./safe:/app/safe
+    #     depends_on:
+    #         db:
+    #             condition: service_healthy
+
 volumes:
     db_data:

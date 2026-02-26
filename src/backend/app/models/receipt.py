@@ -1,8 +1,8 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Enum, Numeric, String
+from sqlalchemy import Enum, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
@@ -34,7 +34,10 @@ class Receipt(Base, TimestampMixin):
         nullable=False,
         default=MatchStatus.unmatched,
     )
-    # uploaded by and file path from document table
+    updated_at: Mapped[datetime] = mapped_column(
+        server_default=func.now(), onupdate=func.now(), nullable=False
+    )
+
     document: Mapped[Optional["Document"]] = relationship(
         "Document", back_populates="receipt", uselist=False
     )

@@ -32,6 +32,11 @@ class DocumentStatus(str, Enum):
     failed = "failed"
 
 
+class AccountBookRole(str, Enum):
+    owner = "owner"
+    viewer = "viewer"
+
+
 class JobStatus(str, Enum):
     pending = "pending"
     processing = "processing"

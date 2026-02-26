@@ -46,5 +46,13 @@ VOLUME ["/app/safe"]
 
 EXPOSE 8000
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Default: run the API server. Override for the worker:
+#   docker build --build-arg ENTRYPOINT=worker -t matcha-worker .
+ARG ENTRYPOINT=api
+ENV APP_ENTRYPOINT=${ENTRYPOINT}
+
+CMD if [ "$APP_ENTRYPOINT" = "worker" ]; then \
+        python -m app.worker.main; \
+    else \
+        uvicorn app.main:app --host 0.0.0.0 --port 8000; \
+    fi

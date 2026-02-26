@@ -13,6 +13,7 @@ from app.models.statement import BankStatement, BankStatementLine
 from app.models.user import User
 from app.models.document import Document
 from app.models.account_book import AccountBook
+from app.models.account_book_member import AccountBookMember
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
