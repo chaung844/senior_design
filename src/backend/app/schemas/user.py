@@ -1,27 +1,34 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
 from datetime import datetime
+from typing import Optional
+
+from pydantic import BaseModel, ConfigDict, EmailStr
+
 from app.enums import UserRole
 
 
-# Base model for user data
 class UserBase(BaseModel):
     name: str
     email: EmailStr
     role: UserRole = UserRole.viewer
 
 
-# Model for creating a new user
 class UserCreate(UserBase):
     password: str
 
 
-# Model for user login
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
+    new_password: Optional[str] = None
+
+
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
 
-# Model for reading user data
 class UserRead(UserBase):
     user_id: int
     is_active: bool
@@ -30,7 +37,13 @@ class UserRead(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# Model for token response
+class UserListResponse(BaseModel):
+    users: list[UserRead]
+    total: int
+    offset: int
+    limit: int
+
+
 class Token(BaseModel):
     access_token: str
     token_type: str

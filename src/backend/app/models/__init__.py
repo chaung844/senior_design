@@ -4,6 +4,7 @@ from .statement import BankStatement, BankStatementLine
 from .receipt import Receipt
 from .document import Document
 from .account_book import AccountBook
+from .account_book_member import AccountBookMember
 
 __all__ = [
     "Base",
@@ -14,4 +15,5 @@ __all__ = [
     "Receipt",
     "Document",
     "AccountBook",
+    "AccountBookMember",
 ]

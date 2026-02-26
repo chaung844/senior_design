@@ -9,6 +9,7 @@ from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.account_book import AccountBook
+    from app.models.account_book_member import AccountBookMember
     from app.models.document import Document
 
 
@@ -39,6 +40,10 @@ class User(Base, TimestampMixin):
 
     account_books: Mapped[List["AccountBook"]] = relationship(
         "AccountBook", back_populates="user", cascade="save-update, merge"
+    )
+
+    account_memberships: Mapped[List["AccountBookMember"]] = relationship(
+        "AccountBookMember", back_populates="user", cascade="all, delete-orphan"
     )
 
     def __repr__(self) -> str:
