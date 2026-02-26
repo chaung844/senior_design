@@ -33,6 +33,7 @@ async def get_upload_url(
         file_name=request.file_name,
         s3_key=s3_key,
         document_type=request.document_type,
+        account_id=request.account_id,
         status="pending_upload",
     )
     db.add(new_doc)
@@ -75,6 +76,7 @@ async def confirm_upload(
         "document_id": doc.document_id,
         "s3_key": doc.s3_key,
         "user_id": doc.uploaded_by,
+        "account_id": doc.account_id,
     }
 
     sqs_res = aws_service.enqueue_parsing(message_type=msg_type, payload=payload)

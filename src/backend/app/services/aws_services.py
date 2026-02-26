@@ -55,6 +55,14 @@ class AWSService:
             logging.error(f"Error verifying S3 upload: {e}")
             return False
 
+    def download_file(self, s3_key: str, local_path: str) -> bool:
+        try:
+            self.s3_client.download_file(self.bucket_name, s3_key, local_path)
+            return True
+        except ClientError as e:
+            logging.error(f"Error downloading file from S3: {e}")
+            return False
+
     def enqueue_parsing(self, message_type: str, payload: dict):
         try:
             return self.sqs_client.send_message(
@@ -64,3 +72,35 @@ class AWSService:
         except ClientError as e:
             logging.error(f"SQS error: {e}")
             return None
+
+    def receive_messages(self, max_messages: int = 1, wait_time: int = 20):
+        try:
+            response = self.sqs_client.receive_message(
+                QueueUrl=self.sqs_url,
+                MaxNumberOfMessages=max_messages,
+                WaitTimeSeconds=wait_time,
+                AttributeNames=["ApproximateReceiveCount"],
+            )
+            return response.get("Messages", [])
+        except ClientError as e:
+            logging.error(f"SQS receive error: {e}")
+            return []
+
+    def delete_message(self, receipt_handle: str):
+        try:
+            self.sqs_client.delete_message(
+                QueueUrl=self.sqs_url,
+                ReceiptHandle=receipt_handle,
+            )
+        except ClientError as e:
+            logging.error(f"SQS delete error: {e}")
+
+    def extend_visibility_timeout(self, receipt_handle: str, timeout: int = 120):
+        try:
+            self.sqs_client.change_message_visibility(
+                QueueUrl=self.sqs_url,
+                ReceiptHandle=receipt_handle,
+                VisibilityTimeout=timeout,
+            )
+        except ClientError as e:
+            logging.error(f"SQS visibility timeout extension error: {e}")

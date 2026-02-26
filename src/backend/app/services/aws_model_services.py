@@ -1,6 +1,5 @@
+import logging
 import os
-import pprint
-import sys
 from typing import Any, Dict
 
 from openai import OpenAI
@@ -14,11 +13,10 @@ from app.utils.llm_utils import (
     sanitize_llm_output,
 )
 
-# =======  get settings =======
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
-# ======= local functions =======
 def _get_system_instruction(system_instruction_path):
     """
     Get the system instruction (.md or .txt) from the file at the given path.
@@ -33,8 +31,9 @@ def _get_system_instruction(system_instruction_path):
         with open(system_instruction_path, "r") as f:
             return f.read().strip()
     except FileNotFoundError:
-        print(f"(!) System instruction file not found at {system_instruction_path}")
-        sys.exit(1)
+        raise FileNotFoundError(
+            f"System instruction file not found at {system_instruction_path}"
+        )
 
 
 def _build_message(system_instruction_path, data_path=None, prompt=None):
@@ -51,44 +50,28 @@ def _build_message(system_instruction_path, data_path=None, prompt=None):
     messages = [{"role": "system", "content": None}, {"role": "user", "content": []}]
     user_content = []
 
-    # get the system instruction string
-    try:
-        system_instruction = _get_system_instruction(system_instruction_path)
-        messages[0]["content"] = system_instruction
-    except FileNotFoundError:
-        print(f"(!) System instruction file not found at {system_instruction_path}")
-        sys.exit(1)
+    system_instruction = _get_system_instruction(system_instruction_path)
+    messages[0]["content"] = system_instruction
 
     if data_path:
-        # append single image data
-        # check file extension for data type
         if (
             data_path.endswith(".jpg")
             or data_path.endswith(".png")
             or data_path.endswith(".jpeg")
         ):
-            try:
-                pil_image = Image.open(data_path)
-                image_uri = encode_pil_image(pil_image)
+            pil_image = Image.open(data_path)
+            image_uri = encode_pil_image(pil_image)
+            user_content.append(
+                {"type": "image_url", "image_url": {"url": image_uri}}
+            )
+
+        if data_path.endswith(".pdf"):
+            pdf_uri_list = process_pdf(data_path)
+            messages[1]["content"] = [{}]
+            for image_uri in pdf_uri_list:
                 user_content.append(
                     {"type": "image_url", "image_url": {"url": image_uri}}
                 )
-            except FileNotFoundError:
-                print(f"(!) Image file not found at {data_path}")
-                sys.exit(1)
-
-        # append pdf data
-        if data_path.endswith(".pdf"):
-            try:
-                pdf_uri_list = process_pdf(data_path)
-                messages[1]["content"] = [{}]
-                for image_uri in pdf_uri_list:
-                    user_content.append(
-                        {"type": "image_url", "image_url": {"url": image_uri}}
-                    )
-            except FileNotFoundError:
-                print(f"(!) PDF file not found at {data_path}")
-                sys.exit(1)
 
     # append prompt
     if prompt:
@@ -128,7 +111,7 @@ def call_model(
         base_url=settings.bedrock_base_url,
     )
 
-    print("(*) Invoking model API: ")
+    logger.info("Invoking model API")
     try:
         completion = client.chat.completions.create(
             model=model_id,
@@ -138,15 +121,13 @@ def call_model(
             top_p=settings.top_p,
         )
     except Exception as e:
-        print(f"(!) Error invoking model API: {e}")
-        return None
+        raise RuntimeError(f"Error invoking model API: {e}") from e
 
-    # Handle the response
     if usage_summary:
         usage_summary = completion.usage
-        print(f"(*) Usage Summary: {usage_summary}\n")
+        logger.info(f"Usage Summary: {usage_summary}")
 
-    print("(*) Agent response: ")
+    logger.info("Model response received")
     return completion.choices[0].message.content
 
 

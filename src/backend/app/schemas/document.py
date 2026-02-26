@@ -1,11 +1,15 @@
+from typing import Optional
+
 from pydantic import BaseModel, ConfigDict
-from app.enums import DocumentType, DocumentStatus
+
+from app.enums import DocumentStatus, DocumentType
 
 
 class DocumentUploadRequest(BaseModel):
     file_name: str
     file_type: str
     document_type: DocumentType
+    account_id: Optional[int] = None
 
 
 class DocumentUploadResponse(BaseModel):

@@ -34,6 +34,10 @@ class Document(Base, TimestampMixin):
         default=DocumentStatus.pending_upload,
     )
     error_message: Mapped[Optional[str]] = mapped_column(String(1000), nullable=True)
+    account_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("account_books.account_id", ondelete="SET NULL"),
+        nullable=True,
+    )
     receipt_id: Mapped[Optional[int]] = mapped_column(
         ForeignKey("receipts.receipt_id", ondelete="SET NULL"),
         nullable=True,

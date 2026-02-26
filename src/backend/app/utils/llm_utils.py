@@ -1,8 +1,8 @@
 import base64
 import io
+import logging
 import os
 import re
-import sys
 from concurrent.futures import ThreadPoolExecutor
 
 import yaml
@@ -11,7 +11,7 @@ from PIL import Image
 
 from app.config import get_settings
 
-# get settings
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -27,27 +27,25 @@ def encode_image_file(image_path):
         str: Base64 Data URI of the image.
     """
     if not os.path.exists(image_path):
-        print(f"(!) Error: Local file not found: {image_path}")
-        sys.exit(1)
+        raise FileNotFoundError(f"Local file not found: {image_path}")
 
     try:
         img = Image.open(image_path)
-        # Resize large images to fit within MAX_IMAGE_DIMENSION
         if (
             img.width > settings.max_image_dimension
             or img.height > settings.max_image_dimension
         ):
             img.thumbnail((settings.max_image_dimension, settings.max_image_dimension))
-            print(f"(>) Resized image to {img.width}x{img.height}")
-        # Convert to RGB if necessary (e.g. RGBA PNGs)
+            logger.info(f"Resized image to {img.width}x{img.height}")
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
         buffered = io.BytesIO()
         img.save(buffered, format="JPEG", quality=settings.jpeg_quality)
         base64_image = base64.b64encode(buffered.getvalue()).decode("utf-8")
+    except FileNotFoundError:
+        raise
     except Exception as e:
-        print(f"(!) Error: Failed to encode image file: {image_path} — {e}")
-        sys.exit(1)
+        raise RuntimeError(f"Failed to encode image file: {image_path} — {e}") from e
 
     return f"data:image/jpeg;base64,{base64_image}"
 
@@ -83,19 +81,16 @@ def process_pdf(pdf_path, max_pages=6, resize=True):
         list: List of base64 Data URI strings for each page image.
     """
     if not os.path.exists(pdf_path):
-        print(f"(!) Error: PDF file not found: {pdf_path}")
-        sys.exit(1)
+        raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
-    print(f"(>) Processing PDF: {pdf_path} (Max {max_pages} pages)...")
+    logger.info(f"Processing PDF: {pdf_path} (Max {max_pages} pages)...")
     try:
-        # Convert PDF to list of PIL images at a reduced DPI
         images = convert_from_path(
             pdf_path, dpi=settings.pdf_dpi, first_page=1, last_page=max_pages
         )
-        print(f"(>) Extracted {len(images)} pages.")
+        logger.info(f"Extracted {len(images)} pages.")
 
         def _process_image_helper(img):
-            # Resize if huge to avoid hitting payload / token limits
             if resize and (
                 img.width > settings.max_image_dimension
                 or img.height > settings.max_image_dimension
@@ -105,15 +100,16 @@ def process_pdf(pdf_path, max_pages=6, resize=True):
                 )
             return encode_pil_image(img)
 
-        # Process images in parallel to speed up encoding and resizing
         with ThreadPoolExecutor() as executor:
             base64_images = list(executor.map(_process_image_helper, images))
 
         return base64_images
+    except FileNotFoundError:
+        raise
     except Exception as e:
-        print(f"(!) Error converting PDF: {e}")
-        print("    (Tip: Do you have 'poppler' installed on your system?)")
-        sys.exit(1)
+        raise RuntimeError(
+            f"Error converting PDF: {e} (Tip: is 'poppler' installed?)"
+        ) from e
 
 
 def sanitize_llm_output(raw_content):
