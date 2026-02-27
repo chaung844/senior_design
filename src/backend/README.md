@@ -153,6 +153,108 @@ The frontend uploads files **directly to S3** using presigned PUT URLs. The brow
 
 ---
 
+## Production Notices
+
+Critical configuration differences between local development and a production deployment. Missing any of these will result in broken auth, rejected cookies, or CORS failures.
+
+---
+
+### Cookie-Based Authentication
+
+Authentication uses **HttpOnly cookies** instead of tokens in the response body. Two cookies are issued on every successful login:
+
+| Cookie | `HttpOnly` | Purpose |
+|---|---|---|
+| `access_token` | `true` | Signed JWT — never readable by JavaScript |
+| `csrf_token` | `false` | Random hex token — read by JS and echoed as `X-CSRF-Token` header (Double Submit Cookie CSRF pattern) |
+
+The browser sends both cookies automatically on every request because the API client sets `credentials: "include"` on all fetches.
+
+---
+
+### `COOKIE_SECURE` — Most Common Production Breakage
+
+> **TL;DR:** Set `COOKIE_SECURE=true` in your production `.env`. Leave it unset (or `false`) for local dev.
+
+The `Secure` cookie attribute tells the browser to **only send the cookie over HTTPS**. When it is set on an HTTP connection (local dev), the browser **silently drops the cookie** with no error — the login appears to succeed but every subsequent request returns `401` because the `access_token` cookie is never stored.
+
+| Environment | `COOKIE_SECURE` value | Why |
+|---|---|---|
+| Local dev (`http://localhost`) | `false` (default) | Plain HTTP — `Secure` flag causes cookies to be silently dropped |
+| Production (`https://`) | `true` | Required; cookies without `Secure` are rejected by modern browsers over HTTPS |
+
+Add to your production `.env`:
+```env
+COOKIE_SECURE=true
+```
+
+---
+
+### `SameSite` and Cross-Origin Deployments
+
+Cookies are issued with `SameSite=Lax` by default. This works correctly when the frontend and API share a **registrable domain** (e.g. `app.example.com` → `api.example.com`).
+
+If your frontend and backend are on **completely different domains** (e.g. Vercel + App Runner with no shared domain), you must switch to `SameSite=None; Secure=true`, otherwise cross-site `fetch` requests will not carry the cookies:
+
+1. Add a `COOKIE_SAMESITE` setting to `config.py` (currently hardcoded to `"lax"`).
+2. Set `SameSite=None` only when both cookies also have `Secure=True` — the browser will reject `SameSite=None` without `Secure`.
+3. Ensure `Access-Control-Allow-Credentials: true` is present in responses (already configured via `allow_credentials=True` in `CORSMiddleware`).
+
+---
+
+### CORS — `CORS_ORIGINS`
+
+`CORSMiddleware` is configured to **reject wildcard origins** (`"*"`) when `allow_credentials=True` (the browser itself blocks this). You must explicitly list every frontend origin.
+
+The default value in `config.py` is:
+```python
+cors_origins: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+```
+
+Override via `.env` for production:
+```env
+CORS_ORIGINS=["https://your-app.vercel.app"]
+```
+
+The following headers are explicitly allowed (required for the CSRF pattern):
+```
+Content-Type, Accept, Authorization, X-CSRF-Token
+```
+
+> If you add new custom request headers on the frontend, add them to `allow_headers` in `app/main.py` as well.
+
+---
+
+### CSRF Protection
+
+All state-changing endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) require a valid `X-CSRF-Token` header. The backend validates it against the `csrf_token` cookie using the Double Submit Cookie pattern.
+
+**Frontend responsibility:** After login, read `document.cookie` for `csrf_token` and attach its value as the `X-CSRF-Token` header on every mutating request. The `api.ts` client already does this automatically via `getCookie("csrf_token")`.
+
+**What a mismatch returns:**
+```json
+HTTP 403 Forbidden
+{ "detail": "CSRF token missing" }   // header or cookie absent
+{ "detail": "CSRF token mismatch" }  // values differ
+```
+
+Common causes of CSRF failures:
+- The `csrf_token` cookie was not stored (see `COOKIE_SECURE` section above).
+- The request omits `credentials: "include"` so the cookie is not sent.
+- The frontend reads the cookie before the login response has been fully processed.
+
+---
+
+### Production Deployment Checklist
+
+- [ ] `COOKIE_SECURE=true` is set in the production environment
+- [ ] `CORS_ORIGINS` lists the exact production frontend URL (no trailing slash, no wildcard)
+- [ ] The backend is served over HTTPS (required for `Secure` cookies to be stored and sent)
+- [ ] S3 CORS is configured with the production frontend origin (see **S3 CORS** section above)
+- [ ] `JWT_SECRET_KEY` is a long, randomly generated secret (not the example value from `env.example`)
+
+---
+
 ## Todo
 
 Priority list of endpoints, organized into implementation tiers. Each tier builds on the previous one.

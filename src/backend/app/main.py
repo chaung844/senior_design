@@ -7,13 +7,17 @@ from app.routers import accounts, admin, auth, documents, receipts, statements, 
 app = FastAPI(title="Matcha Backend")
 settings = get_settings()
 
-cors_origins = settings.cors_origins
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[o.strip() for o in cors_origins],
+    allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
-    allow_headers=["*"],
+    allow_headers=[
+        "Content-Type",
+        "Accept",
+        "Authorization",
+        "X-CSRF-Token",
+    ],
 )
 
 app.include_router(users.router)

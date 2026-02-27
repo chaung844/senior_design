@@ -10,6 +10,7 @@ from app.enums import UserRole
 from app.models.user import User
 from app.schemas.user import UserCreate, UserListResponse, UserRead, UserUpdate
 from app.utils.access import require_developer
+from app.utils.auth import verify_csrf_token
 from app.utils.security import hash_password
 
 router = APIRouter(prefix="/admin/users", tags=["admin"])
@@ -31,10 +32,12 @@ async def list_users(
         filters.append(User.is_active == is_active)
 
     total = (
-        await db.execute(select(func.count()).select_from(User).where(*filters))
-    ).scalar_one() if filters else (
-        await db.execute(select(func.count()).select_from(User))
-    ).scalar_one()
+        (
+            await db.execute(select(func.count()).select_from(User).where(*filters))
+        ).scalar_one()
+        if filters
+        else (await db.execute(select(func.count()).select_from(User))).scalar_one()
+    )
 
     query = select(User).order_by(User.user_id)
     if filters:
@@ -52,7 +55,12 @@ async def list_users(
     )
 
 
-@router.post("", response_model=UserRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=UserRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def create_user(
     body: UserCreate,
     db: AsyncSession = Depends(get_db),
@@ -93,7 +101,11 @@ async def get_user(
     return user
 
 
-@router.patch("/{user_id}", response_model=UserRead)
+@router.patch(
+    "/{user_id}",
+    response_model=UserRead,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def update_user(
     user_id: int,
     body: UserUpdate,
@@ -133,7 +145,11 @@ async def update_user(
     return user
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def deactivate_user(
     user_id: int,
     db: AsyncSession = Depends(get_db),
