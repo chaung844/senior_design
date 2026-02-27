@@ -1,28 +1,21 @@
 "use client";
 
 import * as React from "react";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { StatCard } from "@/components/stat-card";
 import {
     type AccountBook,
     type MonthData,
     type Transaction,
     formatCurrency,
     formatNumber,
-} from "@/lib/mock-data";
+} from "@/lib/domain-types";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
-    ArrowLeft01Icon,
     Analytics02Icon,
     Tick02Icon,
     Alert02Icon,
@@ -33,6 +26,7 @@ import {
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
+import { DashboardHeader } from "@/components/dashboard-header";
 import { UploadDialog } from "@/components/upload-dialog";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
 
@@ -353,7 +347,7 @@ export function DashboardMonth({
         isUploading,
         results: uploadResults,
         reset: resetUpload,
-    } = useDocumentUpload("receipt");
+    } = useDocumentUpload("receipt", Number(account.id) || undefined);
 
     const [filter, setFilter] = React.useState<FilterMode>("all");
     const [searchQuery, setSearchQuery] = React.useState("");
@@ -499,26 +493,13 @@ export function DashboardMonth({
 
     return (
         <div className="flex flex-col gap-4">
-            {/* Header */}
-            <div className="shrink-0 flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon-sm" onClick={onBack}>
-                        <HugeiconsIcon
-                            icon={ArrowLeft01Icon}
-                            strokeWidth={2}
-                            className="size-4"
-                        />
-                    </Button>
-                    <h1 className="text-lg font-semibold tracking-tight">
-                        {account.name}
-                        <span className="text-muted-foreground ml-2 font-mono">
-                            {monthData.label} {yearValue}
-                        </span>
-                    </h1>
-                    <Badge variant="outline" className="font-mono text-[10px]">
-                        {account.currency}
-                    </Badge>
-                    {monthData.reconciled ? (
+            <DashboardHeader
+                account={account}
+                periodLabel={`${monthData.label} ${yearValue}`}
+                subtitle="Bank statement reconciliation detail"
+                onBack={onBack}
+                badges={
+                    monthData.reconciled ? (
                         <Badge
                             variant="default"
                             className="text-[10px] h-5 px-2"
@@ -542,179 +523,111 @@ export function DashboardMonth({
                             />
                             Pending
                         </Badge>
-                    )}
-                    <div className="ml-auto">
-                        <UploadDialog
-                            title="Upload Receipts"
-                            description="Upload receipt images or PDFs for reconciliation matching."
-                            accept=".png,.jpg,.jpeg,.pdf"
-                            acceptLabel="PNG, JPEG, JPG, or PDF"
-                            multiple
-                            onUpload={uploadFiles}
-                            isUploading={isUploading}
-                            uploadResults={uploadResults}
-                            onOpenChange={(open) => {
-                                if (!open) resetUpload();
-                            }}
-                        />
-                    </div>
-                </div>
-                <p className="text-xs text-muted-foreground pl-9">
-                    {account.bankName} · {account.accountNumber} · Bank
-                    statement reconciliation detail
-                </p>
-            </div>
+                    )
+                }
+                actions={
+                    <UploadDialog
+                        title="Upload Receipts"
+                        description="Upload receipt images or PDFs for reconciliation matching."
+                        accept=".png,.jpg,.jpeg,.pdf"
+                        acceptLabel="PNG, JPEG, JPG, or PDF"
+                        multiple
+                        onUpload={uploadFiles}
+                        isUploading={isUploading}
+                        uploadResults={uploadResults}
+                        onOpenChange={(open) => {
+                            if (!open) resetUpload();
+                        }}
+                    />
+                }
+            />
 
             {/* Summary Cards */}
             <div className="shrink-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {/* Statements */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={BarChartIcon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Statements
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums">
-                            {formatNumber(monthData.statementCount)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="text-primary">
-                                {formatNumber(monthData.matchedCount)} matched
-                            </span>
-                            <span>·</span>
-                            <span>
-                                {formatNumber(monthData.unmatchedCount)}{" "}
-                                unmatched
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    icon={BarChartIcon}
+                    label="Statements"
+                    value={formatNumber(monthData.statementCount)}
+                >
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span className="text-primary">
+                            {formatNumber(monthData.matchedCount)} matched
+                        </span>
+                        <span>·</span>
+                        <span>
+                            {formatNumber(monthData.unmatchedCount)} unmatched
+                        </span>
+                    </div>
+                </StatCard>
 
-                {/* Match Rate */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={Analytics02Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Match Rate
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums">
-                            {monthData.matchRate}%
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col gap-1.5">
-                            <Progress
-                                value={monthData.matchRate}
-                                className="h-1.5"
-                            />
-                            <div className="text-[11px] text-muted-foreground">
-                                {monthData.reconciled
-                                    ? "Fully reconciled"
-                                    : "Reconciliation pending"}
-                            </div>
+                <StatCard
+                    icon={Analytics02Icon}
+                    label="Match Rate"
+                    value={`${monthData.matchRate}%`}
+                >
+                    <div className="flex flex-col gap-1.5">
+                        <Progress
+                            value={monthData.matchRate}
+                            className="h-1.5"
+                        />
+                        <div className="text-[11px] text-muted-foreground">
+                            {monthData.reconciled
+                                ? "Fully reconciled"
+                                : "Reconciliation pending"}
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </StatCard>
 
-                {/* Net Flow */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                {netFlow >= 0 ? (
-                                    <HugeiconsIcon
-                                        icon={MoneyReceiveSquareIcon}
-                                        strokeWidth={2}
-                                        className="size-3.5"
-                                    />
-                                ) : (
-                                    <HugeiconsIcon
-                                        icon={MoneySendSquareIcon}
-                                        strokeWidth={2}
-                                        className="size-3.5"
-                                    />
-                                )}
-                                Net Flow
-                            </span>
-                        </CardDescription>
-                        <CardTitle
-                            className={`text-2xl font-bold tabular-nums ${
-                                netFlow >= 0
-                                    ? "text-primary"
-                                    : "text-destructive"
-                            }`}
-                        >
-                            {netFlow >= 0 ? "+" : ""}
-                            {formatCurrency(netFlow, account.currency)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span className="text-destructive">
-                                {formatCurrency(
-                                    monthData.totalDebit,
-                                    account.currency,
-                                )}{" "}
-                                out
-                            </span>
-                            <span>·</span>
-                            <span className="text-primary">
-                                {formatCurrency(
-                                    monthData.totalCredit,
-                                    account.currency,
-                                )}{" "}
-                                in
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Balance */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={Tick02Icon}
-                                    strokeWidth={2.5}
-                                    className="size-3.5"
-                                />
-                                Closing Balance
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums font-mono">
+                <StatCard
+                    icon={
+                        netFlow >= 0
+                            ? MoneyReceiveSquareIcon
+                            : MoneySendSquareIcon
+                    }
+                    label="Net Flow"
+                    value={`${netFlow >= 0 ? "+" : ""}${formatCurrency(netFlow, account.currency)}`}
+                    valueClassName={
+                        netFlow >= 0 ? "text-primary" : "text-destructive"
+                    }
+                >
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span className="text-destructive">
                             {formatCurrency(
-                                monthData.closingBalance,
+                                monthData.totalDebit,
+                                account.currency,
+                            )}{" "}
+                            out
+                        </span>
+                        <span>·</span>
+                        <span className="text-primary">
+                            {formatCurrency(
+                                monthData.totalCredit,
+                                account.currency,
+                            )}{" "}
+                            in
+                        </span>
+                    </div>
+                </StatCard>
+
+                <StatCard
+                    icon={Tick02Icon}
+                    label="Closing Balance"
+                    value={formatCurrency(
+                        monthData.closingBalance,
+                        account.currency,
+                    )}
+                    valueClassName="font-mono"
+                >
+                    <div className="text-[11px] text-muted-foreground">
+                        Opening:{" "}
+                        <span className="font-mono tabular-nums">
+                            {formatCurrency(
+                                monthData.openingBalance,
                                 account.currency,
                             )}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-[11px] text-muted-foreground">
-                            Opening:{" "}
-                            <span className="font-mono tabular-nums">
-                                {formatCurrency(
-                                    monthData.openingBalance,
-                                    account.currency,
-                                )}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                        </span>
+                    </div>
+                </StatCard>
             </div>
 
             {/* Tabbed content: Transactions + Categories */}

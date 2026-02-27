@@ -9,9 +9,11 @@ import {
     useState,
     type ReactNode,
 } from "react";
-import { apiClient, type UserRead } from "@/lib/api";
+import { apiClient, setOnUnauthorized } from "@/lib/api";
+import type { UserRead } from "@/lib/types";
 
 const TOKEN_KEY = "matcha_access_token";
+const AUTH_COOKIE = "matcha_logged_in";
 
 interface AuthState {
     user: UserRead | null;
@@ -28,6 +30,15 @@ function getStoredToken(): string | null {
     return localStorage.getItem(TOKEN_KEY);
 }
 
+function setAuthCookie(hasToken: boolean): void {
+    if (typeof document === "undefined") return;
+    if (hasToken) {
+        document.cookie = `${AUTH_COOKIE}=1; path=/; SameSite=Strict; max-age=86400`;
+    } else {
+        document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0`;
+    }
+}
+
 function setStoredToken(token: string | null): void {
     if (typeof window === "undefined") return;
     if (token) {
@@ -35,6 +46,7 @@ function setStoredToken(token: string | null): void {
     } else {
         localStorage.removeItem(TOKEN_KEY);
     }
+    setAuthCookie(!!token);
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -69,12 +81,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             return;
         }
         setTokenState(stored);
+        setAuthCookie(true);
         apiClient
             .getMe(stored)
             .then(setUser)
             .catch(() => setToken(null))
             .finally(() => setLoading(false));
     }, [setToken]);
+
+    useEffect(() => {
+        setOnUnauthorized(logout);
+        return () => setOnUnauthorized(null);
+    }, [logout]);
 
     const value = useMemo<AuthState>(
         () => ({ user, token, loading, login, logout }),
@@ -90,4 +108,9 @@ export function useAuth(): AuthState {
         throw new Error("useAuth must be used within an AuthProvider");
     }
     return ctx;
+}
+
+export function ensureToken(token: string | null): string {
+    if (!token) throw new Error("Not authenticated");
+    return token;
 }

@@ -1,4 +1,4 @@
-import type { Selection } from "@/lib/mock-data";
+import type { Selection } from "@/lib/domain-types";
 
 const DASHBOARD_BASE = "/dashboard";
 

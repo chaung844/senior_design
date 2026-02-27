@@ -31,6 +31,7 @@ The project lives at `src/frontend/` within a monorepo that also contains `src/b
 | Class Utilities  | `clsx` + `tailwind-merge` (via the `cn()` helper)               |
 | Font             | **JetBrains Mono** (loaded via `next/font/google`)              |
 | Linting          | **ESLint 9** with `eslint-config-next` (core-web-vitals + typescript) |
+| Data Fetching    | **TanStack React Query** (`@tanstack/react-query`) — caching, deduplication, background refetch for all API calls |
 | Data / tables    | **TanStack React Table** (`@tanstack/react-table`) — used by the shared `DataTable` component |
 | Charts           | **Recharts** — used for dashboard visualizations (e.g. in dashboard-year, dashboard-month) |
 
@@ -97,11 +98,24 @@ src/frontend/
 │   ├── component-example.tsx  # shadcn component showcase
 │   └── example.tsx            # Example wrapper utilities
 ├── hooks/
-│   └── use-mobile.ts       # Responsive breakpoint hook (768px)
+│   ├── use-mobile.ts          # Responsive breakpoint hook (768px)
+│   ├── use-accounts.ts        # React Query hooks for account books (useAccounts, useAccountBook, useAccountBooks)
+│   ├── use-statements.ts      # React Query hooks for bank statements and lines
+│   ├── use-receipts.ts        # React Query hooks for parsed receipts
+│   ├── use-documents.ts       # React Query hooks for document CRUD
+│   ├── use-document-upload.ts # S3 presigned-URL upload flow with progress tracking
+│   ├── use-admin-users.ts     # React Query hooks for admin user management
+│   └── use-account-members.ts # React Query hooks for account book members
 ├── lib/
 │   ├── utils.ts            # `cn()` class merging utility
+│   ├── api.ts              # API client — all backend endpoint functions (auth, documents, receipts, statements, accounts, admin)
+│   ├── auth.tsx            # AuthProvider context and useAuth() hook (JWT + localStorage)
+│   ├── types.ts            # API response types mirroring backend Pydantic schemas (snake_case)
+│   ├── transforms.ts       # Pure functions converting API types → frontend view types (AccountBook, YearData, etc.)
+│   ├── query-client.tsx    # React Query QueryClientProvider wrapper
 │   ├── dashboard-routes.ts # Dashboard URL helpers (selectionToPath, parseDashboardPath)
-│   └── mock-data.ts        # Mock data generators and domain types
+│   ├── constants.ts        # Shared constants (MONTH_LABELS, chart config, match rate badge variant)
+│   └── domain-types.ts     # Frontend domain types (AccountBook, YearData, MonthData, Transaction) and formatting utilities
 ├── public/                 # Static assets (SVGs)
 ├── components.json         # shadcn/ui configuration
 ├── next.config.ts          # Next.js configuration
@@ -130,7 +144,7 @@ src/frontend/
 | `/auth/login`   | `app/auth/login/page.tsx`                     | Client   | Login form (email + password)                    |
 | `/auth/signup`  | `app/auth/signup/page.tsx`                    | Server   | WIP notice — registration currently closed       |
 | *(unrouted)*    | `app/auth/_signup/page.tsx`                   | Client   | Original signup form, preserved for future use   |
-| `/dashboard`    | `app/dashboard/page.tsx`                       | Server   | Redirects to first account (`/dashboard/[accountId]`) |
+| `/dashboard`    | `app/dashboard/page.tsx`                       | Client   | Redirects to first account (`/dashboard/[accountId]`) via `useAccountBooks()` |
 | `/dashboard/[accountId]` | `app/dashboard/[accountId]/page.tsx`   | Client   | Account-level dashboard view (drill-down entry)  |
 | `/dashboard/[accountId]/[year]` | `app/dashboard/[accountId]/[year]/page.tsx` | Client | Year-level dashboard view                        |
 | `/dashboard/[accountId]/[year]/[month]` | `app/dashboard/[accountId]/[year]/[month]/page.tsx` | Client | Month-level dashboard view (transactions) |
@@ -161,7 +175,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 ### Key Application Components
 
 - **DataTable** — Generic, type-parameterized table built on TanStack React Table; supports sorting, column filters, pagination, optional toolbar and row click. Used for transaction lists in the month view and for year-level summary tables.
-- **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, ledger files) with drag-and-drop and configurable accept types. Used in year and month dashboard views; `onUpload` is the integration point for a future backend.
+- **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, receipts) with drag-and-drop and configurable accept types. Connected to the backend via `useDocumentUpload` hook (presigned S3 URLs). Automatically associates uploaded documents with the current `account_id`.
+- **AppSidebar** — Main sidebar navigation. Receives `accountBooks` (fetched via API) as a prop from the dashboard layout; renders an account selector and collapsible year/month tree.
 
 ### Adding New shadcn/ui Components
 
@@ -204,20 +219,37 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 - Target: `ES2017`.
 - All files must be `.ts` or `.tsx`.
 - Prefer explicit types for component props (use `interface` for props).
-- Domain types are defined in `lib/mock-data.ts`: `Transaction`, `MonthData`, `YearData`, `AccountBook`, `Selection`, `SelectionLevel`.
+- **API response types** (snake_case, matching backend Pydantic schemas) are in `lib/types.ts`: `AccountBookRead`, `BankStatementRead`, `BankStatementLineRead`, `ReceiptRead`, `DocumentRead`, plus enums like `MatchStatus`, `DocumentStatus`.
+- **Frontend view types** (camelCase, used by dashboard components) are in `lib/domain-types.ts`: `Transaction`, `MonthData`, `YearData`, `AccountBook`, `Selection`, `SelectionLevel`.
+- **Transforms** in `lib/transforms.ts` convert API types → view types. Dashboard components consume view types only.
 
 ### State Management
 
-- Currently uses **React `useState`** for local component state where needed.
-- **Dashboard selection** (account, year, month) is **URL-driven**: the pathname (e.g. `/dashboard/acc-1/2024/3`) is the source of truth. The dashboard layout parses the path via `lib/dashboard-routes.ts` (`parseDashboardPath`, `pathToSelection`) and passes the derived `Selection` to the sidebar and breadcrumb; changing selection is done via `router.push(selectionToPath(...))`, not local state. This allows deep links and preserves the current view on refresh.
-- No external state management library is in use.
+- Uses **React `useState`** for local component state where needed.
+- **Server state** (accounts, statements, receipts, documents) is managed by **TanStack React Query**. The `QueryProvider` wraps the app in `app/layout.tsx`. Query keys are organized per domain (e.g. `accountKeys`, `statementKeys`). Mutations automatically invalidate related queries.
+- **Dashboard selection** (account, year, month) is **URL-driven**: the pathname (e.g. `/dashboard/1/2024/3`) is the source of truth. The dashboard layout parses the path via `lib/dashboard-routes.ts` (`parseDashboardPath`, `pathToSelection`) and passes the derived `Selection` to the sidebar and breadcrumb; changing selection is done via `router.push(selectionToPath(...))`, not local state. This allows deep links and preserves the current view on refresh.
 
 ### Data Layer
 
-- Currently uses **mock data** generated in `lib/mock-data.ts`. No real API calls yet.
-- Helper functions: `getAccountBook()`, `getYearData()`, `getMonthData()`, `formatCurrency()`, `formatNumber()`.
-- `DataTable` is used to render transaction and summary tables; `UploadDialog` is the intended entry point for file-based ingestion (to be wired to the backend).
-- When integrating a real backend, replace mock data calls with API fetches while keeping the same type interfaces.
+The frontend fetches all data from the FastAPI backend (`NEXT_PUBLIC_API_URL`). The data flows through three layers:
+
+1. **API client** (`lib/api.ts`) — Thin async functions wrapping `fetch` for every backend endpoint. Handles auth headers, error parsing, and query-string construction. Organized by tier: auth, documents, receipts, statements, accounts, admin users.
+2. **React Query hooks** (`hooks/use-*.ts`) — One file per domain: `use-accounts.ts`, `use-statements.ts`, `use-receipts.ts`, `use-documents.ts`, `use-admin-users.ts`, `use-account-members.ts`, plus `use-document-upload.ts` for the S3 upload flow. Each exports query hooks (read) and mutation hooks (write) with automatic cache invalidation.
+3. **Transforms** (`lib/transforms.ts`) — Pure functions that convert API response types (flat, snake_case) into the hierarchical view types used by dashboard components. Key transforms: `apiAccountToAccountBook()`, `statementsToYearData()`, `statementToMonthData()`, `lineToTransaction()`.
+
+Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`).
+
+#### Connected Backend Endpoints
+
+| Tier | Endpoints | Frontend hooks |
+|------|-----------|----------------|
+| **Tier 1** — Auth & Upload | `POST /auth/login`, `GET /auth/me`, `POST /documents/upload-url`, `POST /documents/{id}/confirm-upload` | `useAuth()`, `useDocumentUpload()` |
+| **Tier 2** — Documents | `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}` | `useDocuments()`, `useDocument()`, `useDeleteDocument()` |
+| **Tier 3** — Receipts | `GET /receipts`, `GET /receipts/{id}`, `PATCH /receipts/{id}`, `GET /receipts/{id}/file-url` | `useReceipts()`, `useReceipt()`, `useUpdateReceipt()`, `useReceiptFileUrl()` |
+| **Tier 3** — Statements | `GET /statements`, `GET /statements/{id}`, `GET /statements/{id}/lines`, `PATCH /statements/{id}/lines/{lineId}`, `GET /statements/{id}/file-url` | `useStatements()`, `useStatement()`, `useStatementLines()`, `useUpdateStatementLine()`, `useStatementFileUrl()` |
+| **Tier 5** — Accounts | `POST /accounts`, `GET /accounts`, `GET /accounts/{id}`, `PATCH /accounts/{id}`, `DELETE /accounts/{id}` | `useAccounts()`, `useAccount()`, `useAccountBook()`, `useAccountBooks()`, `useCreateAccount()`, `useUpdateAccount()`, `useDeleteAccount()` |
+| **Tier 5** — Members | `GET /accounts/{id}/members`, `POST /accounts/{id}/members`, `DELETE /accounts/{id}/members/{userId}` | `useAccountMembers()`, `useAddAccountMember()`, `useRemoveAccountMember()` |
+| **Tier 5** — Admin Users | `GET /admin/users`, `POST /admin/users`, `GET /admin/users/{id}`, `PATCH /admin/users/{id}`, `DELETE /admin/users/{id}` | `useAdminUsers()`, `useCreateAdminUser()`, `useUpdateAdminUser()`, `useDeactivateAdminUser()` |
 
 ---
 
@@ -225,12 +257,16 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 | Concept              | Description                                                             |
 | -------------------- | ----------------------------------------------------------------------- |
-| **Account Book**     | A bank account with metadata (name, bank, account number, currency)     |
-| **Year Data**        | Aggregate financial data for a calendar year within an account          |
-| **Month Data**       | Monthly breakdown with transactions, balances, and reconciliation stats |
-| **Transaction**      | Individual debit/credit entry with matching status and confidence       |
-| **Match Rate**       | Percentage of transactions successfully matched to ledger entries       |
-| **Reconciliation**   | Process of matching bank statement transactions to internal records     |
+| **Account Book**     | A bank account with metadata (name, bank, account number, currency). Backend: `AccountBookRead`. Frontend view: `AccountBook`. |
+| **Bank Statement**   | A parsed bank statement for a specific account/month/year. Backend: `BankStatementRead` / `BankStatementDetailRead`. |
+| **Statement Line**   | A single transaction line within a bank statement. Backend: `BankStatementLineRead`. Frontend view: `Transaction`. |
+| **Receipt**          | An AI-parsed receipt linked to a document. Backend: `ReceiptRead`. |
+| **Document**         | An uploaded file (receipt or bank statement) tracked through processing stages. Backend: `DocumentRead`. |
+| **Year Data**        | Aggregate financial data for a calendar year within an account (computed client-side from statements). Frontend view: `YearData`. |
+| **Month Data**       | Monthly breakdown with transactions, balances, and reconciliation stats (computed from statement lines). Frontend view: `MonthData`. |
+| **Match Rate**       | Percentage of transactions successfully matched to receipts. Derived from `match_status` on statement lines. |
+| **Match Status**     | Enum: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`. Present on both statement lines and receipts. |
+| **Reconciliation**   | Process of matching bank statement transactions to receipts/internal records |
 | **Selection**        | Navigation state tracking current account, year, month, and drill level |
 
 ---
@@ -241,7 +277,7 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 
 1. **Landing page** (`/landing-page`) — Public entry point with hero, feature grid, and CTAs linking to auth.
 2. **Auth** — `/auth/login` presents a login form. `/auth/signup` currently shows a **Work in Progress** notice indicating registration is closed during active development. The original signup form is preserved at `app/auth/_signup/page.tsx` (private, unrouted via the `_` prefix) and can be re-enabled by moving it back to `app/auth/signup/page.tsx` when the app is ready to accept new users.
-3. **Dashboard** (`/dashboard`) — Authenticated experience (auth guard not yet implemented).
+3. **Dashboard** (`/dashboard`) — Authenticated experience. Auth guard in `app/dashboard/layout.tsx` redirects unauthenticated users to `/auth/login`. Data is fetched from the backend API via React Query hooks.
 
 ### Dashboard Drill-Down
 
@@ -297,6 +333,16 @@ Edit CSS custom properties in `app/globals.css` under `:root` (light) and the da
 
 ---
 
+### Add a new API endpoint
+
+1. Add the TypeScript response/request types to `lib/types.ts` (match backend Pydantic schema, snake_case).
+2. Add the endpoint function to `lib/api.ts` following the existing `request<T>()` pattern. Add it to the `apiClient` barrel export.
+3. Create a React Query hook in `hooks/use-<domain>.ts` using `useQuery` (reads) or `useMutation` (writes). Define a query key factory at the top of the file.
+4. If the response needs transformation for dashboard components, add a transform function to `lib/transforms.ts`.
+5. Update this `AGENTS.md` if the new endpoint connects a new tier or adds a major feature.
+
+---
+
 ## Things to Avoid
 
 - **Do not** edit files in `components/ui/` manually — they are managed by shadcn CLI.
@@ -305,6 +351,8 @@ Edit CSS custom properties in `app/globals.css` under `:root` (light) and the da
 - **Do not** use `any` types — leverage TypeScript strict mode fully.
 - **Do not** add `"use client"` to components that don't need it — prefer server components where possible.
 - **Do not** hardcode color values — use the semantic CSS custom property tokens (e.g., `text-foreground`, `bg-primary`).
+- **Do not** import mock data or static constants for API-backed data — use React Query hooks instead.
+- **Do not** call `fetch()` directly in components — use the API client functions in `lib/api.ts` wrapped by hooks.
 
 ---
 
@@ -321,6 +369,7 @@ No test framework is currently configured. When adding tests:
 - **Node.js** is required (see `engines` in `package.json` or use the latest LTS).
 - Environment variables should be placed in `.env.local` (gitignored).
 - Prefix client-side env vars with `NEXT_PUBLIC_`.
+- **Required env var**: `NEXT_PUBLIC_API_URL` — base URL of the FastAPI backend (e.g. `http://localhost:8000`). All API calls use this.
 - The project is deployable to **Vercel** or any platform supporting Next.js.
 
 ---

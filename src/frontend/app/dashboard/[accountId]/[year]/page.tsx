@@ -2,39 +2,25 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { DashboardYear } from "@/components/dashboard-year";
-import { getAccountBook, getYearData } from "@/lib/mock-data";
+import { useAccountBook } from "@/hooks/use-accounts";
+import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { EmptyState } from "@/components/empty-state";
 
 export default function DashboardYearPage() {
     const params = useParams();
     const router = useRouter();
-    const accountId = params.accountId as string;
+    const accountId = Number(params.accountId);
     const year = parseInt(params.year as string, 10);
-    const account = getAccountBook(accountId);
-    const yearData = getYearData(accountId, year);
+    const { data: account, isLoading } = useAccountBook(
+        Number.isNaN(accountId) ? null : accountId,
+    );
 
-    if (Number.isNaN(year)) {
-        return (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                Invalid year.
-            </div>
-        );
-    }
+    const yearData = account?.years.find((y) => y.year === year);
 
-    if (!account) {
-        return (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                Account not found.
-            </div>
-        );
-    }
-
-    if (!yearData) {
-        return (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                Year data not found.
-            </div>
-        );
-    }
+    if (Number.isNaN(year)) return <EmptyState message="Invalid year." />;
+    if (isLoading) return <DashboardSkeleton />;
+    if (!account) return <EmptyState message="Account not found." />;
+    if (!yearData) return <EmptyState message="Year data not found." />;
 
     return (
         <DashboardYear

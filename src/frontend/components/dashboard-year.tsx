@@ -10,13 +10,13 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { StatCard } from "@/components/stat-card";
 import {
     ChartContainer,
     ChartTooltip,
     ChartTooltipContent,
     ChartLegend,
     ChartLegendContent,
-    type ChartConfig,
 } from "@/components/ui/chart";
 import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import {
@@ -25,7 +25,11 @@ import {
     type YearData,
     formatCurrency,
     formatNumber,
-} from "@/lib/mock-data";
+} from "@/lib/domain-types";
+import {
+    reconciliationChartConfig,
+    getMatchRateBadgeVariant,
+} from "@/lib/constants";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
     ArrowDown02Icon,
@@ -42,19 +46,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
+import { DashboardHeader } from "@/components/dashboard-header";
 import { UploadDialog } from "@/components/upload-dialog";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
-
-const monthlyChartConfig = {
-    matched: {
-        label: "Matched",
-        color: "var(--chart-1)",
-    },
-    unmatched: {
-        label: "Unmatched",
-        color: "var(--chart-4)",
-    },
-} satisfies ChartConfig;
 
 interface DashboardYearProps {
     account: AccountBook;
@@ -128,13 +122,7 @@ function makeMonthColumns(
                         className="h-1 flex-1"
                     />
                     <Badge
-                        variant={
-                            row.original.matchRate >= 90
-                                ? "default"
-                                : row.original.matchRate >= 70
-                                    ? "secondary"
-                                    : "destructive"
-                        }
+                        variant={getMatchRateBadgeVariant(row.original.matchRate)}
                         className="text-[10px] h-4 px-1.5 tabular-nums"
                     >
                         {row.original.matchRate}%
@@ -236,7 +224,7 @@ export function DashboardYear({
         isUploading,
         results: uploadResults,
         reset: resetUpload,
-    } = useDocumentUpload("bank_statement");
+    } = useDocumentUpload("bank_statement", Number(account.id) || undefined);
 
     const months = React.useMemo(
         () => yearData.months.slice().sort((a, b) => a.month - b.month),
@@ -283,185 +271,106 @@ export function DashboardYear({
 
     return (
         <div className="flex flex-col gap-4">
-            {/* Header */}
-            <div className="shrink-0 flex flex-col gap-1">
-                <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="icon-sm" onClick={onBack}>
-                        <HugeiconsIcon
-                            icon={ArrowLeft01Icon}
-                            strokeWidth={2}
-                            className="size-4"
-                        />
-                    </Button>
-                    <h1 className="text-lg font-semibold tracking-tight">
-                        {account.name}
-                        <span className="text-muted-foreground ml-2 font-mono">
-                            {yearData.year}
-                        </span>
-                    </h1>
-                    <Badge variant="outline" className="font-mono text-[10px]">
-                        {account.currency}
-                    </Badge>
-                    <div className="ml-auto">
-                        <UploadDialog
-                            title="Upload Bank Statements"
-                            description="Upload bank statement files. Uploading for a month that already has a statement will overwrite it."
-                            accept=".pdf,.csv,.xlsx,.xls"
-                            acceptLabel="PDF, CSV, or Excel"
-                            multiple
-                            onUpload={uploadFiles}
-                            isUploading={isUploading}
-                            uploadResults={uploadResults}
-                            onOpenChange={(open) => {
-                                if (!open) resetUpload();
-                            }}
-                        />
-                    </div>
-                </div>
-                <p className="text-xs text-muted-foreground pl-9">
-                    {account.bankName} · {account.accountNumber} · Monthly
-                    breakdown for {yearData.year}
-                </p>
-            </div>
+            <DashboardHeader
+                account={account}
+                periodLabel={String(yearData.year)}
+                subtitle={`Monthly breakdown for ${yearData.year}`}
+                onBack={onBack}
+                actions={
+                    <UploadDialog
+                        title="Upload Bank Statements"
+                        description="Upload bank statement files. Uploading for a month that already has a statement will overwrite it."
+                        accept=".pdf,.csv,.xlsx,.xls"
+                        acceptLabel="PDF, CSV, or Excel"
+                        multiple
+                        onUpload={uploadFiles}
+                        isUploading={isUploading}
+                        uploadResults={uploadResults}
+                        onOpenChange={(open) => {
+                            if (!open) resetUpload();
+                        }}
+                    />
+                }
+            />
 
             {/* Summary Cards */}
             <div className="shrink-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {/* Total Transactions */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={BarChartIcon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Transactions
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums">
-                            {formatNumber(yearData.totalTransactions)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-[11px] text-muted-foreground">
-                            ~{formatNumber(avgTransactions)} per month avg
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    icon={BarChartIcon}
+                    label="Transactions"
+                    value={formatNumber(yearData.totalTransactions)}
+                >
+                    <div className="text-[11px] text-muted-foreground">
+                        ~{formatNumber(avgTransactions)} per month avg
+                    </div>
+                </StatCard>
 
-                {/* Match Rate */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={Analytics02Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Match Rate
+                <StatCard
+                    icon={Analytics02Icon}
+                    label="Match Rate"
+                    value={`${yearData.overallMatchRate}%`}
+                >
+                    <div className="flex flex-col gap-1.5">
+                        <Progress
+                            value={yearData.overallMatchRate}
+                            className="h-1.5"
+                        />
+                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                            <span className="text-primary">
+                                {formatNumber(yearData.totalMatched)} matched
                             </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums">
-                            {yearData.overallMatchRate}%
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col gap-1.5">
-                            <Progress
-                                value={yearData.overallMatchRate}
-                                className="h-1.5"
-                            />
-                            <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                                <span className="text-primary">
-                                    {formatNumber(yearData.totalMatched)}{" "}
-                                    matched
-                                </span>
-                                <span>·</span>
-                                <span>
-                                    {formatNumber(yearData.totalUnmatched)}{" "}
-                                    unmatched
-                                </span>
-                            </div>
+                            <span>·</span>
+                            <span>
+                                {formatNumber(yearData.totalUnmatched)}{" "}
+                                unmatched
+                            </span>
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </StatCard>
 
-                {/* Net Flow */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                {netFlow >= 0 ? (
-                                    <HugeiconsIcon
-                                        icon={MoneyReceiveSquareIcon}
-                                        strokeWidth={2}
-                                        className="size-3.5"
-                                    />
-                                ) : (
-                                    <HugeiconsIcon
-                                        icon={MoneySendSquareIcon}
-                                        strokeWidth={2}
-                                        className="size-3.5"
-                                    />
-                                )}
-                                Net Flow
-                            </span>
-                        </CardDescription>
-                        <CardTitle
-                            className={`text-2xl font-bold tabular-nums ${netFlow >= 0
-                                    ? "text-primary"
-                                    : "text-destructive"
-                                }`}
-                        >
-                            {netFlow >= 0 ? "+" : ""}
-                            {formatCurrency(netFlow, account.currency)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-[11px] text-muted-foreground">
-                            Credits minus debits
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    icon={
+                        netFlow >= 0
+                            ? MoneyReceiveSquareIcon
+                            : MoneySendSquareIcon
+                    }
+                    label="Net Flow"
+                    value={`${netFlow >= 0 ? "+" : ""}${formatCurrency(netFlow, account.currency)}`}
+                    valueClassName={
+                        netFlow >= 0 ? "text-primary" : "text-destructive"
+                    }
+                >
+                    <div className="text-[11px] text-muted-foreground">
+                        Credits minus debits
+                    </div>
+                </StatCard>
 
-                {/* Reconciliation Progress */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={Tick02Icon}
-                                    strokeWidth={2.5}
-                                    className="size-3.5"
-                                />
-                                Reconciled
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums">
+                <StatCard
+                    icon={Tick02Icon}
+                    label="Reconciled"
+                    value={
+                        <>
                             {reconciledMonths}
                             <span className="text-base font-normal text-muted-foreground">
                                 /{totalMonths}
                             </span>
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col gap-1.5">
-                            <Progress
-                                value={
-                                    totalMonths > 0
-                                        ? (reconciledMonths / totalMonths) * 100
-                                        : 0
-                                }
-                                className="h-1.5"
-                            />
-                            <div className="text-[11px] text-muted-foreground">
-                                months fully reconciled
-                            </div>
+                        </>
+                    }
+                >
+                    <div className="flex flex-col gap-1.5">
+                        <Progress
+                            value={
+                                totalMonths > 0
+                                    ? (reconciledMonths / totalMonths) * 100
+                                    : 0
+                            }
+                            className="h-1.5"
+                        />
+                        <div className="text-[11px] text-muted-foreground">
+                            months fully reconciled
                         </div>
-                    </CardContent>
-                </Card>
+                    </div>
+                </StatCard>
             </div>
 
             {/* Highlights Row */}
@@ -558,7 +467,7 @@ export function DashboardYear({
                 </CardHeader>
                 <CardContent>
                     <ChartContainer
-                        config={monthlyChartConfig}
+                        config={reconciliationChartConfig}
                         className="h-[250px] w-full"
                     >
                         <BarChart

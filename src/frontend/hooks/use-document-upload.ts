@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useState } from "react";
-import { apiClient, type DocumentType } from "@/lib/api";
+import { useQueryClient } from "@tanstack/react-query";
+import { apiClient } from "@/lib/api";
+import type { DocumentType } from "@/lib/types";
 import { useAuth } from "@/lib/auth";
+import { accountKeys } from "@/hooks/use-accounts";
+import { statementKeys } from "@/hooks/use-statements";
+import { receiptKeys } from "@/hooks/use-receipts";
+import { documentKeys } from "@/hooks/use-documents";
 
 export type UploadFileStatus =
     | "pending"
@@ -17,8 +23,12 @@ export interface UploadFileResult {
     error?: string;
 }
 
-export function useDocumentUpload(documentType: DocumentType) {
+export function useDocumentUpload(
+    documentType: DocumentType,
+    accountId?: number,
+) {
     const { token } = useAuth();
+    const qc = useQueryClient();
     const [isUploading, setIsUploading] = useState(false);
     const [results, setResults] = useState<UploadFileResult[]>([]);
 
@@ -54,7 +64,7 @@ export function useDocumentUpload(documentType: DocumentType) {
 
                 const setStatus = (
                     status: UploadFileStatus,
-                    error?: string
+                    error?: string,
                 ) => {
                     setResults((prev) => {
                         const next = [...prev];
@@ -70,6 +80,7 @@ export function useDocumentUpload(documentType: DocumentType) {
                             file_name: file.name,
                             file_type: fileType,
                             document_type: documentType,
+                            account_id: accountId,
                         });
 
                     await apiClient.uploadFileToS3(upload_url, file);
@@ -88,9 +99,15 @@ export function useDocumentUpload(documentType: DocumentType) {
             }
 
             setIsUploading(false);
+
+            qc.invalidateQueries({ queryKey: documentKeys.all });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+            qc.invalidateQueries({ queryKey: statementKeys.all });
+            qc.invalidateQueries({ queryKey: receiptKeys.all });
+
             return outcome;
         },
-        [token, documentType]
+        [token, documentType, accountId, qc],
     );
 
     return { uploadFiles, isUploading, results, reset };

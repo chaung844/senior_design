@@ -11,12 +11,14 @@ import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
+import { ErrorBoundary } from "@/components/error-boundary";
 import { useAuth } from "@/lib/auth";
 import {
     pathToSelection,
     selectionToPath,
 } from "@/lib/dashboard-routes";
-import { accountBooks, getAccountBook, getMonthData } from "@/lib/mock-data";
+import { useAccountBooks } from "@/hooks/use-accounts";
+import { MONTH_LABELS } from "@/lib/constants";
 
 export default function DashboardLayout({
     children,
@@ -26,7 +28,9 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const firstAccountId = accountBooks[0]?.id ?? "";
+    const { data: accountBooks, isLoading: accountsLoading } = useAccountBooks();
+
+    const firstAccountId = accountBooks?.[0]?.id ?? "";
 
     const selection = React.useMemo(
         () => pathToSelection(pathname, firstAccountId),
@@ -40,12 +44,7 @@ export default function DashboardLayout({
         [router],
     );
 
-    React.useEffect(() => {
-        if (authLoading) return;
-        if (!user) router.replace("/auth/login");
-    }, [user, authLoading, router]);
-
-    if (authLoading) {
+    if (authLoading || accountsLoading) {
         return (
             <div className="flex h-dvh items-center justify-center">
                 <Skeleton className="h-8 w-48" />
@@ -53,10 +52,11 @@ export default function DashboardLayout({
         );
     }
     if (!user) {
+        router.replace("/auth/login");
         return null;
     }
 
-    const account = getAccountBook(selection.accountId);
+    const account = accountBooks?.find((a) => a.id === selection.accountId);
 
     const handleBackToAccount = () => {
         router.push(selectionToPath({
@@ -116,11 +116,8 @@ export default function DashboardLayout({
         }
 
         if (selection.month !== null && selection.year !== null) {
-            const monthData = getMonthData(
-                selection.accountId,
-                selection.year,
-                selection.month,
-            );
+            const monthLabel =
+                MONTH_LABELS[selection.month - 1] ?? `Month ${selection.month}`;
             parts.push(
                 <span key="sep2" className="text-muted-foreground/50 text-xs">
                     /
@@ -131,7 +128,7 @@ export default function DashboardLayout({
                     key="month"
                     className="text-xs text-foreground font-medium"
                 >
-                    {monthData?.label ?? `Month ${selection.month}`}
+                    {monthLabel}
                 </span>,
             );
         }
@@ -143,6 +140,7 @@ export default function DashboardLayout({
         <TooltipProvider>
             <SidebarProvider>
                 <AppSidebar
+                    accountBooks={accountBooks ?? []}
                     selection={selection}
                     onSelectionChange={handleSelectionChange}
                 />
@@ -156,7 +154,7 @@ export default function DashboardLayout({
                         {renderBreadcrumb()}
                     </header>
                     <main className="p-6">
-                        {children}
+                        <ErrorBoundary>{children}</ErrorBoundary>
                     </main>
                 </SidebarInset>
             </SidebarProvider>

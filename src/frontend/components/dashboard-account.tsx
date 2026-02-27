@@ -1,38 +1,17 @@
 "use client";
 
 import * as React from "react";
-import {
-    Card,
-    CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table";
-import {
-    ChartContainer,
-    ChartTooltip,
-    ChartTooltipContent,
-    ChartLegend,
-    ChartLegendContent,
-    type ChartConfig,
-} from "@/components/ui/chart";
-import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
+import { StatCard } from "@/components/stat-card";
 import {
     type AccountBook,
+    type YearData,
     formatCurrency,
     formatNumber,
-} from "@/lib/mock-data";
+} from "@/lib/domain-types";
+import { getMatchRateBadgeVariant } from "@/lib/constants";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
     ArrowDown02Icon,
@@ -45,21 +24,144 @@ import {
     MoneySendSquareIcon,
     BarChartIcon,
 } from "@hugeicons/core-free-icons";
-
-const reconciliationChartConfig = {
-    matched: {
-        label: "Matched",
-        color: "var(--chart-1)",
-    },
-    unmatched: {
-        label: "Unmatched",
-        color: "var(--chart-4)",
-    },
-} satisfies ChartConfig;
+import { type ColumnDef } from "@tanstack/react-table";
+import { DataTable } from "@/components/data-table";
 
 interface DashboardAccountProps {
     account: AccountBook;
     onYearClick: (year: number) => void;
+}
+
+function makeYearColumns(
+    currency: string,
+): ColumnDef<YearData, unknown>[] {
+    return [
+        {
+            accessorKey: "year",
+            header: "Year",
+            size: 70,
+            enableSorting: true,
+            enableHiding: false,
+            cell: ({ row }) => (
+                <span className="font-mono font-medium">
+                    {row.original.year}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "totalTransactions",
+            header: "Transactions",
+            size: 90,
+            meta: { align: "right" },
+            cell: ({ row }) => (
+                <div className="text-right tabular-nums">
+                    {formatNumber(row.original.totalTransactions)}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "totalMatched",
+            header: "Matched",
+            size: 80,
+            meta: { align: "right" },
+            cell: ({ row }) => (
+                <div className="text-right tabular-nums text-primary">
+                    {formatNumber(row.original.totalMatched)}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "totalUnmatched",
+            header: "Unmatched",
+            size: 80,
+            meta: { align: "right" },
+            cell: ({ row }) => (
+                <div className="text-right tabular-nums">
+                    {formatNumber(row.original.totalUnmatched)}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "overallMatchRate",
+            header: "Match Rate",
+            size: 130,
+            cell: ({ row }) => (
+                <div className="flex items-center gap-2">
+                    <Progress
+                        value={row.original.overallMatchRate}
+                        className="h-1 flex-1"
+                    />
+                    <Badge
+                        variant={getMatchRateBadgeVariant(
+                            row.original.overallMatchRate,
+                        )}
+                        className="text-[10px] h-4 px-1.5 tabular-nums"
+                    >
+                        {row.original.overallMatchRate}%
+                    </Badge>
+                </div>
+            ),
+        },
+        {
+            accessorKey: "totalDebit",
+            header: "Total Debits",
+            size: 100,
+            meta: { align: "right" },
+            cell: ({ row }) => (
+                <div className="text-right tabular-nums font-mono text-xs">
+                    {formatCurrency(row.original.totalDebit, currency)}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "totalCredit",
+            header: "Total Credits",
+            size: 100,
+            meta: { align: "right" },
+            cell: ({ row }) => (
+                <div className="text-right tabular-nums font-mono text-xs">
+                    {formatCurrency(row.original.totalCredit, currency)}
+                </div>
+            ),
+        },
+        {
+            accessorKey: "closingBalance",
+            header: "Closing",
+            size: 90,
+            meta: { align: "right" },
+            cell: ({ row }) => (
+                <div className="text-right tabular-nums font-mono text-xs">
+                    {formatCurrency(row.original.closingBalance, currency)}
+                </div>
+            ),
+        },
+        {
+            id: "months",
+            header: "Months",
+            size: 75,
+            meta: { align: "right" },
+            enableSorting: false,
+            cell: ({ row }) => {
+                const reconciledMonths = row.original.months.filter(
+                    (m) => m.reconciled,
+                ).length;
+                return (
+                    <div className="text-right">
+                        <span className="text-[11px] text-muted-foreground tabular-nums">
+                            {reconciledMonths}/{row.original.months.length}
+                            {reconciledMonths === row.original.months.length ? (
+                                <HugeiconsIcon
+                                    icon={Tick02Icon}
+                                    strokeWidth={2.5}
+                                    className="inline-block ml-1 size-3 text-primary"
+                                />
+                            ) : null}
+                        </span>
+                    </div>
+                );
+            },
+        },
+    ];
 }
 
 export function DashboardAccount({
@@ -86,7 +188,6 @@ export function DashboardAccount({
     const totalDebit = allYears.reduce((sum, y) => sum + y.totalDebit, 0);
     const totalCredit = allYears.reduce((sum, y) => sum + y.totalCredit, 0);
 
-    // Calculate trend vs previous year if available
     const currentYearMatch =
         allYears.length > 0 ? allYears[0].overallMatchRate : 0;
     const previousYearMatch =
@@ -95,6 +196,23 @@ export function DashboardAccount({
         previousYearMatch !== null
             ? Math.round((currentYearMatch - previousYearMatch) * 10) / 10
             : null;
+
+    const yearColumns = React.useMemo(
+        () => makeYearColumns(account.currency),
+        [account.currency],
+    );
+
+    const tableToolbar = (columnToggle: React.ReactNode) => (
+        <div className="flex items-center justify-between">
+            <div>
+                <h3 className="text-sm font-medium">Yearly Breakdown</h3>
+                <p className="text-xs text-muted-foreground">
+                    Summary of reconciliation status per statement year
+                </p>
+            </div>
+            {columnToggle}
+        </div>
+    );
 
     return (
         <div className="flex flex-col gap-6">
@@ -116,137 +234,83 @@ export function DashboardAccount({
 
             {/* Summary Cards */}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {/* Total Transactions */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={BarChartIcon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Total Transactions
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums">
-                            {formatNumber(totalTransactions)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                            <span>
-                                Across {allYears.length} year
-                                {allYears.length !== 1 ? "s" : ""}
-                            </span>
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    icon={BarChartIcon}
+                    label="Total Transactions"
+                    value={formatNumber(totalTransactions)}
+                >
+                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                        <span>
+                            Across {allYears.length} year
+                            {allYears.length !== 1 ? "s" : ""}
+                        </span>
+                    </div>
+                </StatCard>
 
-                {/* Match Rate */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={Analytics02Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Overall Match Rate
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums">
-                            {overallMatchRate}%
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="flex flex-col gap-1.5">
-                            <Progress
-                                value={overallMatchRate}
-                                className="h-1.5"
-                            />
-                            {matchTrend !== null && (
-                                <div className="flex items-center gap-1 text-[11px]">
-                                    {matchTrend >= 0 ? (
-                                        <HugeiconsIcon
-                                            icon={ArrowUp02Icon}
-                                            strokeWidth={2}
-                                            className="size-3 text-primary"
-                                        />
-                                    ) : (
-                                        <HugeiconsIcon
-                                            icon={ArrowDown02Icon}
-                                            strokeWidth={2}
-                                            className="size-3 text-destructive"
-                                        />
-                                    )}
-                                    <span
-                                        className={
-                                            matchTrend >= 0
-                                                ? "text-primary"
-                                                : "text-destructive"
-                                        }
-                                    >
-                                        {matchTrend > 0 ? "+" : ""}
-                                        {matchTrend}%
-                                    </span>
-                                    <span className="text-muted-foreground">
-                                        vs prior year
-                                    </span>
-                                </div>
-                            )}
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    icon={Analytics02Icon}
+                    label="Overall Match Rate"
+                    value={`${overallMatchRate}%`}
+                >
+                    <div className="flex flex-col gap-1.5">
+                        <Progress
+                            value={overallMatchRate}
+                            className="h-1.5"
+                        />
+                        {matchTrend !== null && (
+                            <div className="flex items-center gap-1 text-[11px]">
+                                {matchTrend >= 0 ? (
+                                    <HugeiconsIcon
+                                        icon={ArrowUp02Icon}
+                                        strokeWidth={2}
+                                        className="size-3 text-primary"
+                                    />
+                                ) : (
+                                    <HugeiconsIcon
+                                        icon={ArrowDown02Icon}
+                                        strokeWidth={2}
+                                        className="size-3 text-destructive"
+                                    />
+                                )}
+                                <span
+                                    className={
+                                        matchTrend >= 0
+                                            ? "text-primary"
+                                            : "text-destructive"
+                                    }
+                                >
+                                    {matchTrend > 0 ? "+" : ""}
+                                    {matchTrend}%
+                                </span>
+                                <span className="text-muted-foreground">
+                                    vs prior year
+                                </span>
+                            </div>
+                        )}
+                    </div>
+                </StatCard>
 
-                {/* Total Debits */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={MoneySendSquareIcon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Total Debits
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums text-destructive">
-                            {formatCurrency(totalDebit, account.currency)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-[11px] text-muted-foreground">
-                            All outgoing transactions
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    icon={MoneySendSquareIcon}
+                    label="Total Debits"
+                    value={formatCurrency(totalDebit, account.currency)}
+                    valueClassName="text-destructive"
+                >
+                    <div className="text-[11px] text-muted-foreground">
+                        All outgoing transactions
+                    </div>
+                </StatCard>
 
-                {/* Total Credits */}
-                <Card size="sm">
-                    <CardHeader>
-                        <CardDescription>
-                            <span className="flex items-center gap-1.5">
-                                <HugeiconsIcon
-                                    icon={MoneyReceiveSquareIcon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Total Credits
-                            </span>
-                        </CardDescription>
-                        <CardTitle className="text-2xl font-bold tabular-nums text-primary">
-                            {formatCurrency(totalCredit, account.currency)}
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-[11px] text-muted-foreground">
-                            All incoming transactions
-                        </div>
-                    </CardContent>
-                </Card>
+                <StatCard
+                    icon={MoneyReceiveSquareIcon}
+                    label="Total Credits"
+                    value={formatCurrency(totalCredit, account.currency)}
+                    valueClassName="text-primary"
+                >
+                    <div className="text-[11px] text-muted-foreground">
+                        All incoming transactions
+                    </div>
+                </StatCard>
             </div>
 
             {/* Reconciliation Status */}
@@ -320,210 +384,14 @@ export function DashboardAccount({
                 </Card>
             </div>
 
-            {/* Reconciliation Overview Chart */}
-            {/* <Card>
-                <CardHeader>
-                    <CardTitle>Reconciliation Overview</CardTitle>
-                    <CardDescription>
-                        Matched vs unmatched transactions per year
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <ChartContainer
-                        config={reconciliationChartConfig}
-                        className="h-[250px] w-full"
-                    >
-                        <BarChart
-                            accessibilityLayer
-                            data={allYears
-                                .map((y) => ({
-                                    year: String(y.year),
-                                    matched: y.totalMatched,
-                                    unmatched: y.totalUnmatched,
-                                }))
-                                .reverse()}
-                        >
-                            <CartesianGrid vertical={false} />
-                            <XAxis
-                                dataKey="year"
-                                tickLine={false}
-                                tickMargin={10}
-                                axisLine={false}
-                            />
-                            <YAxis
-                                tickLine={false}
-                                axisLine={false}
-                                tickFormatter={(value) =>
-                                    formatNumber(value)
-                                }
-                            />
-                            <ChartTooltip
-                                content={
-                                    <ChartTooltipContent hideLabel />
-                                }
-                            />
-                            <ChartLegend
-                                content={<ChartLegendContent />}
-                            />
-                            <Bar
-                                dataKey="matched"
-                                stackId="a"
-                                fill="var(--color-matched)"
-                                radius={[0, 0, 0, 0]}
-                            />
-                            <Bar
-                                dataKey="unmatched"
-                                stackId="a"
-                                fill="var(--color-unmatched)"
-                                radius={[4, 4, 0, 0]}
-                            />
-                        </BarChart>
-                    </ChartContainer>
-                </CardContent>
-            </Card> */}
-
             {/* Yearly Breakdown Table */}
-            <Card>
-                <CardHeader>
-                    <CardTitle>Yearly Breakdown</CardTitle>
-                    <CardDescription>
-                        Summary of reconciliation status per statement year
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Year</TableHead>
-                                <TableHead className="text-right">
-                                    Transactions
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    Matched
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    Unmatched
-                                </TableHead>
-                                <TableHead>Match Rate</TableHead>
-                                <TableHead className="text-right">
-                                    Total Debits
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    Total Credits
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    Opening
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    Closing
-                                </TableHead>
-                                <TableHead className="text-right">
-                                    Months
-                                </TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {allYears.map((yearData) => {
-                                const reconciledMonths = yearData.months.filter(
-                                    (m) => m.reconciled,
-                                ).length;
-                                return (
-                                    <TableRow
-                                        key={yearData.year}
-                                        className="cursor-pointer"
-                                        onClick={() =>
-                                            onYearClick(yearData.year)
-                                        }
-                                    >
-                                        <TableCell>
-                                            <span className="font-mono font-medium">
-                                                {yearData.year}
-                                            </span>
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatNumber(
-                                                yearData.totalTransactions,
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums text-primary">
-                                            {formatNumber(
-                                                yearData.totalMatched,
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums">
-                                            {formatNumber(
-                                                yearData.totalUnmatched,
-                                            )}
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2 min-w-[120px]">
-                                                <Progress
-                                                    value={
-                                                        yearData.overallMatchRate
-                                                    }
-                                                    className="h-1 flex-1"
-                                                />
-                                                <Badge
-                                                    variant={
-                                                        yearData.overallMatchRate >=
-                                                            90
-                                                            ? "default"
-                                                            : yearData.overallMatchRate >=
-                                                                70
-                                                                ? "secondary"
-                                                                : "destructive"
-                                                    }
-                                                    className="text-[10px] h-4 px-1.5 tabular-nums"
-                                                >
-                                                    {yearData.overallMatchRate}%
-                                                </Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums font-mono text-xs">
-                                            {formatCurrency(
-                                                yearData.totalDebit,
-                                                account.currency,
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums font-mono text-xs">
-                                            {formatCurrency(
-                                                yearData.totalCredit,
-                                                account.currency,
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums font-mono text-xs">
-                                            {formatCurrency(
-                                                yearData.openingBalance,
-                                                account.currency,
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right tabular-nums font-mono text-xs">
-                                            {formatCurrency(
-                                                yearData.closingBalance,
-                                                account.currency,
-                                            )}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <span className="text-[11px] text-muted-foreground tabular-nums">
-                                                {reconciledMonths}/
-                                                {yearData.months.length}
-                                                {reconciledMonths ===
-                                                    yearData.months.length ? (
-                                                    <HugeiconsIcon
-                                                        icon={Tick02Icon}
-                                                        strokeWidth={2.5}
-                                                        className="inline-block ml-1 size-3 text-primary"
-                                                    />
-                                                ) : null}
-                                            </span>
-                                        </TableCell>
-                                    </TableRow>
-                                );
-                            })}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
+            <DataTable
+                columns={yearColumns}
+                data={allYears}
+                toolbar={tableToolbar}
+                onRowClick={(row) => onYearClick(row.year)}
+                emptyMessage="No yearly data available."
+            />
         </div>
     );
 }

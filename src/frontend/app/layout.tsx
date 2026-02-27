@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { JetBrains_Mono } from "next/font/google";
 import { AuthProvider } from "@/lib/auth";
+import { QueryProvider } from "@/lib/query-client";
 import "./globals.css";
 
 const jetbrainsMono = JetBrains_Mono({
@@ -22,7 +23,9 @@ export default function RootLayout({
     return (
         <html lang="en" className={jetbrainsMono.variable}>
             <body className="antialiased">
-                <AuthProvider>{children}</AuthProvider>
+                <QueryProvider>
+                    <AuthProvider>{children}</AuthProvider>
+                </QueryProvider>
             </body>
         </html>
     );

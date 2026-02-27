@@ -33,9 +33,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/lib/auth";
-import { accountBooks, type Selection } from "@/lib/mock-data";
+import type { AccountBook, Selection } from "@/lib/domain-types";
+import { getMatchRateBadgeVariant } from "@/lib/constants";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
     ArrowRight01Icon,
@@ -49,11 +49,16 @@ import {
 } from "@hugeicons/core-free-icons";
 
 interface AppSidebarProps {
+    accountBooks: AccountBook[];
     selection: Selection;
     onSelectionChange: (selection: Selection) => void;
 }
 
-export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
+export function AppSidebar({
+    accountBooks,
+    selection,
+    onSelectionChange,
+}: AppSidebarProps) {
     const router = useRouter();
     const { logout } = useAuth();
     const currentAccount = accountBooks.find(
@@ -163,7 +168,6 @@ export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
                         <SidebarGroupLabel>Navigation</SidebarGroupLabel>
                         <SidebarGroupContent>
                             <SidebarMenu>
-                                {/* Overview button */}
                                 <SidebarMenuItem>
                                     <SidebarMenuButton
                                         onClick={handleOverviewClick}
@@ -231,15 +235,7 @@ export function AppSidebar({ selection, onSelectionChange }: AppSidebarProps) {
                                                             {yearData.year}
                                                         </span>
                                                         <Badge
-                                                            variant={
-                                                                yearData.overallMatchRate >=
-                                                                90
-                                                                    ? "default"
-                                                                    : yearData.overallMatchRate >=
-                                                                        70
-                                                                      ? "secondary"
-                                                                      : "destructive"
-                                                            }
+                                                            variant={getMatchRateBadgeVariant(yearData.overallMatchRate)}
                                                             className="ml-auto text-[9px] h-4 px-1"
                                                         >
                                                             {

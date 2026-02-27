@@ -2,21 +2,20 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { DashboardAccount } from "@/components/dashboard-account";
-import { getAccountBook } from "@/lib/mock-data";
+import { useAccountBook } from "@/hooks/use-accounts";
+import { DashboardSkeleton } from "@/components/dashboard-skeleton";
+import { EmptyState } from "@/components/empty-state";
 
 export default function DashboardAccountPage() {
     const params = useParams();
     const router = useRouter();
-    const accountId = params.accountId as string;
-    const account = getAccountBook(accountId);
+    const accountId = Number(params.accountId);
+    const { data: account, isLoading } = useAccountBook(
+        Number.isNaN(accountId) ? null : accountId,
+    );
 
-    if (!account) {
-        return (
-            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">
-                Account not found.
-            </div>
-        );
-    }
+    if (isLoading) return <DashboardSkeleton />;
+    if (!account) return <EmptyState message="Account not found." />;
 
     return (
         <DashboardAccount
