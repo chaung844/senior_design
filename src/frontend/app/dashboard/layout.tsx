@@ -13,10 +13,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { useAuth } from "@/lib/auth";
-import {
-    pathToSelection,
-    selectionToPath,
-} from "@/lib/dashboard-routes";
+import { pathToSelection, selectionToPath } from "@/lib/dashboard-routes";
 import { useAccountBooks } from "@/hooks/use-accounts";
 import { MONTH_LABELS } from "@/lib/constants";
 
@@ -28,7 +25,8 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const { data: accountBooks, isLoading: accountsLoading } = useAccountBooks();
+    const { data: accountBooks, isLoading: accountsLoading } =
+        useAccountBooks();
 
     const firstAccountId = accountBooks?.[0]?.id ?? "";
 
@@ -44,6 +42,12 @@ export default function DashboardLayout({
         [router],
     );
 
+    React.useEffect(() => {
+        if (!authLoading && !accountsLoading && !user) {
+            router.replace("/auth/login");
+        }
+    }, [authLoading, accountsLoading, user, router]);
+
     if (authLoading || accountsLoading) {
         return (
             <div className="flex h-dvh items-center justify-center">
@@ -52,29 +56,32 @@ export default function DashboardLayout({
         );
     }
     if (!user) {
-        router.replace("/auth/login");
         return null;
     }
 
     const account = accountBooks?.find((a) => a.id === selection.accountId);
 
     const handleBackToAccount = () => {
-        router.push(selectionToPath({
-            accountId: selection.accountId,
-            year: null,
-            month: null,
-            level: "account",
-        }));
+        router.push(
+            selectionToPath({
+                accountId: selection.accountId,
+                year: null,
+                month: null,
+                level: "account",
+            }),
+        );
     };
 
     const handleBackToYear = () => {
         if (selection.year === null) return;
-        router.push(selectionToPath({
-            accountId: selection.accountId,
-            year: selection.year,
-            month: null,
-            level: "year",
-        }));
+        router.push(
+            selectionToPath({
+                accountId: selection.accountId,
+                year: selection.year,
+                month: null,
+                level: "year",
+            }),
+        );
     };
 
     function renderBreadcrumb() {
@@ -85,10 +92,11 @@ export default function DashboardLayout({
                 key="account"
                 type="button"
                 onClick={handleBackToAccount}
-                className={`text-xs transition-colors ${selection.level === "account"
-                    ? "text-foreground font-medium"
-                    : "text-muted-foreground hover:text-foreground"
-                    }`}
+                className={`text-xs transition-colors ${
+                    selection.level === "account"
+                        ? "text-foreground font-medium"
+                        : "text-muted-foreground hover:text-foreground"
+                }`}
             >
                 {account?.name ?? "Account"}
             </button>,
@@ -105,10 +113,11 @@ export default function DashboardLayout({
                     key="year"
                     type="button"
                     onClick={handleBackToYear}
-                    className={`text-xs font-mono transition-colors ${selection.level === "year"
-                        ? "text-foreground font-medium"
-                        : "text-muted-foreground hover:text-foreground"
-                        }`}
+                    className={`text-xs font-mono transition-colors ${
+                        selection.level === "year"
+                            ? "text-foreground font-medium"
+                            : "text-muted-foreground hover:text-foreground"
+                    }`}
                 >
                     {selection.year}
                 </button>,
