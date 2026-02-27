@@ -28,12 +28,14 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { UploadDialog } from "@/components/upload-dialog";
+import { ExportDialog } from "@/components/export-dialog";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
 
 interface DashboardMonthProps {
     account: AccountBook;
     yearValue: number;
     monthData: MonthData;
+    statementId: number;
     onBack: () => void;
 }
 
@@ -93,10 +95,7 @@ function makeTransactionColumns(
             meta: { align: "left" },
             cell: ({ row }) =>
                 row.original.matched ? (
-                    <Badge
-                        variant="default"
-                        className="text-[9px] h-4 px-1.5"
-                    >
+                    <Badge variant="default" className="text-[9px] h-4 px-1.5">
                         <HugeiconsIcon
                             icon={Tick02Icon}
                             strokeWidth={2.5}
@@ -340,6 +339,7 @@ export function DashboardMonth({
     account,
     yearValue,
     monthData,
+    statementId,
     onBack,
 }: DashboardMonthProps) {
     const {
@@ -479,12 +479,10 @@ export function DashboardMonth({
     const categoriesToolbar = (columnToggle: React.ReactNode) => (
         <div className="flex items-center justify-between">
             <div>
-                <h3 className="text-sm font-medium">
-                    Transaction Categories
-                </h3>
+                <h3 className="text-sm font-medium">Transaction Categories</h3>
                 <p className="text-xs text-muted-foreground">
-                    Breakdown of transactions by category for{" "}
-                    {monthData.label} {yearValue}
+                    Breakdown of transactions by category for {monthData.label}{" "}
+                    {yearValue}
                 </p>
             </div>
             {columnToggle}
@@ -526,19 +524,27 @@ export function DashboardMonth({
                     )
                 }
                 actions={
-                    <UploadDialog
-                        title="Upload Receipts"
-                        description="Upload receipt images or PDFs for reconciliation matching."
-                        accept=".png,.jpg,.jpeg,.pdf"
-                        acceptLabel="PNG, JPEG, JPG, or PDF"
-                        multiple
-                        onUpload={uploadFiles}
-                        isUploading={isUploading}
-                        uploadResults={uploadResults}
-                        onOpenChange={(open) => {
-                            if (!open) resetUpload();
-                        }}
-                    />
+                    <div className="flex items-center gap-2">
+                        <ExportDialog
+                            account={account}
+                            yearValue={yearValue}
+                            monthData={monthData}
+                            statementId={statementId}
+                        />
+                        <UploadDialog
+                            title="Upload Receipts"
+                            description="Upload receipt images or PDFs for reconciliation matching."
+                            accept=".png,.jpg,.jpeg,.pdf"
+                            acceptLabel="PNG, JPEG, JPG, or PDF"
+                            multiple
+                            onUpload={uploadFiles}
+                            isUploading={isUploading}
+                            uploadResults={uploadResults}
+                            onOpenChange={(open) => {
+                                if (!open) resetUpload();
+                            }}
+                        />
+                    </div>
                 }
             />
 
@@ -659,10 +665,7 @@ export function DashboardMonth({
                     />
                 </TabsContent>
 
-                <TabsContent
-                    value="categories"
-                    className="flex flex-col mt-3"
-                >
+                <TabsContent value="categories" className="flex flex-col mt-3">
                     <DataTable
                         columns={categoryColumns}
                         data={categoryBreakdown}
