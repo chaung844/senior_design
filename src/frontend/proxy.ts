@@ -12,7 +12,7 @@ import type { NextRequest } from "next/server";
  * because the HttpOnly JWT cookie is invisible to middleware cookie reads
  * in the Edge runtime.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     const hasSession = request.cookies.has("csrf_token");
     if (!hasSession) {
         const loginUrl = new URL("/auth/login", request.url);
