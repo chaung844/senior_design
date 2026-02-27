@@ -19,6 +19,7 @@ from app.schemas.account_book import (
     MemberListResponse,
     MemberRead,
 )
+from app.schemas.user import UserRead
 from app.utils.access import (
     get_accessible_account_ids,
     require_account_access,
@@ -28,6 +29,24 @@ from app.utils.access import (
 from app.utils.auth import verify_csrf_token
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
+
+
+# ── User lookup (for member management) ─────────────────────────────
+
+
+@router.get("/members/lookup", response_model=UserRead)
+async def lookup_user_by_email(
+    email: str = Query(..., description="Exact email address to look up"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_admin_or_dev),
+):
+    result = await db.execute(select(User).where(User.email == email.lower().strip()))
+    user = result.scalar_one_or_none()
+    if not user or not user.is_active:
+        raise HTTPException(
+            status_code=404, detail="No active user found with that email"
+        )
+    return user
 
 
 def _account_to_read(account: AccountBook) -> AccountBookRead:
@@ -156,7 +175,7 @@ async def update_account_book(
         setattr(account, field, value)
 
     await db.commit()
-    await db.refresh(account, attribute_names=["members"])
+    await db.refresh(account)
     return _account_to_read(account)
 
 
