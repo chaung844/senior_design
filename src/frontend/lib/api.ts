@@ -1,10 +1,17 @@
 /**
  * API client for the Matcha backend.
  * Uses NEXT_PUBLIC_API_URL (e.g. http://localhost:8000).
+ *
+ * Authentication is fully cookie-based:
+ *  - The backend sets the JWT in an HttpOnly cookie automatically.
+ *  - `credentials: "include"` is set on every request so the browser
+ *    sends that cookie cross-origin.
+ *  - For state-changing methods (POST / PUT / PATCH / DELETE) we read the
+ *    `csrf_token` cookie (readable by JS) and forward it as the
+ *    `X-CSRF-Token` header (Double Submit Cookie pattern).
  */
 
 import type {
-    Token,
     UserRead,
     UserCreate,
     UserUpdate,
@@ -55,96 +62,137 @@ function getBaseUrl(): string {
     return url.replace(/\/$/, "");
 }
 
+/**
+ * Reads a single cookie value by name from document.cookie.
+ * Returns null when running server-side or when the cookie is absent.
+ */
+function getCookie(name: string): string | null {
+    if (typeof document === "undefined") return null;
+    const match = document.cookie
+        .split("; ")
+        .find((row) => row.startsWith(`${name}=`));
+    return match ? decodeURIComponent(match.split("=")[1]) : null;
+}
+
+/** Methods that modify server state and therefore require a CSRF token. */
+const CSRF_METHODS = new Set(["POST", "PUT", "PATCH", "DELETE"]);
+
 async function baseFetch(
     path: string,
-    options: RequestInit & { token?: string | null } = {},
+    options: RequestInit = {},
 ): Promise<Response> {
-    const { token, ...init } = options;
-    const headers = new Headers(init.headers);
-    if (token) {
-        headers.set("Authorization", `Bearer ${token}`);
+    const method = (options.method ?? "GET").toUpperCase();
+    const headers = new Headers(options.headers);
+
+    // Attach CSRF token for every state-changing request.
+    if (CSRF_METHODS.has(method)) {
+        const csrfToken = getCookie("csrf_token");
+        if (csrfToken) {
+            headers.set("X-CSRF-Token", csrfToken);
+        }
     }
-    const res = await fetch(`${getBaseUrl()}${path}`, { ...init, headers });
-    if (res.status === 401 && token) {
+
+    const res = await fetch(`${getBaseUrl()}${path}`, {
+        ...options,
+        headers,
+        // Always send cookies cross-origin so the HttpOnly JWT cookie
+        // (and the csrf_token cookie) are included in every request.
+        credentials: "include",
+    });
+
+    if (res.status === 401) {
         _onUnauthorized?.();
         throw new Error("Session expired");
     }
+
     if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         const detail =
             typeof body.detail === "string"
                 ? body.detail
                 : Array.isArray(body.detail)
-                    ? body.detail
+                  ? body.detail
                         .map((d: { msg?: string }) => d.msg ?? "")
                         .join(", ")
-                    : "Request failed";
+                  : "Request failed";
         throw new Error(detail || res.statusText);
     }
+
     return res;
 }
 
-async function request<T>(
-    path: string,
-    options: RequestInit & { token?: string | null } = {},
-): Promise<T> {
+async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     const res = await baseFetch(path, options);
     return res.json() as Promise<T>;
 }
 
 async function requestNoContent(
     path: string,
-    options: RequestInit & { token?: string | null } = {},
+    options: RequestInit = {},
 ): Promise<void> {
     await baseFetch(path, options);
 }
 
-function qs(params: Record<string, string | number | boolean | undefined | null>): string {
+function qs(
+    params: Record<string, string | number | boolean | undefined | null>,
+): string {
     const entries = Object.entries(params).filter(
         ([, v]) => v !== undefined && v !== null,
     );
     if (entries.length === 0) return "";
-    return "?" + new URLSearchParams(
-        entries.map(([k, v]) => [k, String(v)]),
-    ).toString();
+    return (
+        "?" +
+        new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString()
+    );
 }
 
 // ── Auth (Tier 1) ───────────────────────────────────────────────────
 
-export async function login(email: string, password: string): Promise<Token> {
+/**
+ * Sends credentials to the login endpoint.
+ * The backend responds by setting an HttpOnly JWT cookie and a readable
+ * `csrf_token` cookie — no token is returned in the response body.
+ */
+export async function login(email: string, password: string): Promise<void> {
     const body = new URLSearchParams({
         username: email.trim().toLowerCase(),
         password,
     });
-    return request<Token>("/auth/login", {
+    await requestNoContent("/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: body.toString(),
     });
 }
 
-export async function getMe(token: string): Promise<UserRead> {
-    return request<UserRead>("/auth/me", { token });
+/**
+ * Calls the logout endpoint so the backend can clear the HttpOnly cookie.
+ */
+export async function logout(): Promise<void> {
+    await requestNoContent("/auth/logout", { method: "POST" });
 }
 
-export async function getUser(
-    userId: number,
-    token?: string | null,
-): Promise<UserRead> {
-    return request<UserRead>(`/users/${userId}`, { token });
+/**
+ * Returns the currently authenticated user, or throws on 401.
+ * Used on initial page load to rehydrate auth state from the session cookie.
+ */
+export async function getMe(): Promise<UserRead> {
+    return request<UserRead>("/auth/me");
+}
+
+export async function getUser(userId: number): Promise<UserRead> {
+    return request<UserRead>(`/users/${userId}`);
 }
 
 // ── Document Upload (Tier 1) ────────────────────────────────────────
 
 export async function requestUploadUrl(
-    token: string,
     body: DocumentUploadRequest,
 ): Promise<DocumentUploadResponse> {
     return request<DocumentUploadResponse>("/documents/upload-url", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        token,
     });
 }
 
@@ -152,6 +200,8 @@ export async function uploadFileToS3(
     presignedUrl: string,
     file: File,
 ): Promise<void> {
+    // Direct S3 upload — credentials must NOT be included here since it's
+    // a third-party URL and would break CORS preflight.
     const res = await fetch(presignedUrl, {
         method: "PUT",
         headers: { "Content-Type": file.type || "application/octet-stream" },
@@ -163,19 +213,17 @@ export async function uploadFileToS3(
 }
 
 export async function confirmUpload(
-    token: string,
     documentId: number,
 ): Promise<DocumentConfirmResponse> {
     return request<DocumentConfirmResponse>(
         `/documents/${documentId}/confirm-upload`,
-        { method: "POST", token },
+        { method: "POST" },
     );
 }
 
 // ── Documents (Tier 2) ──────────────────────────────────────────────
 
 export async function listDocuments(
-    token: string,
     params: DocumentListParams = {},
 ): Promise<DocumentListResponse> {
     const query = qs({
@@ -185,30 +233,22 @@ export async function listDocuments(
         offset: params.offset,
         limit: params.limit,
     });
-    return request<DocumentListResponse>(`/documents${query}`, { token });
+    return request<DocumentListResponse>(`/documents${query}`);
 }
 
-export async function getDocument(
-    token: string,
-    documentId: number,
-): Promise<DocumentRead> {
-    return request<DocumentRead>(`/documents/${documentId}`, { token });
+export async function getDocument(documentId: number): Promise<DocumentRead> {
+    return request<DocumentRead>(`/documents/${documentId}`);
 }
 
-export async function deleteDocument(
-    token: string,
-    documentId: number,
-): Promise<void> {
+export async function deleteDocument(documentId: number): Promise<void> {
     return requestNoContent(`/documents/${documentId}`, {
         method: "DELETE",
-        token,
     });
 }
 
 // ── Receipts (Tier 3) ───────────────────────────────────────────────
 
 export async function listReceipts(
-    token: string,
     params: ReceiptListParams = {},
 ): Promise<ReceiptListResponse> {
     const query = qs({
@@ -217,18 +257,14 @@ export async function listReceipts(
         offset: params.offset,
         limit: params.limit,
     });
-    return request<ReceiptListResponse>(`/receipts${query}`, { token });
+    return request<ReceiptListResponse>(`/receipts${query}`);
 }
 
-export async function getReceipt(
-    token: string,
-    receiptId: number,
-): Promise<ReceiptRead> {
-    return request<ReceiptRead>(`/receipts/${receiptId}`, { token });
+export async function getReceipt(receiptId: number): Promise<ReceiptRead> {
+    return request<ReceiptRead>(`/receipts/${receiptId}`);
 }
 
 export async function updateReceipt(
-    token: string,
     receiptId: number,
     body: ReceiptUpdate,
 ): Promise<ReceiptRead> {
@@ -236,23 +272,18 @@ export async function updateReceipt(
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        token,
     });
 }
 
 export async function getReceiptFileUrl(
-    token: string,
     receiptId: number,
 ): Promise<FileUrlResponse> {
-    return request<FileUrlResponse>(`/receipts/${receiptId}/file-url`, {
-        token,
-    });
+    return request<FileUrlResponse>(`/receipts/${receiptId}/file-url`);
 }
 
 // ── Bank Statements (Tier 3) ────────────────────────────────────────
 
 export async function listStatements(
-    token: string,
     params: BankStatementListParams = {},
 ): Promise<BankStatementListResponse> {
     const query = qs({
@@ -260,20 +291,16 @@ export async function listStatements(
         offset: params.offset,
         limit: params.limit,
     });
-    return request<BankStatementListResponse>(`/statements${query}`, { token });
+    return request<BankStatementListResponse>(`/statements${query}`);
 }
 
 export async function getStatement(
-    token: string,
     statementId: number,
 ): Promise<BankStatementDetailRead> {
-    return request<BankStatementDetailRead>(`/statements/${statementId}`, {
-        token,
-    });
+    return request<BankStatementDetailRead>(`/statements/${statementId}`);
 }
 
 export async function listStatementLines(
-    token: string,
     statementId: number,
     params: BankStatementLineListParams = {},
 ): Promise<BankStatementLineListResponse> {
@@ -284,12 +311,10 @@ export async function listStatementLines(
     });
     return request<BankStatementLineListResponse>(
         `/statements/${statementId}/lines${query}`,
-        { token },
     );
 }
 
 export async function updateStatementLine(
-    token: string,
     statementId: number,
     lineId: number,
     body: BankStatementLineUpdate,
@@ -300,51 +325,40 @@ export async function updateStatementLine(
             method: "PATCH",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(body),
-            token,
         },
     );
 }
 
 export async function getStatementFileUrl(
-    token: string,
     statementId: number,
 ): Promise<FileUrlResponse> {
-    return request<FileUrlResponse>(`/statements/${statementId}/file-url`, {
-        token,
-    });
+    return request<FileUrlResponse>(`/statements/${statementId}/file-url`);
 }
 
 // ── Account Books (Tier 5) ──────────────────────────────────────────
 
 export async function listAccounts(
-    token: string,
     params: AccountBookListParams = {},
 ): Promise<AccountBookListResponse> {
     const query = qs({ offset: params.offset, limit: params.limit });
-    return request<AccountBookListResponse>(`/accounts${query}`, { token });
+    return request<AccountBookListResponse>(`/accounts${query}`);
 }
 
-export async function getAccount(
-    token: string,
-    accountId: number,
-): Promise<AccountBookRead> {
-    return request<AccountBookRead>(`/accounts/${accountId}`, { token });
+export async function getAccount(accountId: number): Promise<AccountBookRead> {
+    return request<AccountBookRead>(`/accounts/${accountId}`);
 }
 
 export async function createAccount(
-    token: string,
     body: AccountBookCreate,
 ): Promise<AccountBookRead> {
     return request<AccountBookRead>("/accounts", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        token,
     });
 }
 
 export async function updateAccount(
-    token: string,
     accountId: number,
     body: AccountBookUpdate,
 ): Promise<AccountBookRead> {
@@ -352,33 +366,24 @@ export async function updateAccount(
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        token,
     });
 }
 
-export async function deleteAccount(
-    token: string,
-    accountId: number,
-): Promise<void> {
+export async function deleteAccount(accountId: number): Promise<void> {
     return requestNoContent(`/accounts/${accountId}`, {
         method: "DELETE",
-        token,
     });
 }
 
 // ── Account Members (Tier 5) ────────────────────────────────────────
 
 export async function listAccountMembers(
-    token: string,
     accountId: number,
 ): Promise<MemberListResponse> {
-    return request<MemberListResponse>(`/accounts/${accountId}/members`, {
-        token,
-    });
+    return request<MemberListResponse>(`/accounts/${accountId}/members`);
 }
 
 export async function addAccountMember(
-    token: string,
     accountId: number,
     body: MemberAdd,
 ): Promise<MemberRead> {
@@ -386,25 +391,21 @@ export async function addAccountMember(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        token,
     });
 }
 
 export async function removeAccountMember(
-    token: string,
     accountId: number,
     userId: number,
 ): Promise<void> {
     return requestNoContent(`/accounts/${accountId}/members/${userId}`, {
         method: "DELETE",
-        token,
     });
 }
 
 // ── Admin Users (Tier 5) ────────────────────────────────────────────
 
 export async function listAdminUsers(
-    token: string,
     params: {
         role?: UserRole;
         is_active?: boolean;
@@ -418,30 +419,22 @@ export async function listAdminUsers(
         offset: params.offset,
         limit: params.limit,
     });
-    return request<UserListResponse>(`/admin/users${query}`, { token });
+    return request<UserListResponse>(`/admin/users${query}`);
 }
 
-export async function createAdminUser(
-    token: string,
-    body: UserCreate,
-): Promise<UserRead> {
+export async function createAdminUser(body: UserCreate): Promise<UserRead> {
     return request<UserRead>("/admin/users", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        token,
     });
 }
 
-export async function getAdminUser(
-    token: string,
-    userId: number,
-): Promise<UserRead> {
-    return request<UserRead>(`/admin/users/${userId}`, { token });
+export async function getAdminUser(userId: number): Promise<UserRead> {
+    return request<UserRead>(`/admin/users/${userId}`);
 }
 
 export async function updateAdminUser(
-    token: string,
     userId: number,
     body: UserUpdate,
 ): Promise<UserRead> {
@@ -449,17 +442,12 @@ export async function updateAdminUser(
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-        token,
     });
 }
 
-export async function deactivateAdminUser(
-    token: string,
-    userId: number,
-): Promise<void> {
+export async function deactivateAdminUser(userId: number): Promise<void> {
     return requestNoContent(`/admin/users/${userId}`, {
         method: "DELETE",
-        token,
     });
 }
 
@@ -468,6 +456,7 @@ export async function deactivateAdminUser(
 export const apiClient = {
     // Auth
     login,
+    logout,
     getMe,
     getUser,
     // Document upload

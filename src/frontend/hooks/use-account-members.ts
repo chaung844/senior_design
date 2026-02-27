@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth, ensureToken } from "@/lib/auth";
 import {
     listAccountMembers,
     addAccountMember,
@@ -16,16 +15,14 @@ export const memberKeys = {
 };
 
 export function useAccountMembers(accountId: number | null) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: memberKeys.list(accountId!),
-        queryFn: () => listAccountMembers(ensureToken(token), accountId!),
-        enabled: !!token && accountId !== null,
+        queryFn: () => listAccountMembers(accountId!),
+        enabled: accountId !== null,
     });
 }
 
 export function useAddAccountMember() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({
@@ -34,7 +31,7 @@ export function useAddAccountMember() {
         }: {
             accountId: number;
             body: MemberAdd;
-        }) => addAccountMember(ensureToken(token), accountId, body),
+        }) => addAccountMember(accountId, body),
         onSuccess: (_data, vars) => {
             qc.invalidateQueries({
                 queryKey: memberKeys.list(vars.accountId),
@@ -44,7 +41,6 @@ export function useAddAccountMember() {
 }
 
 export function useRemoveAccountMember() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({
@@ -53,7 +49,7 @@ export function useRemoveAccountMember() {
         }: {
             accountId: number;
             userId: number;
-        }) => removeAccountMember(ensureToken(token), accountId, userId),
+        }) => removeAccountMember(accountId, userId),
         onSuccess: (_data, vars) => {
             qc.invalidateQueries({
                 queryKey: memberKeys.list(vars.accountId),

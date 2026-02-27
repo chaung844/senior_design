@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { apiClient } from "@/lib/api";
 import type { DocumentType } from "@/lib/types";
-import { useAuth } from "@/lib/auth";
 import { accountKeys } from "@/hooks/use-accounts";
 import { statementKeys } from "@/hooks/use-statements";
 import { receiptKeys } from "@/hooks/use-receipts";
@@ -27,7 +26,6 @@ export function useDocumentUpload(
     documentType: DocumentType,
     accountId?: number,
 ) {
-    const { token } = useAuth();
     const qc = useQueryClient();
     const [isUploading, setIsUploading] = useState(false);
     const [results, setResults] = useState<UploadFileResult[]>([]);
@@ -38,17 +36,6 @@ export function useDocumentUpload(
 
     const uploadFiles = useCallback(
         async (files: File[]): Promise<UploadFileResult[]> => {
-            if (!token) {
-                const err = new Error("Not authenticated");
-                const errorResults: UploadFileResult[] = files.map((file) => ({
-                    file,
-                    status: "error" as const,
-                    error: err.message,
-                }));
-                setResults(errorResults);
-                return errorResults;
-            }
-
             setIsUploading(true);
             const initial: UploadFileResult[] = files.map((file) => ({
                 file,
@@ -76,7 +63,7 @@ export function useDocumentUpload(
                 try {
                     setStatus("uploading");
                     const { upload_url, document_id } =
-                        await apiClient.requestUploadUrl(token, {
+                        await apiClient.requestUploadUrl({
                             file_name: file.name,
                             file_type: fileType,
                             document_type: documentType,
@@ -86,7 +73,7 @@ export function useDocumentUpload(
                     await apiClient.uploadFileToS3(upload_url, file);
 
                     setStatus("confirming");
-                    await apiClient.confirmUpload(token, document_id);
+                    await apiClient.confirmUpload(document_id);
 
                     setStatus("done");
                     outcome.push({ file, status: "done" });
@@ -107,7 +94,7 @@ export function useDocumentUpload(
 
             return outcome;
         },
-        [token, documentType, accountId, qc],
+        [documentType, accountId, qc],
     );
 
     return { uploadFiles, isUploading, results, reset };

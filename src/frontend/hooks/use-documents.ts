@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth, ensureToken } from "@/lib/auth";
 import { listDocuments, getDocument, deleteDocument } from "@/lib/api";
 import type { DocumentListParams } from "@/lib/types";
 import { accountKeys } from "@/hooks/use-accounts";
@@ -16,28 +15,24 @@ export const documentKeys = {
 };
 
 export function useDocuments(params: DocumentListParams = {}) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: documentKeys.list(params),
-        queryFn: () => listDocuments(ensureToken(token), params),
-        enabled: !!token,
+        queryFn: () => listDocuments(params),
     });
 }
 
 export function useDocument(documentId: number | null) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: documentKeys.detail(documentId!),
-        queryFn: () => getDocument(ensureToken(token), documentId!),
-        enabled: !!token && documentId !== null,
+        queryFn: () => getDocument(documentId!),
+        enabled: documentId !== null,
     });
 }
 
 export function useDeleteDocument() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (documentId: number) => deleteDocument(ensureToken(token), documentId),
+        mutationFn: (documentId: number) => deleteDocument(documentId),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: documentKeys.all });
             qc.invalidateQueries({ queryKey: accountKeys.all });

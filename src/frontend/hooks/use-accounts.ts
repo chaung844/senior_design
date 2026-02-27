@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth, ensureToken } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import {
     listAccounts,
     getAccount,
@@ -10,12 +10,7 @@ import {
     deleteAccount,
     listStatements,
 } from "@/lib/api";
-import type {
-    AccountBookCreate,
-    AccountBookUpdate,
-    AccountBookRead,
-    BankStatementRead,
-} from "@/lib/types";
+import type { AccountBookCreate, AccountBookUpdate } from "@/lib/types";
 import {
     apiAccountToAccountBook,
     apiAccountsToAccountBooks,
@@ -30,20 +25,20 @@ export const accountKeys = {
 };
 
 export function useAccounts() {
-    const { token } = useAuth();
+    const { user } = useAuth();
     return useQuery({
         queryKey: accountKeys.list(),
-        queryFn: () => listAccounts(ensureToken(token), { limit: DEFAULT_LIST_LIMIT }),
-        enabled: !!token,
+        queryFn: () => listAccounts({ limit: DEFAULT_LIST_LIMIT }),
+        enabled: !!user,
     });
 }
 
 export function useAccount(accountId: number | null) {
-    const { token } = useAuth();
+    const { user } = useAuth();
     return useQuery({
         queryKey: accountKeys.detail(accountId!),
-        queryFn: () => getAccount(ensureToken(token), accountId!),
-        enabled: !!token && accountId !== null,
+        queryFn: () => getAccount(accountId!),
+        enabled: !!user && accountId !== null,
     });
 }
 
@@ -52,20 +47,20 @@ export function useAccount(accountId: number | null) {
  * the frontend AccountBook[] shape used by sidebar and dashboard.
  */
 export function useAccountBooks() {
-    const { token } = useAuth();
+    const { user } = useAuth();
     return useQuery({
         queryKey: accountKeys.withStatements(),
         queryFn: async () => {
             const [accountsRes, statementsRes] = await Promise.all([
-                listAccounts(ensureToken(token), { limit: DEFAULT_LIST_LIMIT }),
-                listStatements(ensureToken(token), { limit: DEFAULT_LIST_LIMIT }),
+                listAccounts({ limit: DEFAULT_LIST_LIMIT }),
+                listStatements({ limit: DEFAULT_LIST_LIMIT }),
             ]);
             return apiAccountsToAccountBooks(
                 accountsRes.accounts,
                 statementsRes.statements,
             );
         },
-        enabled: !!token,
+        enabled: !!user,
     });
 }
 
@@ -74,28 +69,27 @@ export function useAccountBooks() {
  * the frontend AccountBook shape.
  */
 export function useAccountBook(accountId: number | null) {
-    const { token } = useAuth();
+    const { user } = useAuth();
     return useQuery({
         queryKey: [...accountKeys.detail(accountId!), "book"],
         queryFn: async () => {
             const [account, statementsRes] = await Promise.all([
-                getAccount(ensureToken(token), accountId!),
-                listStatements(ensureToken(token), {
+                getAccount(accountId!),
+                listStatements({
                     account_id: accountId!,
                     limit: DEFAULT_LIST_LIMIT,
                 }),
             ]);
             return apiAccountToAccountBook(account, statementsRes.statements);
         },
-        enabled: !!token && accountId !== null,
+        enabled: !!user && accountId !== null,
     });
 }
 
 export function useCreateAccount() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (body: AccountBookCreate) => createAccount(ensureToken(token), body),
+        mutationFn: (body: AccountBookCreate) => createAccount(body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: accountKeys.all });
         },
@@ -103,7 +97,6 @@ export function useCreateAccount() {
 }
 
 export function useUpdateAccount() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({
@@ -112,7 +105,7 @@ export function useUpdateAccount() {
         }: {
             accountId: number;
             body: AccountBookUpdate;
-        }) => updateAccount(ensureToken(token), accountId, body),
+        }) => updateAccount(accountId, body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: accountKeys.all });
         },
@@ -120,10 +113,9 @@ export function useUpdateAccount() {
 }
 
 export function useDeleteAccount() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (accountId: number) => deleteAccount(ensureToken(token), accountId),
+        mutationFn: (accountId: number) => deleteAccount(accountId),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: accountKeys.all });
         },

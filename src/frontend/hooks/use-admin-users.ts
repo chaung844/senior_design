@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth, ensureToken } from "@/lib/auth";
 import {
     listAdminUsers,
     createAdminUser,
@@ -21,28 +20,24 @@ export const adminUserKeys = {
 export function useAdminUsers(
     params: { role?: UserRole; is_active?: boolean } = {},
 ) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: adminUserKeys.list(params),
-        queryFn: () => listAdminUsers(ensureToken(token), params),
-        enabled: !!token,
+        queryFn: () => listAdminUsers(params),
     });
 }
 
 export function useAdminUser(userId: number | null) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: adminUserKeys.detail(userId!),
-        queryFn: () => getAdminUser(ensureToken(token), userId!),
-        enabled: !!token && userId !== null,
+        queryFn: () => getAdminUser(userId!),
+        enabled: userId !== null,
     });
 }
 
 export function useCreateAdminUser() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (body: UserCreate) => createAdminUser(ensureToken(token), body),
+        mutationFn: (body: UserCreate) => createAdminUser(body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: adminUserKeys.all });
         },
@@ -50,16 +45,10 @@ export function useCreateAdminUser() {
 }
 
 export function useUpdateAdminUser() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: ({
-            userId,
-            body,
-        }: {
-            userId: number;
-            body: UserUpdate;
-        }) => updateAdminUser(ensureToken(token), userId, body),
+        mutationFn: ({ userId, body }: { userId: number; body: UserUpdate }) =>
+            updateAdminUser(userId, body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: adminUserKeys.all });
         },
@@ -67,10 +56,9 @@ export function useUpdateAdminUser() {
 }
 
 export function useDeactivateAdminUser() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
-        mutationFn: (userId: number) => deactivateAdminUser(ensureToken(token), userId),
+        mutationFn: (userId: number) => deactivateAdminUser(userId),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: adminUserKeys.all });
         },

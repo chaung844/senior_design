@@ -65,8 +65,8 @@ export function AppSidebar({
         (a) => a.id === selection.accountId,
     );
 
-    const handleLogout = () => {
-        logout();
+    const handleLogout = async () => {
+        await logout();
         router.replace("/auth/login");
     };
 
@@ -235,7 +235,9 @@ export function AppSidebar({
                                                             {yearData.year}
                                                         </span>
                                                         <Badge
-                                                            variant={getMatchRateBadgeVariant(yearData.overallMatchRate)}
+                                                            variant={getMatchRateBadgeVariant(
+                                                                yearData.overallMatchRate,
+                                                            )}
                                                             className="ml-auto text-[9px] h-4 px-1"
                                                         >
                                                             {

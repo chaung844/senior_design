@@ -109,7 +109,7 @@ src/frontend/
 ├── lib/
 │   ├── utils.ts            # `cn()` class merging utility
 │   ├── api.ts              # API client — all backend endpoint functions (auth, documents, receipts, statements, accounts, admin)
-│   ├── auth.tsx            # AuthProvider context and useAuth() hook (JWT + localStorage)
+│   ├── auth.tsx            # AuthProvider context and useAuth() hook (cookie-based session)
 │   ├── types.ts            # API response types mirroring backend Pydantic schemas (snake_case)
 │   ├── transforms.ts       # Pure functions converting API types → frontend view types (AccountBook, YearData, etc.)
 │   ├── query-client.tsx    # React Query QueryClientProvider wrapper
@@ -117,6 +117,7 @@ src/frontend/
 │   ├── constants.ts        # Shared constants (MONTH_LABELS, chart config, match rate badge variant)
 │   └── domain-types.ts     # Frontend domain types (AccountBook, YearData, MonthData, Transaction) and formatting utilities
 ├── public/                 # Static assets (SVGs)
+├── middleware.ts           # Next.js Edge middleware — dashboard route guard (csrf_token cookie check)
 ├── components.json         # shadcn/ui configuration
 ├── next.config.ts          # Next.js configuration
 ├── tsconfig.json           # TypeScript configuration
@@ -176,7 +177,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 
 - **DataTable** — Generic, type-parameterized table built on TanStack React Table; supports sorting, column filters, pagination, optional toolbar and row click. Used for transaction lists in the month view and for year-level summary tables.
 - **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, receipts) with drag-and-drop and configurable accept types. Connected to the backend via `useDocumentUpload` hook (presigned S3 URLs). Automatically associates uploaded documents with the current `account_id`.
-- **AppSidebar** — Main sidebar navigation. Receives `accountBooks` (fetched via API) as a prop from the dashboard layout; renders an account selector and collapsible year/month tree.
+- **AppSidebar** — Main sidebar navigation. Receives `accountBooks` (fetched via API) as a prop from the dashboard layout; renders an account selector and collapsible year/month tree. The logout button calls `await logout()` (async) before redirecting.
 
 ### Adding New shadcn/ui Components
 
@@ -219,7 +220,7 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 - Target: `ES2017`.
 - All files must be `.ts` or `.tsx`.
 - Prefer explicit types for component props (use `interface` for props).
-- **API response types** (snake_case, matching backend Pydantic schemas) are in `lib/types.ts`: `AccountBookRead`, `BankStatementRead`, `BankStatementLineRead`, `ReceiptRead`, `DocumentRead`, plus enums like `MatchStatus`, `DocumentStatus`.
+- **API response types** (snake_case, matching backend Pydantic schemas) are in `lib/types.ts`: `AccountBookRead`, `BankStatementRead`, `BankStatementLineRead`, `ReceiptRead`, `DocumentRead`, plus enums like `MatchStatus`, `DocumentStatus`. The `Token` type has been removed — login no longer returns a token body.
 - **Frontend view types** (camelCase, used by dashboard components) are in `lib/domain-types.ts`: `Transaction`, `MonthData`, `YearData`, `AccountBook`, `Selection`, `SelectionLevel`.
 - **Transforms** in `lib/transforms.ts` convert API types → view types. Dashboard components consume view types only.
 
@@ -228,13 +229,52 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 - Uses **React `useState`** for local component state where needed.
 - **Server state** (accounts, statements, receipts, documents) is managed by **TanStack React Query**. The `QueryProvider` wraps the app in `app/layout.tsx`. Query keys are organized per domain (e.g. `accountKeys`, `statementKeys`). Mutations automatically invalidate related queries.
 - **Dashboard selection** (account, year, month) is **URL-driven**: the pathname (e.g. `/dashboard/1/2024/3`) is the source of truth. The dashboard layout parses the path via `lib/dashboard-routes.ts` (`parseDashboardPath`, `pathToSelection`) and passes the derived `Selection` to the sidebar and breadcrumb; changing selection is done via `router.push(selectionToPath(...))`, not local state. This allows deep links and preserves the current view on refresh.
+- **Auth state** is managed by `AuthProvider` in `lib/auth.tsx` (see [Authentication](#authentication) below). It exposes `user`, `loading`, `login()`, and `logout()` via `useAuth()`. There is no token in client-side state.
+
+### Authentication
+
+The app uses a **fully cookie-based authentication flow** backed by the FastAPI backend. There is no JWT in `localStorage` or React state anywhere in the codebase.
+
+#### How it works
+
+| Step | What happens |
+|------|-------------|
+| **Login** | `POST /auth/login` — browser sends credentials; backend sets an **HttpOnly JWT cookie** (unreadable by JS) and a readable **`csrf_token` cookie** in the response. |
+| **Session detection** | `AuthProvider` checks for the presence of the `csrf_token` cookie on mount. If present, it calls `GET /auth/me` (cookies sent automatically) to rehydrate `user` state. If absent, loading ends immediately with `user: null`. |
+| **Authenticated requests** | Every `fetch` call in `lib/api.ts` sets `credentials: "include"` so the browser automatically sends the HttpOnly JWT cookie cross-origin. No `Authorization: Bearer` header is used. |
+| **CSRF protection** | For state-changing methods (`POST`, `PUT`, `PATCH`, `DELETE`), `lib/api.ts` reads `csrf_token` from `document.cookie` and attaches it as the `X-CSRF-Token` request header (Double Submit Cookie pattern). |
+| **Logout** | `POST /auth/logout` — backend clears the HttpOnly cookie server-side. `AuthProvider` sets `user` to `null`. `logout()` is **async** — always `await logout()` before navigating. |
+| **401 handling** | A global `_onUnauthorized` callback in `lib/api.ts` is wired to set `user: null` in `AuthProvider`. Any 401 from any API call instantly clears auth state. |
+| **Route guard** | `middleware.ts` (Next.js Edge) checks for the `csrf_token` cookie on `/dashboard/*` routes. Missing cookie → redirect to `/auth/login`. |
+
+#### Key rules
+
+- **Never** store the JWT or any session token in `localStorage`, `sessionStorage`, or React state.
+- **Never** attach `Authorization: Bearer` headers manually — auth is cookie-driven.
+- The `csrf_token` cookie is the only session indicator readable by JavaScript. Treat its presence as a proxy for "a valid session exists."
+- `uploadFileToS3()` is the **only** `fetch` call that must **not** set `credentials: "include"` — it targets a third-party S3 presigned URL where sending cookies would break CORS preflight.
+
+#### `useAuth()` API
+
+```ts
+const { user, loading, login, logout } = useAuth();
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `user` | `UserRead \| null` | The authenticated user, or `null` when logged out / loading. |
+| `loading` | `boolean` | `true` during the initial `/auth/me` session-check on mount. |
+| `login(email, password)` | `() => Promise<void>` | Calls the login endpoint and populates `user`. Throws on failure. |
+| `logout()` | `() => Promise<void>` | Calls the logout endpoint, clears `user`. Always `await` before navigating. |
+
+> **Note:** `ensureToken()` still exists in `lib/auth.tsx` as a deprecated no-op shim that returns `""`. It exists only to prevent compile errors during any ongoing migration. **Do not use it in new code.** Remove existing calls as you encounter them.
 
 ### Data Layer
 
 The frontend fetches all data from the FastAPI backend (`NEXT_PUBLIC_API_URL`). The data flows through three layers:
 
-1. **API client** (`lib/api.ts`) — Thin async functions wrapping `fetch` for every backend endpoint. Handles auth headers, error parsing, and query-string construction. Organized by tier: auth, documents, receipts, statements, accounts, admin users.
-2. **React Query hooks** (`hooks/use-*.ts`) — One file per domain: `use-accounts.ts`, `use-statements.ts`, `use-receipts.ts`, `use-documents.ts`, `use-admin-users.ts`, `use-account-members.ts`, plus `use-document-upload.ts` for the S3 upload flow. Each exports query hooks (read) and mutation hooks (write) with automatic cache invalidation.
+1. **API client** (`lib/api.ts`) — Thin async functions wrapping `fetch` for every backend endpoint. All functions use `credentials: "include"` and inject `X-CSRF-Token` automatically for mutating requests. No token parameters. Handles error parsing and query-string construction. Organized by tier: auth, documents, receipts, statements, accounts, admin users.
+2. **React Query hooks** (`hooks/use-*.ts`) — One file per domain: `use-accounts.ts`, `use-statements.ts`, `use-receipts.ts`, `use-documents.ts`, `use-admin-users.ts`, `use-account-members.ts`, plus `use-document-upload.ts` for the S3 upload flow. Each exports query hooks (read) and mutation hooks (write) with automatic cache invalidation. Hooks that gate on authentication use `enabled: !!user` (from `useAuth()`) rather than token presence.
 3. **Transforms** (`lib/transforms.ts`) — Pure functions that convert API response types (flat, snake_case) into the hierarchical view types used by dashboard components. Key transforms: `apiAccountToAccountBook()`, `statementsToYearData()`, `statementToMonthData()`, `lineToTransaction()`.
 
 Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`).
@@ -243,7 +283,8 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 
 | Tier | Endpoints | Frontend hooks |
 |------|-----------|----------------|
-| **Tier 1** — Auth & Upload | `POST /auth/login`, `GET /auth/me`, `POST /documents/upload-url`, `POST /documents/{id}/confirm-upload` | `useAuth()`, `useDocumentUpload()` |
+| **Tier 1** — Auth | `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` | `useAuth()` — `login()`, `logout()` |
+| **Tier 1** — Upload | `POST /documents/upload-url`, `POST /documents/{id}/confirm-upload` | `useDocumentUpload()` |
 | **Tier 2** — Documents | `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}` | `useDocuments()`, `useDocument()`, `useDeleteDocument()` |
 | **Tier 3** — Receipts | `GET /receipts`, `GET /receipts/{id}`, `PATCH /receipts/{id}`, `GET /receipts/{id}/file-url` | `useReceipts()`, `useReceipt()`, `useUpdateReceipt()`, `useReceiptFileUrl()` |
 | **Tier 3** — Statements | `GET /statements`, `GET /statements/{id}`, `GET /statements/{id}/lines`, `PATCH /statements/{id}/lines/{lineId}`, `GET /statements/{id}/file-url` | `useStatements()`, `useStatement()`, `useStatementLines()`, `useUpdateStatementLine()`, `useStatementFileUrl()` |
@@ -266,8 +307,8 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 | **Month Data**       | Monthly breakdown with transactions, balances, and reconciliation stats (computed from statement lines). Frontend view: `MonthData`. |
 | **Match Rate**       | Percentage of transactions successfully matched to receipts. Derived from `match_status` on statement lines. |
 | **Match Status**     | Enum: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`. Present on both statement lines and receipts. |
-| **Reconciliation**   | Process of matching bank statement transactions to receipts/internal records |
-| **Selection**        | Navigation state tracking current account, year, month, and drill level |
+| **Reconciliation**   | Process of matching bank statement transactions to receipts/internal records. |
+| **Selection**        | Navigation state tracking current account, year, month, and drill level. |
 
 ---
 
@@ -277,7 +318,7 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 
 1. **Landing page** (`/landing-page`) — Public entry point with hero, feature grid, and CTAs linking to auth.
 2. **Auth** — `/auth/login` presents a login form. `/auth/signup` currently shows a **Work in Progress** notice indicating registration is closed during active development. The original signup form is preserved at `app/auth/_signup/page.tsx` (private, unrouted via the `_` prefix) and can be re-enabled by moving it back to `app/auth/signup/page.tsx` when the app is ready to accept new users.
-3. **Dashboard** (`/dashboard`) — Authenticated experience. Auth guard in `app/dashboard/layout.tsx` redirects unauthenticated users to `/auth/login`. Data is fetched from the backend API via React Query hooks.
+3. **Dashboard** (`/dashboard`) — Authenticated experience. The Edge middleware (`middleware.ts`) redirects requests missing the `csrf_token` cookie to `/auth/login` before the page renders. The dashboard layout also performs a client-side redirect if `user` is null after the auth check resolves.
 
 ### Dashboard Drill-Down
 
@@ -327,24 +368,43 @@ Create a new `.ts` file in `hooks/`:
 hooks/use-my-hook.ts
 ```
 
+React Query hooks no longer receive or pass a `token` argument. The API client handles credentials automatically. Gate queries on `enabled: !!user` (from `useAuth()`) when the data is user-specific and should not be fetched while unauthenticated:
+
+```ts
+export function useMyResource() {
+    const { user } = useAuth();
+    return useQuery({
+        queryKey: myKeys.list(),
+        queryFn: () => listMyResource(),
+        enabled: !!user,
+    });
+}
+```
+
 ### Modify theming / colors
 
 Edit CSS custom properties in `app/globals.css` under `:root` (light) and the dark mode blocks.
 
----
-
 ### Add a new API endpoint
 
 1. Add the TypeScript response/request types to `lib/types.ts` (match backend Pydantic schema, snake_case).
-2. Add the endpoint function to `lib/api.ts` following the existing `request<T>()` pattern. Add it to the `apiClient` barrel export.
+2. Add the endpoint function to `lib/api.ts` following the existing `request<T>()` / `requestNoContent()` pattern. **Do not add a `token` parameter.** Add the function to the `apiClient` barrel export at the bottom of the file.
+   - Read operations → `request<T>(path)` (GET, no CSRF header needed).
+   - Write operations → `request<T>(path, { method: "POST" | "PATCH" | "PUT" | "DELETE", ... })` — `X-CSRF-Token` is injected automatically by `baseFetch`.
 3. Create a React Query hook in `hooks/use-<domain>.ts` using `useQuery` (reads) or `useMutation` (writes). Define a query key factory at the top of the file.
 4. If the response needs transformation for dashboard components, add a transform function to `lib/transforms.ts`.
-5. Update this `AGENTS.md` if the new endpoint connects a new tier or adds a major feature.
+5. Update the **Connected Backend Endpoints** table and this `AGENTS.md` if the new endpoint connects a new tier or adds a major feature.
 
 ---
 
 ## Things to Avoid
 
+- **Do not** store the JWT or session tokens in `localStorage`, `sessionStorage`, or React state — the session is managed entirely by the browser's cookie jar via HttpOnly cookies set by the backend.
+- **Do not** add `Authorization: Bearer` headers to API calls — auth is cookie-driven; `credentials: "include"` handles it.
+- **Do not** add a `token` parameter to API functions in `lib/api.ts` — all functions are credential-free at the call site.
+- **Do not** call `ensureToken()` in new code — it is a deprecated no-op shim kept only for backward compatibility. Remove it when encountered.
+- **Do not** add `credentials: "include"` to `uploadFileToS3()` — it targets a third-party S3 presigned URL and sending cookies there breaks CORS preflight.
+- **Do not** call `logout()` without `await` — it is async (calls the backend to clear the HttpOnly cookie) and navigation should only happen after it resolves.
 - **Do not** edit files in `components/ui/` manually — they are managed by shadcn CLI.
 - **Do not** use inline styles or CSS modules — use Tailwind utility classes.
 - **Do not** install alternative icon libraries — use Hugeicons consistently.
@@ -361,6 +421,7 @@ Edit CSS custom properties in `app/globals.css` under `:root` (light) and the da
 No test framework is currently configured. When adding tests:
 - Prefer **Vitest** or **Jest** with **React Testing Library** for component tests.
 - Place test files adjacent to source files as `*.test.tsx` or in a `__tests__/` directory.
+- When mocking `useAuth()`, return `{ user: mockUser, loading: false, login: vi.fn(), logout: vi.fn() }` — there is no `token` field.
 
 ---
 
@@ -370,6 +431,7 @@ No test framework is currently configured. When adding tests:
 - Environment variables should be placed in `.env.local` (gitignored).
 - Prefix client-side env vars with `NEXT_PUBLIC_`.
 - **Required env var**: `NEXT_PUBLIC_API_URL` — base URL of the FastAPI backend (e.g. `http://localhost:8000`). All API calls use this.
+- The backend must set `Access-Control-Allow-Credentials: true` and a matching `Access-Control-Allow-Origin` for cookie-based cross-origin requests to work in development.
 - The project is deployable to **Vercel** or any platform supporting Next.js.
 
 ---
@@ -381,4 +443,7 @@ Keep this file in sync with the codebase when making structural or stack changes
 - **Directory structure** — Update when adding or removing top-level directories or notable files (e.g. new app routes, new components in `components/`, new hooks or lib modules).
 - **Tech stack** — Update when adding major UI or data dependencies; keep in sync with `package.json`.
 - **Route map** — Update when adding or changing routes.
+- **Authentication section** — Update when the session mechanism, cookie names, CSRF strategy, or `useAuth()` API surface changes.
+- **Connected Backend Endpoints table** — Update when adding, removing, or renaming backend endpoints consumed by the frontend.
 - **Key application components** — Update when introducing or removing shared components (e.g. new tables, dialogs, or layout components).
+- **Things to Avoid** — Update when new anti-patterns are identified or old constraints are lifted.

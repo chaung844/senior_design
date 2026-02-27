@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth, ensureToken } from "@/lib/auth";
 import {
     listReceipts,
     getReceipt,
@@ -20,25 +19,21 @@ export const receiptKeys = {
 };
 
 export function useReceipts(params: ReceiptListParams = {}) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: receiptKeys.list(params),
-        queryFn: () => listReceipts(ensureToken(token), params),
-        enabled: !!token,
+        queryFn: () => listReceipts(params),
     });
 }
 
 export function useReceipt(receiptId: number | null) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: receiptKeys.detail(receiptId!),
-        queryFn: () => getReceipt(ensureToken(token), receiptId!),
-        enabled: !!token && receiptId !== null,
+        queryFn: () => getReceipt(receiptId!),
+        enabled: receiptId !== null,
     });
 }
 
 export function useUpdateReceipt() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({
@@ -47,7 +42,7 @@ export function useUpdateReceipt() {
         }: {
             receiptId: number;
             body: ReceiptUpdate;
-        }) => updateReceipt(ensureToken(token), receiptId, body),
+        }) => updateReceipt(receiptId, body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: receiptKeys.all });
             qc.invalidateQueries({ queryKey: accountKeys.all });
@@ -56,11 +51,10 @@ export function useUpdateReceipt() {
 }
 
 export function useReceiptFileUrl(receiptId: number | null) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: receiptKeys.fileUrl(receiptId!),
-        queryFn: () => getReceiptFileUrl(ensureToken(token), receiptId!),
-        enabled: !!token && receiptId !== null,
+        queryFn: () => getReceiptFileUrl(receiptId!),
+        enabled: receiptId !== null,
         staleTime: 55 * 60 * 1000,
     });
 }

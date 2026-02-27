@@ -1,7 +1,6 @@
 "use client";
 
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { useAuth, ensureToken } from "@/lib/auth";
 import {
     listStatements,
     getStatement,
@@ -28,24 +27,21 @@ export const statementKeys = {
 };
 
 export function useStatements(accountId?: number) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: statementKeys.list(accountId),
         queryFn: () =>
-            listStatements(ensureToken(token), {
+            listStatements({
                 account_id: accountId,
                 limit: DEFAULT_LIST_LIMIT,
             }),
-        enabled: !!token,
     });
 }
 
 export function useStatement(statementId: number | null) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: statementKeys.detail(statementId!),
-        queryFn: () => getStatement(ensureToken(token), statementId!),
-        enabled: !!token && statementId !== null,
+        queryFn: () => getStatement(statementId!),
+        enabled: statementId !== null,
     });
 }
 
@@ -53,16 +49,14 @@ export function useStatementLines(
     statementId: number | null,
     params: BankStatementLineListParams = {},
 ) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: statementKeys.lines(statementId!, params),
-        queryFn: () => listStatementLines(ensureToken(token), statementId!, params),
-        enabled: !!token && statementId !== null,
+        queryFn: () => listStatementLines(statementId!, params),
+        enabled: statementId !== null,
     });
 }
 
 export function useUpdateStatementLine() {
-    const { token } = useAuth();
     const qc = useQueryClient();
     return useMutation({
         mutationFn: ({
@@ -73,7 +67,7 @@ export function useUpdateStatementLine() {
             statementId: number;
             lineId: number;
             body: BankStatementLineUpdate;
-        }) => updateStatementLine(ensureToken(token), statementId, lineId, body),
+        }) => updateStatementLine(statementId, lineId, body),
         onSuccess: (_data, vars) => {
             qc.invalidateQueries({
                 queryKey: statementKeys.detail(vars.statementId),
@@ -87,11 +81,10 @@ export function useUpdateStatementLine() {
 }
 
 export function useStatementFileUrl(statementId: number | null) {
-    const { token } = useAuth();
     return useQuery({
         queryKey: statementKeys.fileUrl(statementId!),
-        queryFn: () => getStatementFileUrl(ensureToken(token), statementId!),
-        enabled: !!token && statementId !== null,
+        queryFn: () => getStatementFileUrl(statementId!),
+        enabled: statementId !== null,
         staleTime: 55 * 60 * 1000, // presigned URL valid ~1hr
     });
 }

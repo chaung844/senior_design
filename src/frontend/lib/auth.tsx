@@ -12,95 +12,106 @@ import {
 import { apiClient, setOnUnauthorized } from "@/lib/api";
 import type { UserRead } from "@/lib/types";
 
-const TOKEN_KEY = "matcha_access_token";
-const AUTH_COOKIE = "matcha_logged_in";
+// ── Types ─────────────────────────────────────────────────────────────
 
 interface AuthState {
     user: UserRead | null;
-    token: string | null;
     loading: boolean;
     login: (email: string, password: string) => Promise<void>;
-    logout: () => void;
+    logout: () => Promise<void>;
 }
+
+// ── Context ───────────────────────────────────────────────────────────
 
 const AuthContext = createContext<AuthState | null>(null);
 
-function getStoredToken(): string | null {
-    if (typeof window === "undefined") return null;
-    return localStorage.getItem(TOKEN_KEY);
+// ── Cookie helpers ────────────────────────────────────────────────────
+
+/**
+ * Returns true when the backend's readable `csrf_token` cookie is present.
+ * Because the JWT lives in an HttpOnly cookie we cannot inspect it directly;
+ * the presence of `csrf_token` is our proxy for "a session exists".
+ */
+function hasCsrfCookie(): boolean {
+    if (typeof document === "undefined") return false;
+    return document.cookie
+        .split("; ")
+        .some((row) => row.startsWith("csrf_token="));
 }
 
-function setAuthCookie(hasToken: boolean): void {
-    if (typeof document === "undefined") return;
-    if (hasToken) {
-        document.cookie = `${AUTH_COOKIE}=1; path=/; SameSite=Strict; max-age=86400`;
-    } else {
-        document.cookie = `${AUTH_COOKIE}=; path=/; max-age=0`;
-    }
-}
-
-function setStoredToken(token: string | null): void {
-    if (typeof window === "undefined") return;
-    if (token) {
-        localStorage.setItem(TOKEN_KEY, token);
-    } else {
-        localStorage.removeItem(TOKEN_KEY);
-    }
-    setAuthCookie(!!token);
-}
+// ── Provider ──────────────────────────────────────────────────────────
 
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<UserRead | null>(null);
-    const [token, setTokenState] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const setToken = useCallback((value: string | null) => {
-        setTokenState(value);
-        setStoredToken(value);
+    // ── Logout ────────────────────────────────────────────────────────
+    const logout = useCallback(async () => {
+        try {
+            // Ask the backend to clear the HttpOnly JWT cookie.
+            await apiClient.logout();
+        } catch {
+            // Even if the network call fails, clear local state so the
+            // user is not stuck in a broken authenticated state.
+        } finally {
+            setUser(null);
+        }
     }, []);
 
-    const logout = useCallback(() => {
-        setUser(null);
-        setToken(null);
-    }, [setToken]);
+    // ── Login ─────────────────────────────────────────────────────────
+    const login = useCallback(async (email: string, password: string) => {
+        // The backend sets the HttpOnly JWT cookie + the readable
+        // csrf_token cookie in its response — no token in body.
+        await apiClient.login(email, password);
+        // Fetch the user profile now that the session cookies are set.
+        const me = await apiClient.getMe();
+        setUser(me);
+    }, []);
 
-    const login = useCallback(
-        async (email: string, password: string) => {
-            const { access_token } = await apiClient.login(email, password);
-            setToken(access_token);
-            const me = await apiClient.getMe(access_token);
-            setUser(me);
-        },
-        [setToken]
-    );
-
+    // ── Session rehydration on mount ──────────────────────────────────
     useEffect(() => {
-        const stored = getStoredToken();
-        if (!stored) {
+        // Fast path: if there is no csrf_token cookie there is no active
+        // session — skip the network round-trip entirely.
+        if (!hasCsrfCookie()) {
             setLoading(false);
             return;
         }
-        setTokenState(stored);
-        setAuthCookie(true);
+
+        // Validate the session by calling /auth/me.  The browser will
+        // automatically include the HttpOnly JWT cookie because we set
+        // credentials: "include" in the API client.
         apiClient
-            .getMe(stored)
+            .getMe()
             .then(setUser)
-            .catch(() => setToken(null))
+            .catch(() => {
+                // 401 or network error — treat as logged out.
+                setUser(null);
+            })
             .finally(() => setLoading(false));
-    }, [setToken]);
+    }, []);
 
+    // ── Global 401 handler ────────────────────────────────────────────
     useEffect(() => {
-        setOnUnauthorized(logout);
+        // Any 401 from any API call triggers an immediate logout so the
+        // app never stays in a half-authenticated state.
+        setOnUnauthorized(() => {
+            setUser(null);
+        });
         return () => setOnUnauthorized(null);
-    }, [logout]);
+    }, []);
 
+    // ── Context value ─────────────────────────────────────────────────
     const value = useMemo<AuthState>(
-        () => ({ user, token, loading, login, logout }),
-        [user, token, loading, login, logout]
+        () => ({ user, loading, login, logout }),
+        [user, loading, login, logout],
     );
 
-    return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+    return (
+        <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+    );
 }
+
+// ── Hooks ─────────────────────────────────────────────────────────────
 
 export function useAuth(): AuthState {
     const ctx = useContext(AuthContext);
@@ -110,7 +121,14 @@ export function useAuth(): AuthState {
     return ctx;
 }
 
-export function ensureToken(token: string | null): string {
-    if (!token) throw new Error("Not authenticated");
-    return token;
+/**
+ * @deprecated Token-based auth has been replaced with cookie-based auth.
+ * This shim exists only to avoid breaking call sites during the migration.
+ * Remove it once all consumers have been updated to drop the token argument.
+ */
+export function ensureToken(_token?: string | null): string {
+    // The token is now managed entirely by the browser cookie jar.
+    // Return an empty string so existing callers compile without errors;
+    // the actual credential is sent automatically via credentials: "include".
+    return "";
 }
