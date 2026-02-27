@@ -40,6 +40,16 @@ def _safe_date(value) -> date:
     return datetime.strptime(raw, "%Y-%m-%d").date()
 
 
+def _construct_date_with_year(value, year) -> date:
+    if value is None or str(value).strip().lower() == "n/a":
+        raise ValueError("Missing required date field")
+    raw = str(value).strip()
+    parts = raw.split("/")
+    # add year to raw month/date
+    constructed_date = f"{year}-{parts[0]}-{parts[1]}"
+    return datetime.strptime(constructed_date, "%Y-%m-%d").date()
+
+
 def _safe_str(value, fallback: str = "") -> str:
     if value is None or str(value).strip().lower() == "n/a":
         return fallback
@@ -57,9 +67,7 @@ def _download_to_temp(aws: AWSService, s3_key: str) -> str:
     return tmp.name
 
 
-async def handle_parse_receipt(
-    payload: dict, session: AsyncSession, aws: AWSService
-):
+async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSService):
     document_id = payload["document_id"]
     s3_key = payload["s3_key"]
 
@@ -96,9 +104,7 @@ async def handle_parse_receipt(
         os.unlink(tmp_path)
 
 
-async def handle_parse_statement(
-    payload: dict, session: AsyncSession, aws: AWSService
-):
+async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSService):
     document_id = payload["document_id"]
     s3_key = payload["s3_key"]
     account_id = payload.get("account_id")
@@ -126,9 +132,7 @@ async def handle_parse_statement(
             account_id=account_id,
             month=stmt_date.month,
             year=stmt_date.year,
-            account_number_last4=_safe_str(
-                metadata.get("last_4_digits"), "0000"
-            ),
+            account_number_last4=_safe_str(metadata.get("last_4_digits"), "0000"),
             total_amount=total_amount,
         )
         session.add(statement)
@@ -139,8 +143,14 @@ async def handle_parse_statement(
                 statement_id=statement.statement_id,
                 line_number=idx + 1,
                 reference_number=str(row.get("reference", "")),
-                transaction_date=_safe_date(row.get("transaction_date")),
-                posting_date=_safe_date(row.get("posting_date")),
+                transaction_date=_safe_date(
+                    _construct_date_with_year(
+                        row.get("transaction_date"), stmt_date.year
+                    )
+                ),
+                posting_date=_safe_date(
+                    _construct_date_with_year(row.get("posting_date"), stmt_date.year)
+                ),
                 description=str(row.get("description", "")),
                 vendor=str(row.get("description", "")).split()[0]
                 if row.get("description")
