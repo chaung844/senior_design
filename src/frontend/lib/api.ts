@@ -102,7 +102,7 @@ async function baseFetch(
 
     if (res.status === 401) {
         _onUnauthorized?.();
-        throw new Error("Session expired");
+        throw new Error("Invalid Credentials");
     }
 
     if (!res.ok) {
@@ -377,6 +377,11 @@ export async function deleteAccount(accountId: number): Promise<void> {
 
 // ── Account Members (Tier 5) ────────────────────────────────────────
 
+export async function lookupUserByEmail(email: string): Promise<UserRead> {
+    const query = qs({ email });
+    return request<UserRead>(`/accounts/members/lookup${query}`);
+}
+
 export async function listAccountMembers(
     accountId: number,
 ): Promise<MemberListResponse> {
@@ -485,6 +490,7 @@ export const apiClient = {
     updateAccount,
     deleteAccount,
     // Account members
+    lookupUserByEmail,
     listAccountMembers,
     addAccountMember,
     removeAccountMember,

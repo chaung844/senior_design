@@ -30,6 +30,13 @@ import {
     CollapsibleContent,
     CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogTrigger,
+} from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -46,6 +53,9 @@ import {
     Tick02Icon,
     Alert02Icon,
     LogoutIcon,
+    UserIcon,
+    Mail01Icon,
+    ShieldUserIcon,
 } from "@hugeicons/core-free-icons";
 
 interface AppSidebarProps {
@@ -60,7 +70,8 @@ export function AppSidebar({
     onSelectionChange,
 }: AppSidebarProps) {
     const router = useRouter();
-    const { logout } = useAuth();
+    const { logout, user } = useAuth();
+    const [profileOpen, setProfileOpen] = React.useState(false);
     const currentAccount = accountBooks.find(
         (a) => a.id === selection.accountId,
     );
@@ -115,7 +126,7 @@ export function AppSidebar({
                         strokeWidth={2}
                         className="size-5 text-primary"
                     />
-                    <div className="flex flex-col">
+                    <div className="flex flex-col ml-2">
                         <span className="text-sm font-semibold tracking-tight">
                             Matcha
                         </span>
@@ -333,25 +344,128 @@ export function AppSidebar({
 
             <SidebarFooter>
                 <div className="px-2 py-1 space-y-2">
-                    <div className="text-[10px] text-muted-foreground flex items-center justify-between">
+                    {/*<div className="text-[10px] text-muted-foreground flex items-center justify-between">
                         <span>Last synced</span>
                         <span className="font-mono">
                             {currentAccount?.lastUpdated ?? "—"}
                         </span>
-                    </div>
-                    <Button
-                        variant="ghost"
-                        size="sm"
-                        className="w-full justify-start gap-2 text-muted-foreground"
-                        onClick={handleLogout}
-                    >
-                        <HugeiconsIcon
-                            icon={LogoutIcon}
-                            strokeWidth={2}
-                            className="size-4"
-                        />
-                        Log out
-                    </Button>
+                    </div>*/}
+
+                    <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+                        <DialogTrigger asChild>
+                            <Button
+                                variant="ghost"
+                                size="sm"
+                                className="w-full justify-start gap-2 text-muted-foreground"
+                            >
+                                <HugeiconsIcon
+                                    icon={UserIcon}
+                                    strokeWidth={2}
+                                    className="size-4 shrink-0"
+                                />
+                                <span className="truncate">
+                                    {user?.name ?? "Account"}
+                                </span>
+                            </Button>
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-xs">
+                            <DialogHeader>
+                                <DialogTitle className="flex items-center gap-2">
+                                    <div className="flex size-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
+                                        <HugeiconsIcon
+                                            icon={UserIcon}
+                                            strokeWidth={2}
+                                            className="size-4 text-primary"
+                                        />
+                                    </div>
+                                    <span>{user?.name ?? "—"}</span>
+                                </DialogTitle>
+                            </DialogHeader>
+
+                            <div className="space-y-3 pt-1">
+                                <div className="flex items-start gap-3">
+                                    <HugeiconsIcon
+                                        icon={Mail01Icon}
+                                        strokeWidth={2}
+                                        className="size-4 text-muted-foreground mt-0.5 shrink-0"
+                                    />
+                                    <div className="flex flex-col gap-0.5 min-w-0">
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            Email
+                                        </span>
+                                        <span className="text-xs font-mono break-all">
+                                            {user?.email ?? "—"}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3">
+                                    <HugeiconsIcon
+                                        icon={ShieldUserIcon}
+                                        strokeWidth={2}
+                                        className="size-4 text-muted-foreground mt-0.5 shrink-0"
+                                    />
+                                    <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            Role
+                                        </span>
+                                        <Badge
+                                            variant="outline"
+                                            className="w-fit capitalize text-[10px] px-1.5 py-0"
+                                        >
+                                            {user?.role ?? "—"}
+                                        </Badge>
+                                    </div>
+                                </div>
+
+                                <div className="flex items-start gap-3">
+                                    <HugeiconsIcon
+                                        icon={Calendar03Icon}
+                                        strokeWidth={2}
+                                        className="size-4 text-muted-foreground mt-0.5 shrink-0"
+                                    />
+                                    <div className="flex flex-col gap-0.5">
+                                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                                            Member since
+                                        </span>
+                                        <span className="text-xs font-mono">
+                                            {user?.created_at
+                                                ? new Date(
+                                                      user.created_at,
+                                                  ).toLocaleDateString(
+                                                      undefined,
+                                                      {
+                                                          year: "numeric",
+                                                          month: "long",
+                                                          day: "numeric",
+                                                      },
+                                                  )
+                                                : "—"}
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="pt-2 border-t">
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="w-full justify-start gap-2 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                    onClick={async () => {
+                                        setProfileOpen(false);
+                                        await handleLogout();
+                                    }}
+                                >
+                                    <HugeiconsIcon
+                                        icon={LogoutIcon}
+                                        strokeWidth={2}
+                                        className="size-4"
+                                    />
+                                    Log out
+                                </Button>
+                            </div>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </SidebarFooter>
         </Sidebar>

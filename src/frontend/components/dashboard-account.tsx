@@ -26,15 +26,22 @@ import {
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
+import { UploadDialog } from "@/components/upload-dialog";
+import { useDocumentUpload } from "@/hooks/use-document-upload";
+import { EditAccountDialog } from "@/components/edit-account-dialog";
+import type { AccountBookRead } from "@/lib/types";
+import type { UserRole } from "@/lib/types";
 
 interface DashboardAccountProps {
     account: AccountBook;
+    /** Raw API account data, needed by the edit dialog. Present only for admin users. */
+    rawAccount?: AccountBookRead;
+    /** The current user's system role — edit controls are shown for admins only. */
+    userRole?: UserRole;
     onYearClick: (year: number) => void;
 }
 
-function makeYearColumns(
-    currency: string,
-): ColumnDef<YearData, unknown>[] {
+function makeYearColumns(currency: string): ColumnDef<YearData, unknown>[] {
     return [
         {
             accessorKey: "year",
@@ -166,8 +173,17 @@ function makeYearColumns(
 
 export function DashboardAccount({
     account,
+    rawAccount,
+    userRole,
     onYearClick,
 }: DashboardAccountProps) {
+    const {
+        uploadFiles,
+        isUploading,
+        results: uploadResults,
+        reset: resetUpload,
+    } = useDocumentUpload("bank_statement", Number(account.id) || undefined);
+
     const allYears = account.years.slice().sort((a, b) => b.year - a.year);
     const latestYear = allYears[0];
 
@@ -197,6 +213,8 @@ export function DashboardAccount({
             ? Math.round((currentYearMatch - previousYearMatch) * 10) / 10
             : null;
 
+    const isAdmin = userRole === "admin";
+
     const yearColumns = React.useMemo(
         () => makeYearColumns(account.currency),
         [account.currency],
@@ -225,6 +243,24 @@ export function DashboardAccount({
                     <Badge variant="outline" className="font-mono text-[10px]">
                         {account.currency}
                     </Badge>
+                    <div className="ml-auto flex items-center gap-2">
+                        {isAdmin && rawAccount && (
+                            <EditAccountDialog account={rawAccount} />
+                        )}
+                        <UploadDialog
+                            title="Upload Bank Statement"
+                            description="Upload a PDF bank statement to be parsed and reconciled against this account."
+                            accept=".pdf"
+                            acceptLabel="PDF only"
+                            multiple={false}
+                            onUpload={uploadFiles}
+                            isUploading={isUploading}
+                            uploadResults={uploadResults}
+                            onOpenChange={(open) => {
+                                if (!open) resetUpload();
+                            }}
+                        />
+                    </div>
                 </div>
                 <p className="text-xs text-muted-foreground">
                     {account.bankName} · {account.accountNumber} · Account
@@ -253,10 +289,7 @@ export function DashboardAccount({
                     value={`${overallMatchRate}%`}
                 >
                     <div className="flex flex-col gap-1.5">
-                        <Progress
-                            value={overallMatchRate}
-                            className="h-1.5"
-                        />
+                        <Progress value={overallMatchRate} className="h-1.5" />
                         {matchTrend !== null && (
                             <div className="flex items-center gap-1 text-[11px]">
                                 {matchTrend >= 0 ? (
@@ -372,9 +405,9 @@ export function DashboardAccount({
                         <div className="text-2xl font-bold tabular-nums">
                             {latestYear
                                 ? formatCurrency(
-                                    latestYear.closingBalance,
-                                    account.currency,
-                                )
+                                      latestYear.closingBalance,
+                                      account.currency,
+                                  )
                                 : "—"}
                         </div>
                         <p className="text-[11px] text-muted-foreground mt-0.5">

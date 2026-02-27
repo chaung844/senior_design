@@ -2,17 +2,27 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { DashboardAccount } from "@/components/dashboard-account";
-import { useAccountBook } from "@/hooks/use-accounts";
+import { useAccountBook, useAccount } from "@/hooks/use-accounts";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/lib/auth";
 
 export default function DashboardAccountPage() {
     const params = useParams();
     const router = useRouter();
+    const { user } = useAuth();
     const accountId = Number(params.accountId);
-    const { data: account, isLoading } = useAccountBook(
-        Number.isNaN(accountId) ? null : accountId,
+
+    const isValidId = !Number.isNaN(accountId);
+
+    const { data: account, isLoading: bookLoading } = useAccountBook(
+        isValidId ? accountId : null,
     );
+    const { data: rawAccount, isLoading: rawLoading } = useAccount(
+        isValidId ? accountId : null,
+    );
+
+    const isLoading = bookLoading || rawLoading;
 
     if (isLoading) return <DashboardSkeleton />;
     if (!account) return <EmptyState message="Account not found." />;
@@ -20,6 +30,8 @@ export default function DashboardAccountPage() {
     return (
         <DashboardAccount
             account={account}
+            rawAccount={rawAccount}
+            userRole={user?.role}
             onYearClick={(year) =>
                 router.push(`/dashboard/${accountId}/${year}`)
             }
