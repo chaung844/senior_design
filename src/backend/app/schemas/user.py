@@ -42,8 +42,3 @@ class UserListResponse(BaseModel):
     total: int
     offset: int
     limit: int
-
-
-class Token(BaseModel):
-    access_token: str
-    token_type: str

@@ -19,8 +19,8 @@ from app.schemas.document import (
     DocumentUploadResponse,
 )
 from app.services.aws_services import AWSService
-from app.utils.auth import get_current_user
 from app.utils.access import get_owned_document
+from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/documents", tags=["documents"])
 
@@ -32,7 +32,11 @@ def _viewer_guard(user: User) -> None:
         raise HTTPException(status_code=403, detail="Viewers have read-only access")
 
 
-@router.post("/upload-url", response_model=DocumentUploadResponse)
+@router.post(
+    "/upload-url",
+    response_model=DocumentUploadResponse,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def get_upload_url(
     request: DocumentUploadRequest,
     db: AsyncSession = Depends(get_db),
@@ -68,7 +72,11 @@ async def get_upload_url(
     }
 
 
-@router.post("/{document_id}/confirm-upload", response_model=DocumentConfirmResponse)
+@router.post(
+    "/{document_id}/confirm-upload",
+    response_model=DocumentConfirmResponse,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def confirm_upload(
     document_id: int,
     db: AsyncSession = Depends(get_db),
@@ -171,7 +179,9 @@ async def get_document(
     return await get_owned_document(document_id, current_user, db)
 
 
-@router.delete("/{document_id}", status_code=204)
+@router.delete(
+    "/{document_id}", status_code=204, dependencies=[Depends(verify_csrf_token)]
+)
 async def delete_document(
     document_id: int,
     background_tasks: BackgroundTasks,

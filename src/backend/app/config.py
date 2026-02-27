@@ -115,6 +115,12 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(
         default=1440, description="Access token expiration time in minutes"
     )
+    # Set to True in production (HTTPS only).  Keep False for local HTTP dev
+    # so the browser does not silently drop the cookies.
+    cookie_secure: bool = Field(
+        default=False,
+        description="Set the Secure flag on auth cookies (requires HTTPS)",
+    )
 
 
 @lru_cache

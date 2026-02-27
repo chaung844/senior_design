@@ -23,8 +23,8 @@ from app.schemas.bank_statement_line import (
 )
 from app.schemas.document import FileUrlResponse
 from app.services.aws_services import AWSService
-from app.utils.auth import get_current_user
 from app.utils.access import get_owned_statement, get_owned_statement_line
+from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/statements", tags=["statements"])
 
@@ -141,9 +141,7 @@ async def get_statement(
     return _statement_to_detail(statement)
 
 
-@router.get(
-    "/{statement_id}/lines", response_model=BankStatementLineListResponse
-)
+@router.get("/{statement_id}/lines", response_model=BankStatementLineListResponse)
 async def list_statement_lines(
     statement_id: int,
     match_status: Optional[MatchStatus] = Query(default=None),
@@ -158,11 +156,7 @@ async def list_statement_lines(
     if match_status is not None:
         line_filter = (*line_filter, BankStatementLine.match_status == match_status)
 
-    count_stmt = (
-        select(func.count())
-        .select_from(BankStatementLine)
-        .where(*line_filter)
-    )
+    count_stmt = select(func.count()).select_from(BankStatementLine).where(*line_filter)
     total = (await db.execute(count_stmt)).scalar_one()
 
     rows_stmt = (
@@ -186,6 +180,7 @@ async def list_statement_lines(
 @router.patch(
     "/{statement_id}/lines/{line_id}",
     response_model=BankStatementLineRead,
+    dependencies=[Depends(verify_csrf_token)],
 )
 async def update_statement_line(
     statement_id: int,
@@ -230,8 +225,6 @@ async def get_statement_file_url(
         statement.document.s3_key, expires_in=expires_in
     )
     if not url:
-        raise HTTPException(
-            status_code=500, detail="Failed to generate download URL"
-        )
+        raise HTTPException(status_code=500, detail="Failed to generate download URL")
 
     return FileUrlResponse(url=url, expires_in=expires_in)

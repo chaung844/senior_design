@@ -25,6 +25,7 @@ from app.utils.access import (
     require_admin_or_dev,
     require_any,
 )
+from app.utils.auth import verify_csrf_token
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -47,7 +48,12 @@ def _account_to_read(account: AccountBook) -> AccountBookRead:
 # ── Account Book CRUD ────────────────────────────────────────────────
 
 
-@router.post("", response_model=AccountBookRead, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "",
+    response_model=AccountBookRead,
+    status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def create_account_book(
     body: AccountBookCreate,
     db: AsyncSession = Depends(get_db),
@@ -86,9 +92,7 @@ async def list_account_books(
     accessible_ids = await get_accessible_account_ids(current_user, db)
 
     if not accessible_ids:
-        return AccountBookListResponse(
-            accounts=[], total=0, offset=offset, limit=limit
-        )
+        return AccountBookListResponse(accounts=[], total=0, offset=offset, limit=limit)
 
     base_filter = (
         AccountBook.account_id.in_(accessible_ids),
@@ -131,7 +135,11 @@ async def get_account_book(
     return _account_to_read(account)
 
 
-@router.patch("/{account_id}", response_model=AccountBookRead)
+@router.patch(
+    "/{account_id}",
+    response_model=AccountBookRead,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def update_account_book(
     account_id: int,
     body: AccountBookUpdate,
@@ -152,7 +160,11 @@ async def update_account_book(
     return _account_to_read(account)
 
 
-@router.delete("/{account_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/{account_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def delete_account_book(
     account_id: int,
     db: AsyncSession = Depends(get_db),
@@ -205,6 +217,7 @@ async def list_members(
     "/{account_id}/members",
     response_model=MemberRead,
     status_code=status.HTTP_201_CREATED,
+    dependencies=[Depends(verify_csrf_token)],
 )
 async def add_member(
     account_id: int,
@@ -265,6 +278,7 @@ async def add_member(
 @router.delete(
     "/{account_id}/members/{user_id}",
     status_code=status.HTTP_204_NO_CONTENT,
+    dependencies=[Depends(verify_csrf_token)],
 )
 async def remove_member(
     account_id: int,

@@ -14,8 +14,8 @@ from app.models.user import User
 from app.schemas.document import FileUrlResponse
 from app.schemas.receipt import ReceiptListResponse, ReceiptRead, ReceiptUpdate
 from app.services.aws_services import AWSService
-from app.utils.auth import get_current_user
 from app.utils.access import get_owned_receipt
+from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
 
@@ -110,7 +110,11 @@ async def get_receipt(
     return _receipt_to_read(receipt)
 
 
-@router.patch("/{receipt_id}", response_model=ReceiptRead)
+@router.patch(
+    "/{receipt_id}",
+    response_model=ReceiptRead,
+    dependencies=[Depends(verify_csrf_token)],
+)
 async def update_receipt(
     receipt_id: int,
     body: ReceiptUpdate,
@@ -150,8 +154,6 @@ async def get_receipt_file_url(
         receipt.document.s3_key, expires_in=expires_in
     )
     if not url:
-        raise HTTPException(
-            status_code=500, detail="Failed to generate download URL"
-        )
+        raise HTTPException(status_code=500, detail="Failed to generate download URL")
 
     return FileUrlResponse(url=url, expires_in=expires_in)
