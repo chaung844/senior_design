@@ -11,6 +11,7 @@ from app.models.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.account_book import AccountBook
     from app.models.document import Document
+    from app.models.reconciliation import ReconciliationMatch
 
 
 class BankStatement(Base, TimestampMixin):
@@ -73,4 +74,7 @@ class BankStatementLine(Base, TimestampMixin):
 
     bank_statement: Mapped["BankStatement"] = relationship(
         "BankStatement", back_populates="lines"
+    )
+    matches: Mapped[List["ReconciliationMatch"]] = relationship(
+        "ReconciliationMatch", back_populates="line", cascade="all, delete-orphan"
     )

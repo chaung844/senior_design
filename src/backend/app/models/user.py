@@ -6,11 +6,13 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import UserRole
 from app.models.base import Base, TimestampMixin
+from app.models.reconciliation import ReconciliationMatch
 
 if TYPE_CHECKING:
     from app.models.account_book import AccountBook
     from app.models.account_book_member import AccountBookMember
     from app.models.document import Document
+    from app.models.job import Job
 
 
 class User(Base, TimestampMixin):
@@ -44,6 +46,21 @@ class User(Base, TimestampMixin):
 
     account_memberships: Mapped[List["AccountBookMember"]] = relationship(
         "AccountBookMember", back_populates="user", cascade="all, delete-orphan"
+    )
+
+    jobs_created: Mapped[List["Job"]] = relationship(
+        "Job", back_populates="creator", cascade="save-update, merge"
+    )
+
+    reconciliation_matches_created: Mapped[List["ReconciliationMatch"]] = relationship(
+        "ReconciliationMatch",
+        back_populates="created_by_user",
+        foreign_keys=[ReconciliationMatch.created_by],
+    )
+    reconciliation_matches_updated: Mapped[List["ReconciliationMatch"]] = relationship(
+        "ReconciliationMatch",
+        back_populates="updated_by_user",
+        foreign_keys=[ReconciliationMatch.updated_by],
     )
 
     def __repr__(self) -> str:
