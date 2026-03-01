@@ -5,6 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
+from app.config import get_settings
 from app.database import get_db
 from app.enums import MatchStatus, UserRole
 from app.models.account_book_member import AccountBookMember
@@ -18,7 +19,7 @@ from app.utils.access import get_owned_receipt
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
-
+settings = get_settings()
 aws_service = AWSService()
 
 
@@ -149,7 +150,7 @@ async def get_receipt_file_url(
             status_code=404, detail="No document linked to this receipt"
         )
 
-    expires_in = 3600
+    expires_in = settings.s3_presigned_url_expire_minutes
     url = aws_service.generate_presigned_get_url(
         receipt.document.s3_key, expires_in=expires_in
     )

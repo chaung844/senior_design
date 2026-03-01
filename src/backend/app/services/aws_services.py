@@ -39,7 +39,7 @@ class AWSService:
                     "Key": s3_key,
                     "ContentType": file_type,
                 },
-                ExpiresIn=3600,
+                ExpiresIn=settings.s3_presigned_url_expire_minutes,
             )
         except ClientError as e:
             logging.error(f"Error generating presigned URL: {e}")
@@ -96,7 +96,7 @@ class AWSService:
             logging.error(f"SQS delete error: {e}")
 
     def generate_presigned_get_url(
-        self, s3_key: str, expires_in: int = 3600
+        self, s3_key: str, expires_in: int = settings.s3_presigned_url_expire_minutes
     ) -> str | None:
         try:
             return self.s3_client.generate_presigned_url(
