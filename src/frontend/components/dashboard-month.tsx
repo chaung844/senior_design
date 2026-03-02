@@ -34,6 +34,7 @@ import { UploadDialog } from "@/components/upload-dialog";
 import { ExportDialog } from "@/components/export-dialog";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
 import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
+import { ReceiptEditDialog } from "@/components/receipt-edit-dialog";
 import type { ReceiptRead } from "@/lib/types";
 
 interface DashboardMonthProps {
@@ -567,6 +568,9 @@ export function DashboardMonth({
     const [receiptFilter, setReceiptFilter] =
         React.useState<ReceiptFilterMode>("all");
     const [receiptSearch, setReceiptSearch] = React.useState("");
+    const [selectedReceipt, setSelectedReceipt] =
+        React.useState<ReceiptRead | null>(null);
+    const [editDialogOpen, setEditDialogOpen] = React.useState(false);
 
     const filteredTransactions = React.useMemo(() => {
         let txns = monthData.transactions;
@@ -1061,10 +1065,24 @@ export function DashboardMonth({
                             }
                             globalFilter={receiptSearch}
                             onGlobalFilterChange={setReceiptSearch}
+                            onRowClick={(row) => {
+                                setSelectedReceipt(row);
+                                setEditDialogOpen(true);
+                            }}
                         />
                     )}
                 </TabsContent>
             </Tabs>
+
+            <ReceiptEditDialog
+                receipt={selectedReceipt}
+                open={editDialogOpen}
+                onOpenChange={(open) => {
+                    setEditDialogOpen(open);
+                    if (!open) setSelectedReceipt(null);
+                }}
+                currency={account.currency}
+            />
         </div>
     );
 }
