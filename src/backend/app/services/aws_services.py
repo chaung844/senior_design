@@ -183,3 +183,44 @@ def get_aws_service() -> AWSService:
     env vars are missing) and makes the service easy to mock in tests.
     """
     return AWSService()
+
+
+async def generate_file_url(
+    s3_key: "str | None",
+    aws_service: AWSService,
+    *,
+    not_found_detail: str = "No document linked to this resource",
+    failure_detail: str = "Failed to generate download URL",
+) -> str:
+    """Generate a presigned GET URL for *s3_key* and raise appropriate
+    ``HTTPException`` values on failure.
+
+    This eliminates the repeated check-then-generate-then-raise pattern that
+    appears in every ``get_*_file_url`` route handler.
+
+    Args:
+        s3_key: The S3 object key to generate a URL for.
+        aws_service: The :class:`AWSService` instance to use.
+        not_found_detail: 404 detail message when *s3_key* is falsy.
+        failure_detail: 500 detail message when URL generation fails.
+
+    Returns:
+        The presigned URL string.
+
+    Raises:
+        HTTPException(404): if *s3_key* is empty/``None``.
+        HTTPException(500): if the presigned URL could not be generated.
+    """
+    from fastapi import HTTPException  # local import to avoid circular dependency
+
+    if not s3_key:
+        raise HTTPException(status_code=404, detail=not_found_detail)
+
+    _settings = get_settings()
+    expires_in = _settings.s3_presigned_url_expire_minutes
+    url = await aws_service.async_generate_presigned_get_url(
+        s3_key, expires_in=expires_in
+    )
+    if not url:
+        raise HTTPException(status_code=500, detail=failure_detail)
+    return url

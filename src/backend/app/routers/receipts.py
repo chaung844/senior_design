@@ -1,21 +1,20 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.config import get_settings
 from app.database import get_db
-from app.enums import MatchStatus, UserRole
-from app.models.account_book_member import AccountBookMember
+from app.enums import MatchStatus
 from app.models.document import Document
 from app.models.receipt import Receipt
 from app.models.user import User
 from app.schemas.document import FileUrlResponse
 from app.schemas.receipt import ReceiptListResponse, ReceiptRead, ReceiptUpdate
-from app.services.aws_services import AWSService, get_aws_service
-from app.utils.access import get_owned_receipt
+from app.services.aws_services import AWSService, generate_file_url, get_aws_service
+from app.utils.access import apply_document_access_filter, get_owned_receipt
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
@@ -52,21 +51,7 @@ async def list_receipts(
 ):
     base_filter = [Document.deleted_at.is_(None)]
 
-    if current_user.role == UserRole.developer:
-        pass
-    else:
-        member_account_ids = (
-            select(AccountBookMember.account_id)
-            .where(AccountBookMember.user_id == current_user.user_id)
-            .correlate(None)
-            .scalar_subquery()
-        )
-        base_filter.append(
-            or_(
-                Document.uploaded_by == current_user.user_id,
-                Document.account_id.in_(member_account_ids),
-            )
-        )
+    apply_document_access_filter(base_filter, current_user)
 
     if match_status is not None:
         base_filter.append(Receipt.match_status == match_status)
@@ -163,17 +148,12 @@ async def get_receipt_file_url(
 ):
     receipt = await get_owned_receipt(receipt_id, current_user, db)
 
-    if not receipt.document:
-        raise HTTPException(
-            status_code=404, detail="No document linked to this receipt"
-        )
+    s3_key = receipt.document.s3_key if receipt.document else None
+    url = await generate_file_url(
+        s3_key,
+        aws_service,
+        not_found_detail="No document linked to this receipt",
+    )
 
     settings = get_settings()
-    expires_in = settings.s3_presigned_url_expire_minutes
-    url = await aws_service.async_generate_presigned_get_url(
-        receipt.document.s3_key, expires_in=expires_in
-    )
-    if not url:
-        raise HTTPException(status_code=500, detail="Failed to generate download URL")
-
-    return FileUrlResponse(url=url, expires_in=expires_in)
+    return FileUrlResponse(url=url, expires_in=settings.s3_presigned_url_expire_minutes)

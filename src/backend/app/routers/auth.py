@@ -1,6 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordRequestForm
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -14,11 +16,32 @@ from app.utils.security import verify_password
 
 settings = get_settings()
 
+# ---------------------------------------------------------------------------
+# 7.2 — Rate limiting
+# ---------------------------------------------------------------------------
+# The limiter is keyed by the client's remote IP address.  The state is
+# stored in-memory (default), which is sufficient for a single-process
+# deployment.  For multi-process / multi-replica deployments swap the
+# storage backend to Redis via:
+#
+#   Limiter(key_func=get_remote_address, storage_uri="redis://redis:6379")
+#
+# and register it on the FastAPI app in main.py:
+#
+#   from slowapi import _rate_limit_exceeded_handler
+#   from slowapi.errors import RateLimitExceeded
+#   app.state.limiter = limiter
+#   app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# ---------------------------------------------------------------------------
+limiter = Limiter(key_func=get_remote_address)
+
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/login", status_code=status.HTTP_200_OK)
+@limiter.limit("10/minute")
 async def login(
+    request: Request,
     response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: AsyncSession = Depends(get_db),
@@ -32,6 +55,9 @@ async def login(
                           Double Submit Cookie CSRF pattern.
 
     No credentials are returned in the response body.
+
+    Rate limited to 10 attempts per minute per IP address (7.2).  Exceeding
+    this limit returns HTTP 429 Too Many Requests.
     """
     email = form_data.username.lower().strip()
 

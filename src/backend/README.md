@@ -335,20 +335,31 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 Reconciliation is responsible for triggering the run and for manual match CRUD. **Job status is always read via `GET /jobs/{job_id}/status`** (no separate reconciliation-status endpoint). After a run, match state is reflected on `BankStatementLine.match_status` and `Receipt.match_status`; use existing document-scoped endpoints with `?match_status=unmatched` to list unmatched items.
 
 #### Reconciliation (`/reconciliation`)
-- [x] `POST /reconciliation/jobs/{job_id}/run` — *(Authenticated)* Trigger the reconciliation algorithm for a job.
-    - Pre-condition: When job→documents is defined, all documents in the job must have `status = "parsed"`. Until then, pass `account_id` in the request body to scope the run.
-    - Logic: Runs the matching algorithm (exact match on amount + date; fuzzy/bundle can be extended). Updates `Job.status` (reconciling → completed/failed) and writes `ReconciliationMatch` rows plus line/receipt `match_status`.
-    - Returns: `202` with `{ job_id, status }`. Poll **`GET /jobs/{job_id}/status`** for current status.
+- [x] `POST /reconciliation/start` — *(Authenticated, CSRF)* **Preferred entry point.** Create a reconciliation job and immediately run the matching algorithm in a single call.
+    - Body: `{ account_id: int, statement_id: int }` — both fields required. `statement_id` scopes the run to a single bank statement; all lines and receipts belonging to the account are used otherwise.
+    - Logic: Creates a `Job` record (type `reconciliation`), runs exact-match algorithm (amount + date), writes `ReconciliationMatch` rows, updates `Job.status` (`pending → reconciling → completed/failed`), and stamps `match_status` on matched lines and receipts as `perfect_matched`.
+    - Returns: `201` with `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched } }`.
+- [x] `POST /reconciliation/jobs/{job_id}/run` — *(Authenticated, CSRF)* **Legacy / re-run.** Re-trigger the matching algorithm on an existing reconciliation job. Prefer `/reconciliation/start` for new runs.
+    - Body: `{ account_id?: int, statement_id?: int }` — both optional. When `account_id` is omitted the job is simply advanced to `reconciling` status without running the algorithm.
+    - Returns: `202` with `{ job_id, status }` (no summary). Poll **`GET /jobs/{job_id}/status`** for current status.
 - [x] `GET /reconciliation/jobs/{job_id}/results` — *(Authenticated)* Get reconciliation results for a job.
-    - Returns: `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched }, matches: [...] }`. Each match: `{ match_id, statement_line: {...}, receipts: [{...}], match_type }`.
-    - Optional `?account_id=` to scope summary (total_lines/unmatched) to an account.
-    - **Unmatched items:** use existing **`GET /receipts?match_status=unmatched`** and **`GET /statements/{statement_id}/lines?match_status=unmatched`** (scope by job’s documents when job→documents exists).
+    - Optional `?account_id=` query param to scope `total_lines` / `unmatched` counts to a specific account; without it, counts are derived from the matched lines only.
+    - Returns: `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched }, matches: [...] }`.
+    - Each match entry: `{ match_id, statement_line: { line_id, statement_id, vendor, charge, transaction_date, match_status }, receipts: [{ receipt_id, vendor, charged_amount, billing_date, match_status }], match_type }`. Note: `receipts` is always a single-item list (one receipt per `match_id`).
+    - **Unmatched items:** use **`GET /receipts?match_status=unmatched`** and **`GET /statements/{statement_id}/lines?match_status=unmatched`**.
 
 #### Manual Matching (`/reconciliation`)
-- [x] `POST /reconciliation/matches` — *(Authenticated)* Manually create a match between a statement line and one or more receipts.
-    - Accepts: `{ line_id, receipt_ids: [1, 2], match_type: "manual" }`. Optional `?job_id=` to associate with a reconciliation job.
-- [x] `DELETE /reconciliation/matches/{match_id}` — *(Authenticated)* Remove/undo a match (resets line + receipt `match_status` to `unmatched` when they have no other matches).
-- [x] `PATCH /reconciliation/matches/{match_id}` — *(Authenticated)* Switch which receipt is linked; body `{ receipt_id }`.
+- [x] `POST /reconciliation/matches` — *(Authenticated, CSRF)* Manually create a match between a statement line and one or more receipts.
+    - Body: `{ line_id: int, receipt_ids: [int, ...], match_type: MatchStatus }` — `match_type` defaults to `"manual"`.
+    - Optional `?job_id=` query param to associate the match with an existing reconciliation job.
+    - Skips silently if a `(line_id, receipt_id)` pair is already matched. Stamps `match_status` on the line and each receipt to the provided `match_type`.
+    - Returns: `{ created: int, match_type: str }`.
+- [x] `DELETE /reconciliation/matches/{match_id}` — *(Authenticated, CSRF)* Remove a match. Resets `match_status` on the line and receipt to `unmatched` only when no other matches remain for each.
+    - Returns: `{ deleted: match_id }`.
+- [x] `PATCH /reconciliation/matches/{match_id}` — *(Authenticated, CSRF)* Swap the receipt linked to a match.
+    - Body: `{ receipt_id: int }` (singular — replaces the single existing receipt on the match).
+    - The old receipt's `match_status` is reset to `unmatched` if it has no remaining matches; the new receipt's `match_status` is set to the match's `match_type`.
+    - Returns: `{ updated: match_id }`.
 
 ---
 

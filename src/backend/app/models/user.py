@@ -1,7 +1,6 @@
-from datetime import datetime
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import Enum, String, event, func
+from sqlalchemy import Enum, String, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import UserRole
@@ -30,10 +29,6 @@ class User(Base, TimestampMixin):
         default=UserRole.viewer,
     )
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
-
-    updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now(), nullable=False
-    )
 
     # Relationships
     uploaded_documents: Mapped[List["Document"]] = relationship(

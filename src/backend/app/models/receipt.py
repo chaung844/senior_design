@@ -1,8 +1,8 @@
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Enum, ForeignKey, Numeric, String, func
+from sqlalchemy import Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
@@ -10,8 +10,8 @@ from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.document import Document
-    from app.models.statement import BankStatement
     from app.models.reconciliation import ReconciliationMatch
+    from app.models.statement import BankStatement
 
 
 class Receipt(Base, TimestampMixin):
@@ -36,10 +36,6 @@ class Receipt(Base, TimestampMixin):
         nullable=False,
         default=MatchStatus.unmatched,
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
     document: Mapped[Optional["Document"]] = relationship(
         "Document", back_populates="receipt", uselist=False
     )

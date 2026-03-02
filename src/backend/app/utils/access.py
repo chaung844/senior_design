@@ -1,7 +1,7 @@
 from typing import Callable
 
 from fastapi import Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
@@ -9,11 +9,11 @@ from app.enums import AccountBookRole, UserRole
 from app.models.account_book import AccountBook
 from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
+from app.models.job import Job
 from app.models.receipt import Receipt
 from app.models.statement import BankStatement, BankStatementLine
 from app.models.user import User
 from app.utils.auth import get_current_user
-
 
 # ---------------------------------------------------------------------------
 # Global role guards (RBAC)
@@ -150,6 +150,42 @@ def _assert_can_write(user: User) -> None:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Viewers have read-only access",
         )
+
+
+def apply_document_access_filter(filters: list, user: User) -> list:
+    """Append the appropriate access-control predicate to *filters* for list queries
+    that join against the ``documents`` table.
+
+    Developers implicitly see every document.  All other roles are restricted to
+    documents they uploaded themselves or that belong to an account book they are
+    a member of.
+
+    Returns the (mutated) *filters* list for convenient chaining.
+    """
+    if user.role != UserRole.developer:
+        member_account_ids = (
+            select(AccountBookMember.account_id)
+            .where(AccountBookMember.user_id == user.user_id)
+            .correlate(None)
+            .scalar_subquery()
+        )
+        filters.append(
+            or_(
+                Document.uploaded_by == user.user_id,
+                Document.account_id.in_(member_account_ids),
+            )
+        )
+    return filters
+
+
+def can_view_job(job: Job, user: User) -> bool:
+    """Return True when *user* is allowed to read *job*.
+
+    Developers can view any job; all other roles may only view jobs they created.
+    """
+    if user.role == UserRole.developer:
+        return True
+    return job.created_by == user.user_id
 
 
 # ---------------------------------------------------------------------------

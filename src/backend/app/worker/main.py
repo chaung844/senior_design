@@ -87,7 +87,7 @@ class SQSWorker:
                 logger.debug("Extending visibility timeout")
                 await self.aws.async_extend_visibility_timeout(receipt_handle)
 
-        asyncio.get_event_loop().create_task(_heartbeat())
+        asyncio.get_running_loop().create_task(_heartbeat())
         return stop_event
 
     async def _mark_processing(

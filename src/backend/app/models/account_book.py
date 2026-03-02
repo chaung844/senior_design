@@ -1,11 +1,10 @@
-from datetime import datetime
-from typing import TYPE_CHECKING, List, Optional
+from typing import TYPE_CHECKING, List
 
-from sqlalchemy import Enum, ForeignKey, String, func
+from sqlalchemy import Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import AccountType
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.account_book_member import AccountBookMember
@@ -13,7 +12,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class AccountBook(Base, TimestampMixin):
+class AccountBook(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "account_books"
 
     account_id: Mapped[int] = mapped_column(primary_key=True)
@@ -27,11 +26,6 @@ class AccountBook(Base, TimestampMixin):
     )
     account_number_last4: Mapped[str] = mapped_column(String(4), nullable=False)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
-    updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
-
     user: Mapped["User"] = relationship(back_populates="account_books")
     bank_statements: Mapped[List["BankStatement"]] = relationship(
         "BankStatement", back_populates="account", cascade="all, delete-orphan"
