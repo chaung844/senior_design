@@ -48,7 +48,7 @@ import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { UploadDialog } from "@/components/upload-dialog";
-import { useDocumentUpload } from "@/hooks/use-document-upload";
+import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
 
 interface DashboardYearProps {
     account: AccountBook;
@@ -57,9 +57,7 @@ interface DashboardYearProps {
     onBack: () => void;
 }
 
-function makeMonthColumns(
-    currency: string,
-): ColumnDef<MonthData, unknown>[] {
+function makeMonthColumns(currency: string): ColumnDef<MonthData, unknown>[] {
     return [
         {
             accessorKey: "label",
@@ -122,7 +120,9 @@ function makeMonthColumns(
                         className="h-1 flex-1"
                     />
                     <Badge
-                        variant={getMatchRateBadgeVariant(row.original.matchRate)}
+                        variant={getMatchRateBadgeVariant(
+                            row.original.matchRate,
+                        )}
                         className="text-[10px] h-4 px-1.5 tabular-nums"
                     >
                         {row.original.matchRate}%
@@ -224,7 +224,10 @@ export function DashboardYear({
         isUploading,
         results: uploadResults,
         reset: resetUpload,
-    } = useDocumentUpload("bank_statement", Number(account.id) || undefined);
+    } = useTrackedDocumentUpload(
+        "bank_statement",
+        Number(account.id) || undefined,
+    );
 
     const months = React.useMemo(
         () => yearData.months.slice().sort((a, b) => a.month - b.month),
@@ -488,18 +491,12 @@ export function DashboardYear({
                             <YAxis
                                 tickLine={false}
                                 axisLine={false}
-                                tickFormatter={(value) =>
-                                    formatNumber(value)
-                                }
+                                tickFormatter={(value) => formatNumber(value)}
                             />
                             <ChartTooltip
-                                content={
-                                    <ChartTooltipContent hideLabel />
-                                }
+                                content={<ChartTooltipContent hideLabel />}
                             />
-                            <ChartLegend
-                                content={<ChartLegendContent />}
-                            />
+                            <ChartLegend content={<ChartLegendContent />} />
                             <Bar
                                 dataKey="matched"
                                 stackId="a"

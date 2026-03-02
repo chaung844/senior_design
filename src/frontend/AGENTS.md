@@ -95,6 +95,7 @@ src/frontend/
 │   ├── dashboard-month.tsx    # Month-level dashboard with transaction table
 │   ├── data-table.tsx         # Generic data table (sorting, filtering, pagination; TanStack Table)
 │   ├── upload-dialog.tsx      # File upload dialog (drag-and-drop); statement/ledger uploads
+│   ├── job-status-float.tsx   # Floating bottom-right widget showing active parsing/reconciliation job progress
 │   ├── component-example.tsx  # shadcn component showcase
 │   └── example.tsx            # Example wrapper utilities
 ├── hooks/
@@ -104,6 +105,8 @@ src/frontend/
 │   ├── use-receipts.ts        # React Query hooks for parsed receipts
 │   ├── use-documents.ts       # React Query hooks for document CRUD
 │   ├── use-document-upload.ts # S3 presigned-URL upload flow with progress tracking
+│   ├── use-tracked-document-upload.ts # Wrapper around use-document-upload that auto-registers parsing jobs with the job status tracker
+│   ├── use-job-status.ts      # Job status polling hook and context (TrackedJob state, trackJob/dismissJob API)
 │   ├── use-admin-users.ts     # React Query hooks for admin user management
 │   └── use-account-members.ts # React Query hooks for account book members
 ├── lib/
@@ -115,7 +118,8 @@ src/frontend/
 │   ├── query-client.tsx    # React Query QueryClientProvider wrapper
 │   ├── dashboard-routes.ts # Dashboard URL helpers (selectionToPath, parseDashboardPath)
 │   ├── constants.ts        # Shared constants (MONTH_LABELS, chart config, match rate badge variant)
-│   └── domain-types.ts     # Frontend domain types (AccountBook, YearData, MonthData, Transaction) and formatting utilities
+│   ├── domain-types.ts     # Frontend domain types (AccountBook, YearData, MonthData, Transaction) and formatting utilities
+│   └── job-status-provider.tsx # JobStatusProvider context wrapper (wraps dashboard layout)
 ├── public/                 # Static assets (SVGs)
 ├── middleware.ts           # Next.js Edge middleware — dashboard route guard (csrf_token cookie check)
 ├── components.json         # shadcn/ui configuration
@@ -176,8 +180,9 @@ import { AppSidebar } from "@/components/app-sidebar";
 ### Key Application Components
 
 - **DataTable** — Generic, type-parameterized table built on TanStack React Table; supports sorting, column filters, pagination, optional toolbar and row click. Used for transaction lists in the month view and for year-level summary tables.
-- **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, receipts) with drag-and-drop and configurable accept types. Connected to the backend via `useDocumentUpload` hook (presigned S3 URLs). Automatically associates uploaded documents with the current `account_id`.
+- **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, receipts) with drag-and-drop and configurable accept types. Connected to the backend via `useTrackedDocumentUpload` hook (presigned S3 URLs + automatic job tracking). Automatically associates uploaded documents with the current `account_id`.
 - **AppSidebar** — Main sidebar navigation. Receives `accountBooks` (fetched via API) as a prop from the dashboard layout; renders an account selector and collapsible year/month tree. The logout button calls `await logout()` (async) before redirecting.
+- **JobStatusFloat** — Floating widget fixed to the bottom-right corner of the dashboard. Shows active parsing and reconciliation jobs with real-time progress polling (every 3 s via `GET /jobs/{id}/status`). Displays parsed-document count for parsing jobs and matching status for reconciliation jobs. Collapsible header with expand/collapse toggle; completed jobs auto-dismiss after 15 s. Rendered in `app/dashboard/layout.tsx` inside `JobStatusProvider`.
 
 ### Adding New shadcn/ui Components
 
@@ -220,7 +225,7 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 - Target: `ES2017`.
 - All files must be `.ts` or `.tsx`.
 - Prefer explicit types for component props (use `interface` for props).
-- **API response types** (snake_case, matching backend Pydantic schemas) are in `lib/types.ts`: `AccountBookRead`, `BankStatementRead`, `BankStatementLineRead`, `ReceiptRead`, `DocumentRead`, plus enums like `MatchStatus`, `DocumentStatus`. The `Token` type has been removed — login no longer returns a token body.
+- **API response types** (snake_case, matching backend Pydantic schemas) are in `lib/types.ts`: `AccountBookRead`, `BankStatementRead`, `BankStatementLineRead`, `ReceiptRead`, `DocumentRead`, `JobStatusResponse`, `JobStatusDocument`, plus enums like `MatchStatus`, `DocumentStatus`, `JobStatus`, `JobType`. The `Token` type has been removed — login no longer returns a token body.
 - **Frontend view types** (camelCase, used by dashboard components) are in `lib/domain-types.ts`: `Transaction`, `MonthData`, `YearData`, `AccountBook`, `Selection`, `SelectionLevel`.
 - **Transforms** in `lib/transforms.ts` convert API types → view types. Dashboard components consume view types only.
 
@@ -284,8 +289,9 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 | Tier | Endpoints | Frontend hooks |
 |------|-----------|----------------|
 | **Tier 1** — Auth | `POST /auth/login`, `GET /auth/me`, `POST /auth/logout` | `useAuth()` — `login()`, `logout()` |
-| **Tier 1** — Upload | `POST /documents/upload-url`, `POST /documents/{id}/confirm-upload` | `useDocumentUpload()` |
+| **Tier 1** — Upload | `POST /documents/upload-url`, `POST /documents/{id}/confirm-upload` | `useDocumentUpload()`, `useTrackedDocumentUpload()` |
 | **Tier 2** — Documents | `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}` | `useDocuments()`, `useDocument()`, `useDeleteDocument()` |
+| **Tier 2** — Jobs | `GET /jobs/{id}/status` | `useJobStatus()` (polling via `getJobStatus()` in `lib/api.ts`) |
 | **Tier 3** — Receipts | `GET /receipts`, `GET /receipts/{id}`, `PATCH /receipts/{id}`, `GET /receipts/{id}/file-url` | `useReceipts()`, `useReceipt()`, `useUpdateReceipt()`, `useReceiptFileUrl()` |
 | **Tier 3** — Statements | `GET /statements`, `GET /statements/{id}`, `GET /statements/{id}/lines`, `PATCH /statements/{id}/lines/{lineId}`, `GET /statements/{id}/file-url` | `useStatements()`, `useStatement()`, `useStatementLines()`, `useUpdateStatementLine()`, `useStatementFileUrl()` |
 | **Tier 5** — Accounts | `POST /accounts`, `GET /accounts`, `GET /accounts/{id}`, `PATCH /accounts/{id}`, `DELETE /accounts/{id}` | `useAccounts()`, `useAccount()`, `useAccountBook()`, `useAccountBooks()`, `useCreateAccount()`, `useUpdateAccount()`, `useDeleteAccount()` |

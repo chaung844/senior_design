@@ -27,7 +27,7 @@ import {
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { UploadDialog } from "@/components/upload-dialog";
-import { useDocumentUpload } from "@/hooks/use-document-upload";
+import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
 import { EditAccountDialog } from "@/components/edit-account-dialog";
 import type { AccountBookRead } from "@/lib/types";
 import type { UserRole } from "@/lib/types";
@@ -182,7 +182,10 @@ export function DashboardAccount({
         isUploading,
         results: uploadResults,
         reset: resetUpload,
-    } = useDocumentUpload("bank_statement", Number(account.id) || undefined);
+    } = useTrackedDocumentUpload(
+        "bank_statement",
+        Number(account.id) || undefined,
+    );
 
     const allYears = account.years.slice().sort((a, b) => b.year - a.year);
     const latestYear = allYears[0];

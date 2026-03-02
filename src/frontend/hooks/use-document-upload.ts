@@ -20,11 +20,20 @@ export interface UploadFileResult {
     file: File;
     status: UploadFileStatus;
     error?: string;
+    /** The job_id returned by the confirm-upload endpoint, if any. */
+    jobId?: number;
+}
+
+export interface UseDocumentUploadOptions {
+    /** Called for each file after confirm-upload succeeds, with the job_id created by the backend. */
+    onJobCreated?: (jobId: number, fileName: string) => void;
 }
 
 export function useDocumentUpload(
     documentType: DocumentType,
     accountId?: number,
+    statementId?: number,
+    options?: UseDocumentUploadOptions,
 ) {
     const qc = useQueryClient();
     const [isUploading, setIsUploading] = useState(false);
@@ -52,10 +61,11 @@ export function useDocumentUpload(
                 const setStatus = (
                     status: UploadFileStatus,
                     error?: string,
+                    jobId?: number,
                 ) => {
                     setResults((prev) => {
                         const next = [...prev];
-                        next[i] = { file, status, error };
+                        next[i] = { file, status, error, jobId };
                         return next;
                     });
                 };
@@ -73,10 +83,21 @@ export function useDocumentUpload(
                     await apiClient.uploadFileToS3(upload_url, file);
 
                     setStatus("confirming");
-                    await apiClient.confirmUpload(document_id);
+                    const confirmResult = await apiClient.confirmUpload(
+                        document_id,
+                        statementId,
+                    );
 
-                    setStatus("done");
-                    outcome.push({ file, status: "done" });
+                    const jobId = confirmResult.job_id ?? undefined;
+
+                    setStatus("done", undefined, jobId);
+                    outcome.push({ file, status: "done", jobId });
+
+                    // Notify the caller so it can register the job for
+                    // status tracking (e.g. in the floating job widget).
+                    if (jobId !== undefined && options?.onJobCreated) {
+                        options.onJobCreated(jobId, file.name);
+                    }
                 } catch (err) {
                     const message =
                         err instanceof Error ? err.message : "Upload failed";
@@ -94,7 +115,7 @@ export function useDocumentUpload(
 
             return outcome;
         },
-        [documentType, accountId, qc],
+        [documentType, accountId, statementId, qc, options],
     );
 
     return { uploadFiles, isUploading, results, reset };

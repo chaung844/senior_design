@@ -33,6 +33,8 @@ export type JobStatus =
     | "completed"
     | "failed";
 
+export type JobType = "parsing" | "reconciliation";
+
 // ── Paginated response wrapper ───────────────────────────────────────
 
 export interface PaginatedParams {
@@ -92,6 +94,7 @@ export interface DocumentUploadResponse {
 export interface DocumentConfirmResponse {
     document_id: number;
     status: DocumentStatus;
+    job_id: number | null;
 }
 
 export interface DocumentRead {
@@ -139,6 +142,7 @@ export interface ReceiptRead {
     expense_type: string | null;
     match_status: MatchStatus;
     created_at: string;
+    statement_id: number | null;
     document_id: number | null;
     file_name: string | null;
 }
@@ -163,6 +167,7 @@ export interface ReceiptListResponse {
 export interface ReceiptListParams extends PaginatedParams {
     match_status?: MatchStatus;
     account_id?: number;
+    statement_id?: number;
 }
 
 // ── Bank Statements (Tier 3) ────────────────────────────────────────
@@ -291,4 +296,20 @@ export interface MemberAdd {
 export interface MemberListResponse {
     members: MemberRead[];
     total: number;
+}
+
+// ── Jobs ─────────────────────────────────────────────────────────────
+
+export interface JobStatusDocument {
+    document_id: number;
+    file_name: string;
+    document_type: DocumentType;
+    status: DocumentStatus;
+}
+
+export interface JobStatusResponse {
+    job_id: number;
+    status: JobStatus;
+    job_type: JobType;
+    documents: JobStatusDocument[];
 }

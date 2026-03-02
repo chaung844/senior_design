@@ -12,6 +12,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
+import { JobStatusFloat } from "@/components/job-status-float";
+import { JobStatusProvider } from "@/lib/job-status-provider";
 import { useAuth } from "@/lib/auth";
 import { pathToSelection, selectionToPath } from "@/lib/dashboard-routes";
 import { useAccountBooks } from "@/hooks/use-accounts";
@@ -147,26 +149,29 @@ export default function DashboardLayout({
 
     return (
         <TooltipProvider>
-            <SidebarProvider>
-                <AppSidebar
-                    accountBooks={accountBooks ?? []}
-                    selection={selection}
-                    onSelectionChange={handleSelectionChange}
-                />
-                <SidebarInset className="h-dvh overflow-y-auto">
-                    <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4 sticky top-0 z-20 bg-background">
-                        <SidebarTrigger className="-ml-1" />
-                        <Separator
-                            orientation="vertical"
-                            className="mr-1 data-vertical:h-4 data-vertical:self-center"
-                        />
-                        {renderBreadcrumb()}
-                    </header>
-                    <main className="p-6">
-                        <ErrorBoundary>{children}</ErrorBoundary>
-                    </main>
-                </SidebarInset>
-            </SidebarProvider>
+            <JobStatusProvider>
+                <SidebarProvider>
+                    <AppSidebar
+                        accountBooks={accountBooks ?? []}
+                        selection={selection}
+                        onSelectionChange={handleSelectionChange}
+                    />
+                    <SidebarInset className="h-dvh overflow-y-auto">
+                        <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4 sticky top-0 z-20 bg-background">
+                            <SidebarTrigger className="-ml-1" />
+                            <Separator
+                                orientation="vertical"
+                                className="mr-1 data-vertical:h-4 data-vertical:self-center"
+                            />
+                            {renderBreadcrumb()}
+                        </header>
+                        <main className="p-6">
+                            <ErrorBoundary>{children}</ErrorBoundary>
+                        </main>
+                    </SidebarInset>
+                </SidebarProvider>
+                <JobStatusFloat />
+            </JobStatusProvider>
         </TooltipProvider>
     );
 }

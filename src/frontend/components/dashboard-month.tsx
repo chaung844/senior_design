@@ -36,6 +36,7 @@ import { useDocumentUpload } from "@/hooks/use-document-upload";
 import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
 import { ReceiptEditDialog } from "@/components/receipt-edit-dialog";
 import type { ReceiptRead } from "@/lib/types";
+import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
 
 interface DashboardMonthProps {
     account: AccountBook;
@@ -560,7 +561,11 @@ export function DashboardMonth({
         isUploading,
         results: uploadResults,
         reset: resetUpload,
-    } = useDocumentUpload("receipt", Number(account.id) || undefined);
+    } = useTrackedDocumentUpload(
+        "receipt",
+        Number(account.id) || undefined,
+        statementId,
+    );
 
     const [filter, setFilter] = React.useState<FilterMode>("all");
     const [searchQuery, setSearchQuery] = React.useState("");
@@ -624,6 +629,7 @@ export function DashboardMonth({
 
     const { data: receiptsData, isLoading: receiptsLoading } = useReceipts({
         account_id: Number(account.id) || undefined,
+        statement_id: statementId,
         limit: 100,
     });
 

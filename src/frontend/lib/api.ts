@@ -44,6 +44,7 @@ import type {
     MemberListResponse,
     MemberAdd,
     UserRole,
+    JobStatusResponse,
 } from "@/lib/types";
 
 // ── Internals ────────────────────────────────────────────────────────
@@ -214,9 +215,11 @@ export async function uploadFileToS3(
 
 export async function confirmUpload(
     documentId: number,
+    statementId?: number,
 ): Promise<DocumentConfirmResponse> {
+    const query = qs({ statement_id: statementId });
     return request<DocumentConfirmResponse>(
-        `/documents/${documentId}/confirm-upload`,
+        `/documents/${documentId}/confirm-upload${query}`,
         { method: "POST" },
     );
 }
@@ -254,6 +257,7 @@ export async function listReceipts(
     const query = qs({
         match_status: params.match_status,
         account_id: params.account_id,
+        statement_id: params.statement_id,
         offset: params.offset,
         limit: params.limit,
     });
@@ -375,6 +379,16 @@ export async function deleteAccount(accountId: number): Promise<void> {
     });
 }
 
+// ── Jobs ─────────────────────────────────────────────────────────────
+
+/**
+ * Polls the status of a specific job (parsing or reconciliation).
+ * Used by the floating job-status widget to track progress.
+ */
+export async function getJobStatus(jobId: number): Promise<JobStatusResponse> {
+    return request<JobStatusResponse>(`/jobs/${jobId}/status`);
+}
+
 // ── Account Members (Tier 5) ────────────────────────────────────────
 
 export async function lookupUserByEmail(email: string): Promise<UserRead> {
@@ -494,6 +508,8 @@ export const apiClient = {
     listAccountMembers,
     addAccountMember,
     removeAccountMember,
+    // Jobs
+    getJobStatus,
     // Admin users
     listAdminUsers,
     createAdminUser,
