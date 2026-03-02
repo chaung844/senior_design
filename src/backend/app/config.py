@@ -121,8 +121,9 @@ class Settings(BaseSettings):
     # Set to True in production (HTTPS only).  Keep False for local HTTP dev
     # so the browser does not silently drop the cookies.
     cookie_secure: bool = Field(
-        default=False,
-        description="Set the Secure flag on auth cookies (requires HTTPS)",
+        default=True,
+        description="Set the Secure flag on auth cookies (requires HTTPS). "
+        "Set COOKIE_SECURE=false explicitly for local HTTP development.",
     )
 
 

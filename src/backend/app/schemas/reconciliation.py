@@ -29,10 +29,24 @@ class ReconciliationMatchListResponse(BaseModel):
 # --- Reconciliation run and results (Tier 4) ---
 
 
+class ReconciliationStartRequest(BaseModel):
+    """Single-call endpoint: create a job + run reconciliation in one step."""
+
+    account_id: int
+    statement_id: int
+
+
+class ReconciliationStartResponse(BaseModel):
+    job_id: int
+    status: str
+    summary: "ReconciliationSummary"
+
+
 class ReconciliationRunRequest(BaseModel):
     """Optional scope for run. When job_documents exists, scope can come from job."""
 
     account_id: Optional[int] = None
+    statement_id: Optional[int] = None
 
 
 class ReconciliationRunResponse(BaseModel):

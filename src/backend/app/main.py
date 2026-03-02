@@ -11,7 +11,6 @@ from app.routers import (
     receipts,
     reconciliation,
     statements,
-    users,
 )
 
 app = FastAPI(title="Matcha Backend")
@@ -30,7 +29,6 @@ app.add_middleware(
     ],
 )
 
-app.include_router(users.router)
 app.include_router(auth.router)
 app.include_router(documents.router)
 app.include_router(jobs.router)

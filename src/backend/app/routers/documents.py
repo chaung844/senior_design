@@ -80,6 +80,7 @@ async def get_upload_url(
 )
 async def confirm_upload(
     document_id: int,
+    statement_id: Optional[int] = Query(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -112,6 +113,9 @@ async def confirm_upload(
         "user_id": doc.uploaded_by,
         "account_id": doc.account_id,
         "job_id": job.job_id,
+        "statement_id": statement_id
+        if doc.document_type == DocumentType.receipt
+        else doc.statement_id,
     }
 
     sqs_res = aws_service.enqueue_parsing(message_type=msg_type, payload=payload)
@@ -124,7 +128,11 @@ async def confirm_upload(
     doc.status = DocumentStatus.pending_processing
     await db.commit()
 
-    return doc
+    return DocumentConfirmResponse(
+        document_id=doc.document_id,
+        status=doc.status,
+        job_id=job.job_id,
+    )
 
 
 @router.get("", response_model=DocumentListResponse)
