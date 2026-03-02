@@ -92,6 +92,10 @@ class ReconciliationResultsResponse(BaseModel):
     status: str
     summary: ReconciliationSummary
     matches: list[ReconciliationMatchDetail]
+    # Pagination metadata (7.4)
+    total_matches: int
+    offset: int
+    limit: int
 
 
 class ManualMatchCreate(BaseModel):

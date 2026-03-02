@@ -12,7 +12,7 @@ Reconciliation API (Tier 4).
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -318,16 +318,33 @@ async def run_reconciliation(
 async def get_reconciliation_results(
     job_id: int,
     account_id: Optional[int] = Query(default=None),
+    offset: int = Query(default=0, ge=0, description="Number of match rows to skip"),
+    limit: int = Query(
+        default=50, ge=1, le=200, description="Maximum match rows to return"
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
     """
-    Get reconciliation results: summary + full matches list.
-    Unmatched items: use GET /receipts?match_status=unmatched and GET /statements/.../lines?match_status=unmatched.
+    Get reconciliation results: summary + paginated matches list.
+
+    Use ``offset`` / ``limit`` to page through large result sets.
+    ``total_matches`` in the response tells you how many rows exist in total.
+
+    Unmatched items: use GET /receipts?match_status=unmatched and
+    GET /statements/.../lines?match_status=unmatched.
     """
     job = await _get_reconciliation_job(job_id, db, current_user)
-    await db.refresh(job, ["matches"])
 
+    # ── 7.4: total match count (scalar query, not a full load) ─────────────
+    total_matches_stmt = (
+        select(func.count())
+        .select_from(ReconciliationMatch)
+        .where(ReconciliationMatch.job_id == job_id)
+    )
+    total_matches: int = (await db.execute(total_matches_stmt)).scalar_one()
+
+    # ── 7.4: paginated fetch of match rows ────────────────────────────────
     matches_stmt = (
         select(ReconciliationMatch)
         .where(ReconciliationMatch.job_id == job_id)
@@ -335,15 +352,20 @@ async def get_reconciliation_results(
             joinedload(ReconciliationMatch.line),
             joinedload(ReconciliationMatch.receipt),
         )
+        .order_by(ReconciliationMatch.match_id)
+        .offset(offset)
+        .limit(limit)
     )
     result = await db.execute(matches_stmt)
     match_rows = list(result.unique().scalars().all())
 
+    # ── 6.3 / 7.4: total_lines via scalar COUNT, not len(rows) ────────────
     total_lines = 0
     if account_id is not None:
         await require_account_access(account_id, current_user, db)
+        # 6.3 fix: use SELECT COUNT(DISTINCT ...) instead of fetching all IDs
         count_stmt = (
-            select(BankStatementLine.line_id)
+            select(func.count(distinct(BankStatementLine.line_id)))
             .join(
                 BankStatement,
                 BankStatementLine.statement_id == BankStatement.statement_id,
@@ -354,19 +376,33 @@ async def get_reconciliation_results(
                 Document.deleted_at.is_(None),
             )
         )
-        count_result = await db.execute(count_stmt)
-        total_lines = len(count_result.all())
+        total_lines = (await db.execute(count_stmt)).scalar_one()
     else:
-        line_ids = {m.line_id for m in match_rows}
-        total_lines = len(line_ids)
+        # Fall back to counting distinct line_ids already matched for this job
+        # (used when no account_id scope is provided).
+        distinct_lines_stmt = select(
+            func.count(distinct(ReconciliationMatch.line_id))
+        ).where(ReconciliationMatch.job_id == job_id)
+        total_lines = (await db.execute(distinct_lines_stmt)).scalar_one()
 
-    matched_line_ids = {m.line_id for m in match_rows}
-    matched = len(matched_line_ids)
-    unmatched = max(0, total_lines - matched)
-    bundle_matched = sum(
-        1 for m in match_rows if m.match_type == MatchStatus.bundle_matched
+    # ── Summary counts (always across the whole job, not just the page) ───
+    matched_stmt = select(func.count(distinct(ReconciliationMatch.line_id))).where(
+        ReconciliationMatch.job_id == job_id
     )
+    matched: int = (await db.execute(matched_stmt)).scalar_one()
+    unmatched = max(0, total_lines - matched)
 
+    bundle_matched_stmt = (
+        select(func.count())
+        .select_from(ReconciliationMatch)
+        .where(
+            ReconciliationMatch.job_id == job_id,
+            ReconciliationMatch.match_type == MatchStatus.bundle_matched,
+        )
+    )
+    bundle_matched: int = (await db.execute(bundle_matched_stmt)).scalar_one()
+
+    # ── Build detail list for the current page ────────────────────────────
     detail_list = []
     for m in match_rows:
         line = m.line
@@ -405,6 +441,9 @@ async def get_reconciliation_results(
             bundle_matched=bundle_matched,
         ),
         matches=detail_list,
+        total_matches=total_matches,
+        offset=offset,
+        limit=limit,
     )
 
 

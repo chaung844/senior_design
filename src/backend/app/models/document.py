@@ -1,11 +1,10 @@
-from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
 from sqlalchemy import Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import DocumentStatus, DocumentType
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, SoftDeleteMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.receipt import Receipt
@@ -13,7 +12,7 @@ if TYPE_CHECKING:
     from app.models.user import User
 
 
-class Document(Base, TimestampMixin):
+class Document(Base, TimestampMixin, SoftDeleteMixin):
     __tablename__ = "documents"
 
     document_id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -48,7 +47,7 @@ class Document(Base, TimestampMixin):
         nullable=True,
         unique=True,
     )
-    deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
+
     # Relationships
     uploader: Mapped[Optional["User"]] = relationship(
         "User", back_populates="uploaded_documents"
