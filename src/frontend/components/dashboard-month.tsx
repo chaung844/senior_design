@@ -23,6 +23,9 @@ import {
     MoneySendSquareIcon,
     BarChartIcon,
     Search01Icon,
+    Invoice02Icon,
+    File01Icon,
+    LinkSquare02Icon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
@@ -30,6 +33,8 @@ import { DashboardHeader } from "@/components/dashboard-header";
 import { UploadDialog } from "@/components/upload-dialog";
 import { ExportDialog } from "@/components/export-dialog";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
+import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
+import type { ReceiptRead } from "@/lib/types";
 
 interface DashboardMonthProps {
     account: AccountBook;
@@ -40,6 +45,7 @@ interface DashboardMonthProps {
 }
 
 type FilterMode = "all" | "matched" | "unmatched";
+type ReceiptFilterMode = "all" | "matched" | "unmatched";
 
 type CategoryRow = {
     category: string;
@@ -243,6 +249,212 @@ function makeTransactionColumns(
     ];
 }
 
+// ── Receipt file-link cell ────────────────────────────────────────────
+
+function ReceiptFileLink({ receiptId }: { receiptId: number }) {
+    const [enabled, setEnabled] = React.useState(false);
+    const { data, isLoading } = useReceiptFileUrl(enabled ? receiptId : null);
+
+    React.useEffect(() => {
+        if (data?.url) {
+            window.open(data.url, "_blank", "noopener,noreferrer");
+            setEnabled(false);
+        }
+    }, [data?.url]);
+
+    return (
+        <Button
+            variant="ghost"
+            size="xs"
+            className="h-5 px-1 gap-1 text-[10px]"
+            onClick={() => setEnabled(true)}
+            disabled={isLoading}
+        >
+            <HugeiconsIcon
+                icon={LinkSquare02Icon}
+                strokeWidth={2}
+                className="size-3 shrink-0"
+            />
+            {isLoading ? "Loading…" : "View"}
+        </Button>
+    );
+}
+
+function makeReceiptColumns(
+    currency: string,
+): ColumnDef<ReceiptRead, unknown>[] {
+    return [
+        {
+            accessorKey: "match_status",
+            header: "Status",
+            size: 110,
+            enableSorting: false,
+            enableHiding: false,
+            cell: ({ row }) => {
+                const s = row.original.match_status;
+                if (s === "perfect_matched") {
+                    return (
+                        <Badge
+                            variant="default"
+                            className="text-[9px] h-4 px-1.5"
+                        >
+                            <HugeiconsIcon
+                                icon={Tick02Icon}
+                                strokeWidth={2.5}
+                                className="size-2.5 mr-0.5"
+                            />
+                            Perfect Match
+                        </Badge>
+                    );
+                }
+                if (s === "bundle_matched") {
+                    return (
+                        <Badge
+                            variant="secondary"
+                            className="text-[9px] h-4 px-1.5"
+                        >
+                            <HugeiconsIcon
+                                icon={Tick02Icon}
+                                strokeWidth={2.5}
+                                className="size-2.5 mr-0.5"
+                            />
+                            Bundle Match
+                        </Badge>
+                    );
+                }
+                if (s === "manual") {
+                    return (
+                        <Badge
+                            variant="outline"
+                            className="text-[9px] h-4 px-1.5"
+                        >
+                            Manual
+                        </Badge>
+                    );
+                }
+                return (
+                    <Badge
+                        variant="outline"
+                        className="text-[9px] h-4 px-1.5 text-muted-foreground"
+                    >
+                        <HugeiconsIcon
+                            icon={Alert02Icon}
+                            strokeWidth={2}
+                            className="size-2.5 mr-0.5"
+                        />
+                        Unmatched
+                    </Badge>
+                );
+            },
+        },
+        {
+            accessorKey: "billing_date",
+            header: "Date",
+            size: 90,
+            enableSorting: true,
+            cell: ({ row }) => (
+                <span className="font-mono tabular-nums text-[11px]">
+                    {row.original.billing_date}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "vendor",
+            header: "Vendor",
+            size: 160,
+            cell: ({ row }) => (
+                <span className="truncate block" title={row.original.vendor}>
+                    {row.original.vendor}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "invoice_number",
+            header: "Invoice #",
+            size: 110,
+            cell: ({ row }) => (
+                <span className="font-mono tabular-nums text-[11px] text-muted-foreground">
+                    {row.original.invoice_number ?? "—"}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "expense_type",
+            header: "Type",
+            size: 100,
+            cell: ({ row }) =>
+                row.original.expense_type ? (
+                    <Badge variant="outline" className="text-[9px] h-4 px-1.5">
+                        {row.original.expense_type}
+                    </Badge>
+                ) : (
+                    <span className="text-muted-foreground">—</span>
+                ),
+        },
+        {
+            accessorKey: "description",
+            header: "Description",
+            size: 200,
+            cell: ({ row }) => (
+                <span
+                    className="truncate block text-muted-foreground"
+                    title={row.original.description ?? ""}
+                >
+                    {row.original.description ?? "—"}
+                </span>
+            ),
+        },
+        {
+            accessorKey: "charged_amount",
+            header: "Amount",
+            size: 100,
+            cell: ({ row }) => (
+                <span className="font-mono tabular-nums">
+                    {formatCurrency(
+                        Number(row.original.charged_amount),
+                        row.original.currency || currency,
+                    )}
+                </span>
+            ),
+            sortingFn: (a, b) =>
+                Number(a.original.charged_amount) -
+                Number(b.original.charged_amount),
+        },
+        {
+            accessorKey: "file_name",
+            header: "File",
+            size: 140,
+            enableSorting: false,
+            cell: ({ row }) => {
+                const { receipt_id, file_name } = row.original;
+                if (!file_name) {
+                    return (
+                        <span className="text-muted-foreground text-[11px]">
+                            No file
+                        </span>
+                    );
+                }
+                return (
+                    <div className="flex items-center gap-1.5 min-w-0">
+                        <HugeiconsIcon
+                            icon={File01Icon}
+                            strokeWidth={2}
+                            className="size-3 shrink-0 text-muted-foreground"
+                        />
+                        <span
+                            className="truncate text-[11px] text-muted-foreground"
+                            title={file_name}
+                        >
+                            {file_name}
+                        </span>
+                        <ReceiptFileLink receiptId={receipt_id} />
+                    </div>
+                );
+            },
+        },
+    ];
+}
+
 function makeCategoryColumns(
     currency: string,
 ): ColumnDef<CategoryRow, unknown>[] {
@@ -352,6 +564,9 @@ export function DashboardMonth({
     const [filter, setFilter] = React.useState<FilterMode>("all");
     const [searchQuery, setSearchQuery] = React.useState("");
     const [activeTab, setActiveTab] = React.useState("transactions");
+    const [receiptFilter, setReceiptFilter] =
+        React.useState<ReceiptFilterMode>("all");
+    const [receiptSearch, setReceiptSearch] = React.useState("");
 
     const filteredTransactions = React.useMemo(() => {
         let txns = monthData.transactions;
@@ -401,6 +616,148 @@ export function DashboardMonth({
     const categoryColumns = React.useMemo(
         () => makeCategoryColumns(account.currency),
         [account.currency],
+    );
+
+    const { data: receiptsData, isLoading: receiptsLoading } = useReceipts({
+        account_id: Number(account.id) || undefined,
+        limit: 100,
+    });
+
+    const allReceipts = receiptsData?.receipts ?? [];
+
+    const filteredReceipts = React.useMemo(() => {
+        let list = allReceipts;
+        if (receiptFilter === "matched") {
+            list = list.filter(
+                (r) =>
+                    r.match_status === "perfect_matched" ||
+                    r.match_status === "bundle_matched" ||
+                    r.match_status === "manual",
+            );
+        } else if (receiptFilter === "unmatched") {
+            list = list.filter((r) => r.match_status === "unmatched");
+        }
+        if (receiptSearch.trim()) {
+            const q = receiptSearch.trim().toLowerCase();
+            list = list.filter(
+                (r) =>
+                    r.vendor.toLowerCase().includes(q) ||
+                    (r.invoice_number ?? "").toLowerCase().includes(q) ||
+                    (r.description ?? "").toLowerCase().includes(q) ||
+                    (r.expense_type ?? "").toLowerCase().includes(q) ||
+                    (r.file_name ?? "").toLowerCase().includes(q),
+            );
+        }
+        return list;
+    }, [allReceipts, receiptFilter, receiptSearch]);
+
+    const receiptColumns = React.useMemo(
+        () => makeReceiptColumns(account.currency),
+        [account.currency],
+    );
+
+    const matchedReceiptCount = React.useMemo(
+        () =>
+            allReceipts.filter(
+                (r) =>
+                    r.match_status === "perfect_matched" ||
+                    r.match_status === "bundle_matched" ||
+                    r.match_status === "manual",
+            ).length,
+        [allReceipts],
+    );
+
+    const receiptsToolbar = (columnToggle: React.ReactNode) => (
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h3 className="text-sm font-medium">Receipts</h3>
+                <p className="text-xs text-muted-foreground">
+                    {filteredReceipts.length === allReceipts.length
+                        ? `Showing all ${formatNumber(filteredReceipts.length)} receipts`
+                        : `Showing ${formatNumber(filteredReceipts.length)} of ${formatNumber(allReceipts.length)} receipts`}
+                    {allReceipts.length > 0 && (
+                        <>
+                            {" · "}
+                            <span className="text-primary">
+                                {formatNumber(matchedReceiptCount)} matched
+                            </span>
+                            {" · "}
+                            <span>
+                                {formatNumber(
+                                    allReceipts.length - matchedReceiptCount,
+                                )}{" "}
+                                unmatched
+                            </span>
+                        </>
+                    )}
+                </p>
+            </div>
+            <div className="flex items-center gap-2">
+                {columnToggle}
+                {/* Search */}
+                <div className="relative">
+                    <HugeiconsIcon
+                        icon={Search01Icon}
+                        strokeWidth={2}
+                        className="absolute left-2 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none"
+                    />
+                    <input
+                        type="text"
+                        placeholder="Search receipts..."
+                        value={receiptSearch}
+                        onChange={(e) => setReceiptSearch(e.target.value)}
+                        className="h-7 w-[200px] rounded-none border border-input bg-transparent pl-7 pr-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+                    />
+                </div>
+                {/* Filter buttons */}
+                <div className="flex items-center border border-input rounded-none">
+                    <Button
+                        variant={
+                            receiptFilter === "all" ? "secondary" : "ghost"
+                        }
+                        size="xs"
+                        onClick={() => setReceiptFilter("all")}
+                        className="rounded-none border-0"
+                    >
+                        All
+                    </Button>
+                    <Separator orientation="vertical" className="h-4" />
+                    <Button
+                        variant={
+                            receiptFilter === "matched" ? "secondary" : "ghost"
+                        }
+                        size="xs"
+                        onClick={() => setReceiptFilter("matched")}
+                        className="rounded-none border-0"
+                    >
+                        <HugeiconsIcon
+                            icon={Tick02Icon}
+                            strokeWidth={2.5}
+                            className="size-3 text-primary mr-0.5"
+                        />
+                        Matched
+                    </Button>
+                    <Separator orientation="vertical" className="h-4" />
+                    <Button
+                        variant={
+                            receiptFilter === "unmatched"
+                                ? "secondary"
+                                : "ghost"
+                        }
+                        size="xs"
+                        onClick={() => setReceiptFilter("unmatched")}
+                        className="rounded-none border-0"
+                    >
+                        <HugeiconsIcon
+                            icon={Alert02Icon}
+                            strokeWidth={2}
+                            className="size-3 mr-0.5"
+                        />
+                        Unmatched
+                    </Button>
+                </div>
+            </div>
+        </div>
     );
 
     const transactionsToolbar = (columnToggle: React.ReactNode) => (
@@ -649,6 +1006,19 @@ export function DashboardMonth({
                     <TabsTrigger value="categories">
                         Categories ({formatNumber(categoryBreakdown.length)})
                     </TabsTrigger>
+                    <TabsTrigger value="receipts">
+                        {/*<HugeiconsIcon
+                            icon={Invoice02Icon}
+                            strokeWidth={2}
+                            className="size-3.5 mr-1"
+                        />*/}
+                        Receipts
+                        {allReceipts.length > 0 && (
+                            <span className="ml-1">
+                                ({formatNumber(allReceipts.length)})
+                            </span>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent
@@ -672,6 +1042,27 @@ export function DashboardMonth({
                         toolbar={categoriesToolbar}
                         emptyMessage="No categories found."
                     />
+                </TabsContent>
+
+                <TabsContent value="receipts" className="flex flex-col mt-3">
+                    {receiptsLoading ? (
+                        <div className="flex items-center justify-center h-24 text-xs text-muted-foreground">
+                            Loading receipts…
+                        </div>
+                    ) : (
+                        <DataTable
+                            columns={receiptColumns}
+                            data={filteredReceipts}
+                            toolbar={receiptsToolbar}
+                            emptyMessage={
+                                allReceipts.length === 0
+                                    ? "No receipts uploaded for this account yet."
+                                    : "No receipts match the current filter."
+                            }
+                            globalFilter={receiptSearch}
+                            onGlobalFilterChange={setReceiptSearch}
+                        />
+                    )}
                 </TabsContent>
             </Tabs>
         </div>
