@@ -47,6 +47,12 @@ class DocumentUploadRequest(BaseModel):
             raise ValueError(
                 f"file_name must be at most {_MAX_FILENAME_LENGTH} characters"
             )
+
+        # Normalize file extension to lowercase (.PDF -> .pdf, .JPG -> .jpg, etc.)
+        if "." in v:
+            name, _, ext = v.rpartition(".")
+            v = f"{name}.{ext.lower()}"
+
         return v
 
     @field_validator("file_type")
