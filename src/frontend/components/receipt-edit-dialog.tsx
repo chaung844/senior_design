@@ -27,6 +27,12 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { Calendar } from "@/components/ui/calendar";
+import {
+    Popover,
+    PopoverContent,
+    PopoverTrigger,
+} from "@/components/ui/popover";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
     Delete02Icon,
@@ -34,7 +40,9 @@ import {
     Alert02Icon,
     Cancel01Icon,
     LinkSquare02Icon,
+    Calendar03Icon,
 } from "@hugeicons/core-free-icons";
+import { cn } from "@/lib/utils";
 import { useUpdateReceipt, useReceiptFileUrl } from "@/hooks/use-receipts";
 import { useDeleteDocument } from "@/hooks/use-documents";
 import type { ReceiptRead, ReceiptUpdate } from "@/lib/types";
@@ -71,6 +79,7 @@ export function ReceiptEditDialog({
     const [vendor, setVendor] = React.useState("");
     const [invoiceNumber, setInvoiceNumber] = React.useState("");
     const [billingDate, setBillingDate] = React.useState("");
+    const [calendarOpen, setCalendarOpen] = React.useState(false);
     const [chargedAmount, setChargedAmount] = React.useState("");
     const [currencyField, setCurrencyField] = React.useState("");
     const [description, setDescription] = React.useState("");
@@ -274,14 +283,72 @@ export function ReceiptEditDialog({
                             />
                         </div>
                         <div className="grid gap-1.5">
-                            <Label htmlFor="receipt-date">Billing Date</Label>
-                            <Input
-                                id="receipt-date"
-                                type="date"
-                                value={billingDate}
-                                onChange={(e) => setBillingDate(e.target.value)}
-                                disabled={isBusy}
-                            />
+                            <Label>Billing Date</Label>
+                            <Popover
+                                open={calendarOpen}
+                                onOpenChange={setCalendarOpen}
+                            >
+                                <PopoverTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isBusy}
+                                        className={cn(
+                                            "w-full justify-start text-left font-normal gap-1.5",
+                                            !billingDate &&
+                                                "text-muted-foreground",
+                                        )}
+                                    >
+                                        <HugeiconsIcon
+                                            icon={Calendar03Icon}
+                                            strokeWidth={2}
+                                            className="size-3.5 shrink-0"
+                                        />
+                                        {billingDate
+                                            ? new Date(
+                                                  billingDate + "T00:00:00",
+                                              ).toLocaleDateString(undefined, {
+                                                  year: "numeric",
+                                                  month: "short",
+                                                  day: "numeric",
+                                              })
+                                            : "Pick a date"}
+                                    </Button>
+                                </PopoverTrigger>
+                                <PopoverContent
+                                    className="w-auto p-0"
+                                    align="start"
+                                >
+                                    <Calendar
+                                        mode="single"
+                                        selected={
+                                            billingDate
+                                                ? new Date(
+                                                      billingDate + "T00:00:00",
+                                                  )
+                                                : undefined
+                                        }
+                                        onSelect={(date) => {
+                                            if (date) {
+                                                const yyyy = date.getFullYear();
+                                                const mm = String(
+                                                    date.getMonth() + 1,
+                                                ).padStart(2, "0");
+                                                const dd = String(
+                                                    date.getDate(),
+                                                ).padStart(2, "0");
+                                                setBillingDate(
+                                                    `${yyyy}-${mm}-${dd}`,
+                                                );
+                                            } else {
+                                                setBillingDate("");
+                                            }
+                                            setCalendarOpen(false);
+                                        }}
+                                        initialFocus
+                                    />
+                                </PopoverContent>
+                            </Popover>
                         </div>
                     </div>
 
