@@ -302,10 +302,7 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 - [x] `DELETE /documents/{document_id}` — *(Authenticated)* Soft-delete a document (marks as deleted; removes S3 object in background).
 
 #### Batch / Job Status (`/jobs`)
-- [ ] `POST /jobs` — *(Authenticated)* Create a reconciliation job/batch grouping a set of uploaded document IDs together.
-    - Accepts: `{ document_ids: [1, 2, 3, ...], name?: "June 2025 Recon" }`
-    - Returns: `{ job_id, status: "pending", document_count }`.
-- [ ] `GET /jobs/{job_id}/status` — *(Authenticated)* Returns per-document processing progress within a job:
+- [x] `GET /jobs/{job_id}/status` — *(Authenticated)* Returns per-document processing progress within a job:
     - Returns: `{ job_id, status, documents: [{ document_id, file_name, document_type, status }] }`.
     - Frontend can poll this endpoint to show real-time progress (pending → processing → parsed → reconciled).
 
@@ -335,23 +332,23 @@ Priority list of endpoints, organized into implementation tiers. Each tier build
 ### Tier 4 — Reconciliation
 > *Goal: The core business logic — matching receipts to bank statement lines.*
 
+Reconciliation is responsible for triggering the run and for manual match CRUD. **Job status is always read via `GET /jobs/{job_id}/status`** (no separate reconciliation-status endpoint). After a run, match state is reflected on `BankStatementLine.match_status` and `Receipt.match_status`; use existing document-scoped endpoints with `?match_status=unmatched` to list unmatched items.
+
 #### Reconciliation (`/reconciliation`)
-- [ ] `POST /reconciliation/jobs/{job_id}/run` — *(Authenticated)* Trigger the reconciliation algorithm for a job.
-    - Pre-condition: All documents in the job must have `status = "parsed"`.
-    - Logic: Runs the matching algorithm (exact match on amount + date, fuzzy match on vendor, bundle detection).
-    - Returns: `{ job_id, status: "reconciling" }`.
-- [ ] `GET /reconciliation/jobs/{job_id}/results` — *(Authenticated)* Get reconciliation results for a job.
-    - Returns: `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched }, matches: [...] }`.
-- [ ] `GET /reconciliation/jobs/{job_id}/matches` — *(Authenticated)* List all matches found.
-    - Each match: `{ match_id, statement_line: {...}, receipts: [{...}], match_type, confidence_score }`.
-    - `?match_type=perfect_matched|bundle_matched`
-- [ ] `GET /reconciliation/jobs/{job_id}/unmatched` — *(Authenticated)* List all unmatched statement lines and unmatched receipts separately.
+- [x] `POST /reconciliation/jobs/{job_id}/run` — *(Authenticated)* Trigger the reconciliation algorithm for a job.
+    - Pre-condition: When job→documents is defined, all documents in the job must have `status = "parsed"`. Until then, pass `account_id` in the request body to scope the run.
+    - Logic: Runs the matching algorithm (exact match on amount + date; fuzzy/bundle can be extended). Updates `Job.status` (reconciling → completed/failed) and writes `ReconciliationMatch` rows plus line/receipt `match_status`.
+    - Returns: `202` with `{ job_id, status }`. Poll **`GET /jobs/{job_id}/status`** for current status.
+- [x] `GET /reconciliation/jobs/{job_id}/results` — *(Authenticated)* Get reconciliation results for a job.
+    - Returns: `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched }, matches: [...] }`. Each match: `{ match_id, statement_line: {...}, receipts: [{...}], match_type }`.
+    - Optional `?account_id=` to scope summary (total_lines/unmatched) to an account.
+    - **Unmatched items:** use existing **`GET /receipts?match_status=unmatched`** and **`GET /statements/{statement_id}/lines?match_status=unmatched`** (scope by job’s documents when job→documents exists).
 
 #### Manual Matching (`/reconciliation`)
-- [ ] `POST /reconciliation/matches` — *(Authenticated)* Manually create a match between a statement line and one or more receipts.
-    - Accepts: `{ line_id, receipt_ids: [1, 2], match_type: "manual" }`.
-- [ ] `DELETE /reconciliation/matches/{match_id}` — *(Authenticated)* Remove/undo a match (resets line + receipt status to `unmatched`).
-- [ ] `PATCH /reconciliation/matches/{match_id}` — *(Authenticated)* Switch matching receipt?
+- [x] `POST /reconciliation/matches` — *(Authenticated)* Manually create a match between a statement line and one or more receipts.
+    - Accepts: `{ line_id, receipt_ids: [1, 2], match_type: "manual" }`. Optional `?job_id=` to associate with a reconciliation job.
+- [x] `DELETE /reconciliation/matches/{match_id}` — *(Authenticated)* Remove/undo a match (resets line + receipt `match_status` to `unmatched` when they have no other matches).
+- [x] `PATCH /reconciliation/matches/{match_id}` — *(Authenticated)* Switch which receipt is linked; body `{ receipt_id }`.
 
 ---
 
@@ -450,8 +447,10 @@ Data layer models implemented so far:
 |--------|------|-------|
 | `job_id` | `int` PK | |
 | `name` | `str` | User-defined label |
+| `job_type` | `enum` | `parsing`, `reconciliation` |
 | `status` | `enum` | `pending`, `processing`, `reconciling`, `completed`, `failed` |
 | `created_by` | `int` FK → users | |
+| `document_id` | `int` FK → documents | nullable, parsing jobs only |
 
 #### Enums
 - `DocumentStatus`: `pending_upload`, `pending_processing`, `processing`, `parsed`, `failed`
@@ -460,6 +459,7 @@ Data layer models implemented so far:
 - `AccountType`: `checking`, `credit_card`
 - `AccountBookRole`: `owner`, `viewer`
 - `MatchStatus`: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`
+- `JobType`: `parsing`, `reconciliation`
 - `JobStatus`: `pending`, `processing`, `reconciling`, `completed`, `failed`
 
 ---

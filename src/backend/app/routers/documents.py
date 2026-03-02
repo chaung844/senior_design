@@ -7,9 +7,10 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import DocumentStatus, DocumentType, UserRole
+from app.enums import DocumentStatus, DocumentType, JobStatus, JobType, UserRole
 from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
+from app.models.job import Job
 from app.models.user import User
 from app.schemas.document import (
     DocumentConfirmResponse,
@@ -92,6 +93,17 @@ async def confirm_upload(
             detail="File not found in S3. The upload might still be in progress.",
         )
 
+    # Create a parsing job for this document so the frontend can poll status.
+    job = Job(
+        name=f"Parse document {doc.document_id}",
+        job_type=JobType.parsing,
+        status=JobStatus.pending,
+        created_by=current_user.user_id,
+        document_id=doc.document_id,
+    )
+    db.add(job)
+    await db.flush()
+
     msg_type = "parse_receipt" if doc.document_type == "receipt" else "parse_statement"
 
     payload = {
@@ -99,6 +111,7 @@ async def confirm_upload(
         "s3_key": doc.s3_key,
         "user_id": doc.uploaded_by,
         "account_id": doc.account_id,
+        "job_id": job.job_id,
     }
 
     sqs_res = aws_service.enqueue_parsing(message_type=msg_type, payload=payload)
