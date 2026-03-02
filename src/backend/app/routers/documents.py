@@ -3,12 +3,11 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
-from sqlalchemy import func, or_, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import DocumentStatus, DocumentType, JobStatus, JobType, UserRole
-from app.models.account_book_member import AccountBookMember
+from app.enums import DocumentStatus, DocumentType, JobStatus, JobType
 from app.models.document import Document
 from app.models.job import Job
 from app.models.user import User
@@ -20,7 +19,11 @@ from app.schemas.document import (
     DocumentUploadResponse,
 )
 from app.services.aws_services import AWSService, get_aws_service
-from app.utils.access import _assert_can_write, get_owned_document
+from app.utils.access import (
+    _assert_can_write,
+    apply_document_access_filter,
+    get_owned_document,
+)
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -143,22 +146,7 @@ async def list_documents(
     current_user: User = Depends(get_current_user),
 ):
     base_filter = [Document.deleted_at.is_(None)]
-
-    if current_user.role == UserRole.developer:
-        pass  # developer sees all
-    else:
-        member_account_ids = (
-            select(AccountBookMember.account_id)
-            .where(AccountBookMember.user_id == current_user.user_id)
-            .correlate(None)
-            .scalar_subquery()
-        )
-        base_filter.append(
-            or_(
-                Document.uploaded_by == current_user.user_id,
-                Document.account_id.in_(member_account_ids),
-            )
-        )
+    apply_document_access_filter(base_filter, current_user)
 
     if status is not None:
         base_filter.append(Document.status == status)

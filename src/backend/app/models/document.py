@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import TYPE_CHECKING, Optional
 
-from sqlalchemy import Enum, ForeignKey, String, func
+from sqlalchemy import Enum, ForeignKey, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import DocumentStatus, DocumentType
@@ -47,9 +47,6 @@ class Document(Base, TimestampMixin):
         ForeignKey("bank_statements.statement_id", ondelete="SET NULL"),
         nullable=True,
         unique=True,
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now(), nullable=False
     )
     deleted_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
     # Relationships

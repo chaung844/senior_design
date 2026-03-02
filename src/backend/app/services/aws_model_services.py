@@ -129,26 +129,30 @@ def call_model(
     return completion.choices[0].message.content
 
 
-def model_parse_image(image_data_path) -> Dict[str, Any]:
+def model_parse_document(file_path: str) -> Dict[str, Any]:
     """
-    Parse an image using the Vision Language Model (VLM).
+    Parse a receipt document (image or PDF) using the Vision Language Model (VLM).
+
+    Supports the same file types accepted by ``_build_message``: ``.jpg``,
+    ``.jpeg``, ``.png``, and ``.pdf``.
 
     Args:
-        image_data_path (str): Path to the image file.
+        file_path (str): Path to the image or PDF file.
 
     Returns:
-        str: Parsed content from the image.
+        Dict[str, Any]: Parsed content from the document.
     """
     try:
         response = call_model(
             settings.vlm_model_id,
             settings.receipt_parsing_instruction_path,
-            data_path=image_data_path,
+            data_path=file_path,
         )
     except Exception as e:
-        raise ValueError(f"(!) Error invoking model API for image parsing: {e}") from e
+        raise ValueError(
+            f"(!) Error invoking model API for document parsing: {e}"
+        ) from e
 
-    # parse completion
     if response:
         sanitized_content = sanitize_llm_output(response)
         parsed_content = parse_yaml(sanitized_content)
@@ -157,32 +161,9 @@ def model_parse_image(image_data_path) -> Dict[str, Any]:
         return {}
 
 
-def model_parse_pdf(pdf_data_path) -> Dict[str, Any]:
-    """
-    Parse a PDF using the Vision Language Model (VLM).
-
-    Args:
-        pdf_data_path (str): Path to the PDF file.
-
-    Returns:
-        Dict[str, Any]: Parsed content from the PDF.
-    """
-    try:
-        reponse = call_model(
-            settings.vlm_model_id,
-            settings.receipt_parsing_instruction_path,
-            data_path=pdf_data_path,
-        )
-    except Exception as e:
-        raise ValueError(f"(!) Error invoking model API for PDF parsing: {e}") from e
-
-    # parse completion
-    if reponse:
-        sanitized_content = sanitize_llm_output(reponse)
-        parsed_content = parse_yaml(sanitized_content)
-        return parsed_content
-    else:
-        return {}
+# Backwards-compatible aliases — prefer model_parse_document for new call sites.
+model_parse_image = model_parse_document
+model_parse_pdf = model_parse_document
 
 
 def model_categorize_transaction(transaction_content) -> Dict[str, Any]:

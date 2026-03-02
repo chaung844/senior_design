@@ -11,8 +11,7 @@ from app.models.receipt import Receipt
 from app.models.statement import BankStatement, BankStatementLine
 from app.services.aws_model_services import (
     model_parse_bank_statement_metadata,
-    model_parse_image,
-    model_parse_pdf,
+    model_parse_document,
 )
 from app.services.aws_services import AWSService
 from app.utils.pdf_plumber import parse_statement
@@ -87,10 +86,8 @@ async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSSer
         _, ext = os.path.splitext(s3_key)
         ext = ext.lower()
 
-        if ext in IMAGE_EXTENSIONS:
-            parsed = model_parse_image(tmp_path)
-        elif ext in PDF_EXTENSIONS:
-            parsed = model_parse_pdf(tmp_path)
+        if ext in IMAGE_EXTENSIONS or ext in PDF_EXTENSIONS:
+            parsed = model_parse_document(tmp_path)
         else:
             raise ValueError(f"Unsupported file extension for receipt: {ext}")
 

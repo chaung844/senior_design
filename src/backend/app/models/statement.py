@@ -1,8 +1,8 @@
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Enum, ForeignKey, Numeric, String, func
+from sqlalchemy import Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
@@ -72,10 +72,6 @@ class BankStatementLine(Base, TimestampMixin):
         nullable=False,
         default=MatchStatus.unmatched,
     )
-    updated_at: Mapped[datetime] = mapped_column(
-        server_default=func.now(), onupdate=func.now(), nullable=False
-    )
-
     bank_statement: Mapped["BankStatement"] = relationship(
         "BankStatement", back_populates="lines"
     )

@@ -17,7 +17,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
 from app.database import get_db
-from app.enums import JobStatus, JobType, MatchStatus, UserRole
+from app.enums import JobStatus, JobType, MatchStatus
 from app.models.document import Document
 from app.models.job import Job
 from app.models.receipt import Receipt
@@ -37,21 +37,15 @@ from app.schemas.reconciliation import (
     ReconciliationStartResponse,
     ReconciliationSummary,
 )
-from app.utils.access import require_account_access
+from app.utils.access import can_view_job, require_account_access
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/reconciliation", tags=["reconciliation"])
 
 
-def _can_view_job(job: Job, user: User) -> bool:
-    if user.role == UserRole.developer:
-        return True
-    return job.created_by == user.user_id
-
-
 def _can_modify_job(job: Job, user: User) -> bool:
     """Same as view for now; viewers cannot call run or manual match (enforced via _assert_can_write elsewhere)."""
-    return _can_view_job(job, user)
+    return can_view_job(job, user)
 
 
 async def _get_reconciliation_job(
@@ -67,7 +61,7 @@ async def _get_reconciliation_job(
             status_code=400,
             detail="Job is not a reconciliation job",
         )
-    if not _can_view_job(job, user):
+    if not can_view_job(job, user):
         raise HTTPException(status_code=403, detail="Not authorized to view this job")
     return job
 

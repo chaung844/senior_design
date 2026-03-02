@@ -4,21 +4,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import JobType, UserRole
+from app.enums import JobType
 from app.models.document import Document
 from app.models.job import Job
 from app.models.user import User
 from app.schemas.job import JobStatusDocument, JobStatusResponse
+from app.utils.access import can_view_job
 from app.utils.auth import get_current_user
 
 router = APIRouter(prefix="/jobs", tags=["jobs"])
-
-
-def _can_view_job(job: Job, user: User) -> bool:
-    """Developers can view any job; others must be the creator."""
-    if user.role == UserRole.developer:
-        return True
-    return job.created_by == user.user_id
 
 
 @router.get("/{job_id}/status", response_model=JobStatusResponse)
@@ -31,7 +25,7 @@ async def get_job_status(
     if job is None:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    if not _can_view_job(job, current_user):
+    if not can_view_job(job, current_user):
         raise HTTPException(status_code=403, detail="Not authorized to view this job")
 
     documents: list[JobStatusDocument] = []
