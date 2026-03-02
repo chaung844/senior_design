@@ -1,4 +1,4 @@
-from app.enums import MatchStatus, UserRole
+from app.enums import JobStatus, MatchStatus, UserRole
 
 from .account_book import (
     AccountBookCreate,
@@ -20,6 +20,11 @@ from .bank_statement_line import (
     BankStatementLineUpdate,
 )
 from .document import FileUrlResponse
+from .job import JobCreate, JobListResponse, JobRead
+from .reconciliation import (
+    ReconciliationMatchListResponse,
+    ReconciliationMatchRead,
+)
 from .receipt import ReceiptListResponse, ReceiptRead, ReceiptUpdate
 from .user import (
     UserBase,
@@ -44,7 +49,13 @@ __all__ = [
     "BankStatementLineUpdate",
     "BankStatementLineListResponse",
     "UserRole",
+    "JobStatus",
     "MatchStatus",
+    "JobCreate",
+    "JobRead",
+    "JobListResponse",
+    "ReconciliationMatchRead",
+    "ReconciliationMatchListResponse",
     "ReceiptRead",
     "ReceiptUpdate",
     "ReceiptListResponse",

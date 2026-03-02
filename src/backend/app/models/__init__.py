@@ -5,6 +5,8 @@ from .receipt import Receipt
 from .document import Document
 from .account_book import AccountBook
 from .account_book_member import AccountBookMember
+from .job import Job
+from .reconciliation import ReconciliationMatch
 
 __all__ = [
     "Base",
@@ -16,4 +18,6 @@ __all__ = [
     "Document",
     "AccountBook",
     "AccountBookMember",
+    "Job",
+    "ReconciliationMatch",
 ]

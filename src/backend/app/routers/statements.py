@@ -25,8 +25,12 @@ from app.schemas.document import FileUrlResponse
 from app.services.aws_services import AWSService
 from app.utils.access import get_owned_statement, get_owned_statement_line
 from app.utils.auth import get_current_user, verify_csrf_token
+from app.config import get_settings
 
 router = APIRouter(prefix="/statements", tags=["statements"])
+
+
+settings = get_settings()
 
 aws_service = AWSService()
 
@@ -220,7 +224,7 @@ async def get_statement_file_url(
             detail="No document linked to this bank statement",
         )
 
-    expires_in = 3600
+    expires_in = settings.s3_presigned_url_expire_minutes
     url = aws_service.generate_presigned_get_url(
         statement.document.s3_key, expires_in=expires_in
     )
