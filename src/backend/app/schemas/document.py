@@ -22,6 +22,7 @@ class DocumentUploadResponse(BaseModel):
 class DocumentConfirmResponse(BaseModel):
     document_id: int
     status: DocumentStatus = DocumentStatus.pending_processing
+    job_id: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 

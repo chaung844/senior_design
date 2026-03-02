@@ -5,7 +5,9 @@ import signal
 import threading
 from typing import Any, Dict
 
-from app.database import AsyncSessionLocal
+from sqlalchemy.exc import DBAPIError, OperationalError
+
+from app.database import AsyncSessionLocal, engine
 from app.enums import DocumentStatus, JobStatus, JobType
 from app.models.document import Document
 from app.models.job import Job
@@ -24,6 +26,36 @@ HANDLER_REGISTRY: Dict[str, Any] = {
 }
 
 HEARTBEAT_INTERVAL_SEC = 60
+
+# Retry settings for transient DB connection errors
+MAX_DB_RETRIES = 3
+RETRY_BASE_DELAY_SEC = 1.0
+
+
+def _is_connection_error(exc: Exception) -> bool:
+    """Return True if the exception looks like a transient connection failure."""
+    if isinstance(exc, (OperationalError, DBAPIError)):
+        msg = str(exc).lower()
+        indicators = [
+            "connection was closed",
+            "connectiondoesnotexisterror",
+            "connection reset",
+            "connection refused",
+            "broken pipe",
+            "server closed the connection",
+            "ssl connection has been closed",
+            "could not connect",
+            "timeout expired",
+            "connection timed out",
+        ]
+        return any(ind in msg for ind in indicators)
+    return False
+
+
+async def _dispose_pool() -> None:
+    """Dispose the engine's connection pool so the next checkout creates a fresh connection."""
+    logger.info("Disposing connection pool to force fresh connections")
+    await engine.dispose()
 
 
 class SQSWorker:
@@ -55,6 +87,110 @@ class SQSWorker:
         t.start()
         return stop_event
 
+    async def _mark_processing(
+        self, document_id: int, job_id: int | None
+    ) -> str | None:
+        """
+        Check the document status and mark it as processing.
+
+        Returns:
+            None   – if the document was successfully marked as processing
+            "skip" – if the document is already processing/parsed (should be skipped)
+            "discard" – if the document was not found (should be discarded)
+        """
+        async with AsyncSessionLocal() as session:
+            doc = await session.get(Document, document_id)
+            if doc is None:
+                return "discard"
+
+            if doc.status in (
+                DocumentStatus.processing,
+                DocumentStatus.parsed,
+            ):
+                return "skip"
+
+            doc.status = DocumentStatus.processing
+
+            if job_id is not None:
+                job = await session.get(Job, job_id)
+                if job is None:
+                    logger.error(f"Job {job_id} not found for document {document_id}")
+                else:
+                    if job.job_type == JobType.parsing:
+                        job.status = JobStatus.processing
+
+            await session.commit()
+        return None
+
+    async def _run_handler(
+        self,
+        handler,
+        payload: dict,
+        document_id: int,
+        job_id: int | None,
+    ) -> None:
+        """Run the parsing handler and mark the document/job as completed."""
+        async with AsyncSessionLocal() as session:
+            await handler(payload, session, self.aws)
+            await session.commit()
+
+            doc = await session.get(Document, document_id)
+            if doc:
+                doc.status = DocumentStatus.parsed
+
+            if job_id is not None:
+                job = await session.get(Job, job_id)
+                if job and job.job_type == JobType.parsing:
+                    job.status = JobStatus.completed
+
+            await session.commit()
+
+    async def _mark_failed(
+        self, document_id: int, job_id: int | None, error: str
+    ) -> None:
+        """Mark the document and job as failed in a fresh session."""
+        async with AsyncSessionLocal() as err_session:
+            doc = await err_session.get(Document, document_id)
+            if doc:
+                doc.status = DocumentStatus.failed
+                doc.error_message = error[:1000]
+
+            if job_id is not None:
+                job = await err_session.get(Job, job_id)
+                if job and job.job_type == JobType.parsing:
+                    job.status = JobStatus.failed
+
+            await err_session.commit()
+
+    async def _with_retry(self, operation_name: str, coro_factory):
+        """
+        Execute an async callable with retry logic for transient DB connection errors.
+
+        ``coro_factory`` is a zero-argument callable that returns an awaitable each time
+        it is invoked (so we get a fresh coroutine on every retry).
+        """
+        last_exc: Exception | None = None
+
+        for attempt in range(1, MAX_DB_RETRIES + 1):
+            try:
+                return await coro_factory()
+            except Exception as exc:
+                last_exc = exc
+                if _is_connection_error(exc) and attempt < MAX_DB_RETRIES:
+                    delay = RETRY_BASE_DELAY_SEC * (2 ** (attempt - 1))
+                    logger.warning(
+                        f"[{operation_name}] Transient DB connection error on attempt "
+                        f"{attempt}/{MAX_DB_RETRIES}: {exc!r}. "
+                        f"Disposing pool and retrying in {delay:.1f}s..."
+                    )
+                    await _dispose_pool()
+                    await asyncio.sleep(delay)
+                else:
+                    raise
+
+        # Should not reach here, but just in case:
+        raise last_exc  # type: ignore[misc]
+
     async def _process_message(self, message: dict):
         receipt_handle = message["ReceiptHandle"]
         stop_heartbeat = self._start_heartbeat(receipt_handle)
@@ -72,77 +208,48 @@ class SQSWorker:
                 self.aws.delete_message(receipt_handle)
                 return
 
-            async with AsyncSessionLocal() as session:
-                doc = await session.get(Document, document_id)
-                if doc is None:
-                    logger.error(f"Document {document_id} not found, discarding")
-                    self.aws.delete_message(receipt_handle)
-                    return
-
-                if doc.status in (
-                    DocumentStatus.processing,
-                    DocumentStatus.parsed,
-                ):
-                    logger.info(
-                        f"Document {document_id} already {doc.status.value}, skipping"
-                    )
-                    self.aws.delete_message(receipt_handle)
-                    return
-
-                doc.status = DocumentStatus.processing
-
-                if job_id is not None:
-                    job = await session.get(Job, job_id)
-                    if job is None:
-                        logger.error(f"Job {job_id} not found for document {document_id}")
-                    else:
-                        # Only update parsing jobs here; reconciliation jobs are handled elsewhere.
-                        if job.job_type == JobType.parsing:
-                            job.status = JobStatus.processing
-
-                await session.commit()
-
-            logger.info(
-                f"Processing document {document_id} with handler '{msg_type}'"
+            # --- Phase 1: mark the document as "processing" (with retry) ---
+            result = await self._with_retry(
+                f"mark_processing(doc={document_id})",
+                lambda: self._mark_processing(document_id, job_id),
             )
 
-            async with AsyncSessionLocal() as session:
+            if result == "discard":
+                logger.error(f"Document {document_id} not found, discarding")
+                self.aws.delete_message(receipt_handle)
+                return
+
+            if result == "skip":
+                logger.info(
+                    f"Document {document_id} already processing/parsed, skipping"
+                )
+                self.aws.delete_message(receipt_handle)
+                return
+
+            # --- Phase 2: run the handler (with retry) ---
+            logger.info(f"Processing document {document_id} with handler '{msg_type}'")
+
+            try:
+                await self._with_retry(
+                    f"handler({msg_type}, doc={document_id})",
+                    lambda: self._run_handler(handler, payload, document_id, job_id),
+                )
+                logger.info(f"Document {document_id} parsed successfully")
+                self.aws.delete_message(receipt_handle)
+
+            except Exception as e:
+                logger.exception(f"Handler failed for document {document_id}: {e}")
+                # Try to mark the document as failed (also with retry so the
+                # error status actually persists even if the DB was flaky).
                 try:
-                    await handler(payload, session, self.aws)
-                    await session.commit()
-
-                    doc = await session.get(Document, document_id)
-                    if doc:
-                        doc.status = DocumentStatus.parsed
-
-                    if job_id is not None:
-                        job = await session.get(Job, job_id)
-                        if job:
-                            if job.job_type == JobType.parsing:
-                                job.status = JobStatus.completed
-
-                    await session.commit()
-
-                    logger.info(f"Document {document_id} parsed successfully")
-                    self.aws.delete_message(receipt_handle)
-
-                except Exception as e:
-                    await session.rollback()
-                    logger.exception(
-                        f"Handler failed for document {document_id}: {e}"
+                    await self._with_retry(
+                        f"mark_failed(doc={document_id})",
+                        lambda: self._mark_failed(document_id, job_id, str(e)),
                     )
-                    async with AsyncSessionLocal() as err_session:
-                        doc = await err_session.get(Document, document_id)
-                        if doc:
-                            doc.status = DocumentStatus.failed
-                            doc.error_message = str(e)[:1000]
-
-                        if job_id is not None:
-                            job = await err_session.get(Job, job_id)
-                            if job and job.job_type == JobType.parsing:
-                                job.status = JobStatus.failed
-
-                        await err_session.commit()
+                except Exception as mark_err:
+                    logger.error(
+                        f"Could not mark document {document_id} as failed: {mark_err}"
+                    )
 
         except Exception as e:
             logger.exception(f"Failed to process SQS message: {e}")
