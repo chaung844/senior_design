@@ -6,8 +6,9 @@ import threading
 from typing import Any, Dict
 
 from app.database import AsyncSessionLocal
-from app.enums import DocumentStatus
+from app.enums import DocumentStatus, JobStatus, JobType
 from app.models.document import Document
+from app.models.job import Job
 from app.services.aws_services import AWSService
 from app.worker.handlers import handle_parse_receipt, handle_parse_statement
 
@@ -63,6 +64,7 @@ class SQSWorker:
             msg_type = body["type"]
             payload = body["payload"]
             document_id = payload["document_id"]
+            job_id = payload.get("job_id")
 
             handler = HANDLER_REGISTRY.get(msg_type)
             if handler is None:
@@ -88,6 +90,16 @@ class SQSWorker:
                     return
 
                 doc.status = DocumentStatus.processing
+
+                if job_id is not None:
+                    job = await session.get(Job, job_id)
+                    if job is None:
+                        logger.error(f"Job {job_id} not found for document {document_id}")
+                    else:
+                        # Only update parsing jobs here; reconciliation jobs are handled elsewhere.
+                        if job.job_type == JobType.parsing:
+                            job.status = JobStatus.processing
+
                 await session.commit()
 
             logger.info(
@@ -100,7 +112,15 @@ class SQSWorker:
                     await session.commit()
 
                     doc = await session.get(Document, document_id)
-                    doc.status = DocumentStatus.parsed
+                    if doc:
+                        doc.status = DocumentStatus.parsed
+
+                    if job_id is not None:
+                        job = await session.get(Job, job_id)
+                        if job:
+                            if job.job_type == JobType.parsing:
+                                job.status = JobStatus.completed
+
                     await session.commit()
 
                     logger.info(f"Document {document_id} parsed successfully")
@@ -116,7 +136,13 @@ class SQSWorker:
                         if doc:
                             doc.status = DocumentStatus.failed
                             doc.error_message = str(e)[:1000]
-                            await err_session.commit()
+
+                        if job_id is not None:
+                            job = await err_session.get(Job, job_id)
+                            if job and job.job_type == JobType.parsing:
+                                job.status = JobStatus.failed
+
+                        await err_session.commit()
 
         except Exception as e:
             logger.exception(f"Failed to process SQS message: {e}")

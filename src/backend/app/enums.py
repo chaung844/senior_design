@@ -37,6 +37,11 @@ class AccountBookRole(str, Enum):
     viewer = "viewer"
 
 
+class JobType(str, Enum):
+    parsing = "parsing"
+    reconciliation = "reconciliation"
+
+
 class JobStatus(str, Enum):
     pending = "pending"
     processing = "processing"
