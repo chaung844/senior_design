@@ -14,13 +14,11 @@ from app.models.receipt import Receipt
 from app.models.user import User
 from app.schemas.document import FileUrlResponse
 from app.schemas.receipt import ReceiptListResponse, ReceiptRead, ReceiptUpdate
-from app.services.aws_services import AWSService
+from app.services.aws_services import AWSService, get_aws_service
 from app.utils.access import get_owned_receipt
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
-settings = get_settings()
-aws_service = AWSService()
 
 
 def _receipt_to_read(receipt: Receipt) -> ReceiptRead:
@@ -128,11 +126,26 @@ async def update_receipt(
 ):
     receipt = await get_owned_receipt(receipt_id, current_user, db, write=True)
 
+    _RECEIPT_WRITABLE_FIELDS = {
+        "vendor",
+        "invoice_number",
+        "billing_date",
+        "charged_amount",
+        "currency",
+        "description",
+        "expense_type",
+    }
+
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
     for field, value in update_data.items():
+        if field not in _RECEIPT_WRITABLE_FIELDS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Field '{field}' is not updatable",
+            )
         setattr(receipt, field, value)
 
     await db.commit()
@@ -146,6 +159,7 @@ async def get_receipt_file_url(
     receipt_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    aws_service: AWSService = Depends(get_aws_service),
 ):
     receipt = await get_owned_receipt(receipt_id, current_user, db)
 
@@ -154,8 +168,9 @@ async def get_receipt_file_url(
             status_code=404, detail="No document linked to this receipt"
         )
 
+    settings = get_settings()
     expires_in = settings.s3_presigned_url_expire_minutes
-    url = aws_service.generate_presigned_get_url(
+    url = await aws_service.async_generate_presigned_get_url(
         receipt.document.s3_key, expires_in=expires_in
     )
     if not url:

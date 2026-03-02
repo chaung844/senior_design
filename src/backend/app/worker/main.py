@@ -2,7 +2,6 @@ import asyncio
 import json
 import logging
 import signal
-import threading
 from typing import Any, Dict
 
 from sqlalchemy.exc import DBAPIError, OperationalError
@@ -11,7 +10,7 @@ from app.database import AsyncSessionLocal, engine
 from app.enums import DocumentStatus, JobStatus, JobType
 from app.models.document import Document
 from app.models.job import Job
-from app.services.aws_services import AWSService
+from app.services.aws_services import get_aws_service
 from app.worker.handlers import handle_parse_receipt, handle_parse_statement
 
 logging.basicConfig(
@@ -60,7 +59,7 @@ async def _dispose_pool() -> None:
 
 class SQSWorker:
     def __init__(self):
-        self.aws = AWSService()
+        self.aws = get_aws_service()
         self._shutdown = False
 
     def _register_signals(self):
@@ -71,20 +70,24 @@ class SQSWorker:
         logger.info(f"Received signal {signum}, shutting down gracefully...")
         self._shutdown = True
 
-    def _start_heartbeat(self, receipt_handle: str) -> threading.Event:
+    def _start_heartbeat(self, receipt_handle: str) -> asyncio.Event:
         """Periodically extend SQS visibility timeout while processing."""
-        stop_event = threading.Event()
+        stop_event = asyncio.Event()
 
-        def _heartbeat():
+        async def _heartbeat():
             while not stop_event.is_set():
-                stop_event.wait(HEARTBEAT_INTERVAL_SEC)
-                if stop_event.is_set():
+                try:
+                    await asyncio.wait_for(
+                        stop_event.wait(), timeout=HEARTBEAT_INTERVAL_SEC
+                    )
+                    # If we get here, the event was set — stop.
                     break
+                except asyncio.TimeoutError:
+                    pass
                 logger.debug("Extending visibility timeout")
-                self.aws.extend_visibility_timeout(receipt_handle)
+                await self.aws.async_extend_visibility_timeout(receipt_handle)
 
-        t = threading.Thread(target=_heartbeat, daemon=True)
-        t.start()
+        asyncio.get_event_loop().create_task(_heartbeat())
         return stop_event
 
     async def _mark_processing(
@@ -205,7 +208,7 @@ class SQSWorker:
             handler = HANDLER_REGISTRY.get(msg_type)
             if handler is None:
                 logger.error(f"Unknown message type: {msg_type}")
-                self.aws.delete_message(receipt_handle)
+                await self.aws.async_delete_message(receipt_handle)
                 return
 
             # --- Phase 1: mark the document as "processing" (with retry) ---
@@ -216,14 +219,14 @@ class SQSWorker:
 
             if result == "discard":
                 logger.error(f"Document {document_id} not found, discarding")
-                self.aws.delete_message(receipt_handle)
+                await self.aws.async_delete_message(receipt_handle)
                 return
 
             if result == "skip":
                 logger.info(
                     f"Document {document_id} already processing/parsed, skipping"
                 )
-                self.aws.delete_message(receipt_handle)
+                await self.aws.async_delete_message(receipt_handle)
                 return
 
             # --- Phase 2: run the handler (with retry) ---
@@ -235,16 +238,21 @@ class SQSWorker:
                     lambda: self._run_handler(handler, payload, document_id, job_id),
                 )
                 logger.info(f"Document {document_id} parsed successfully")
-                self.aws.delete_message(receipt_handle)
+                await self.aws.async_delete_message(receipt_handle)
 
             except Exception as e:
-                logger.exception(f"Handler failed for document {document_id}: {e}")
+                handler_error = e
+                logger.exception(
+                    f"Handler failed for document {document_id}: {handler_error}"
+                )
                 # Try to mark the document as failed (also with retry so the
                 # error status actually persists even if the DB was flaky).
                 try:
                     await self._with_retry(
                         f"mark_failed(doc={document_id})",
-                        lambda: self._mark_failed(document_id, job_id, str(e)),
+                        lambda: self._mark_failed(
+                            document_id, job_id, str(handler_error)
+                        ),
                     )
                 except Exception as mark_err:
                     logger.error(
@@ -261,7 +269,9 @@ class SQSWorker:
         logger.info("SQS Worker started, polling for messages...")
 
         while not self._shutdown:
-            messages = self.aws.receive_messages(max_messages=1, wait_time=20)
+            messages = await self.aws.async_receive_messages(
+                max_messages=1, wait_time=20
+            )
 
             if not messages:
                 continue

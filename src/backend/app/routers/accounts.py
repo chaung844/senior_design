@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
@@ -167,11 +167,24 @@ async def update_account_book(
 ):
     account = await require_account_access(account_id, current_user, db, write=True)
 
+    _ACCOUNT_WRITABLE_FIELDS = {
+        "bank_name",
+        "account_name",
+        "account_type",
+        "currency",
+        "account_number_last4",
+    }
+
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
     for field, value in update_data.items():
+        if field not in _ACCOUNT_WRITABLE_FIELDS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Field '{field}' is not updatable",
+            )
         setattr(account, field, value)
 
     await db.commit()
@@ -190,7 +203,7 @@ async def delete_account_book(
     current_user: User = Depends(require_admin_or_dev),
 ):
     account = await require_account_access(account_id, current_user, db, write=True)
-    account.deleted_at = datetime.now()
+    account.deleted_at = datetime.now(timezone.utc)
     await db.commit()
     return Response(status_code=204)
 
