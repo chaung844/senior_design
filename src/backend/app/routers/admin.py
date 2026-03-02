@@ -137,7 +137,14 @@ async def update_user(
                 detail="A user with this email already exists",
             )
 
+    _USER_WRITABLE_FIELDS = {"name", "email", "role", "is_active"}
+
     for field, value in update_data.items():
+        if field not in _USER_WRITABLE_FIELDS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Field '{field}' is not updatable",
+            )
         setattr(user, field, value)
 
     await db.commit()

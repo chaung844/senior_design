@@ -127,7 +127,7 @@ class Settings(BaseSettings):
     )
 
 
-@lru_cache
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
     """
     Return a cached singleton of the application settings.
@@ -141,3 +141,17 @@ def get_settings() -> Settings:
         print(settings.aws_bedrock_api_key.get_secret_value())
     """
     return Settings()
+
+
+def clear_settings() -> None:
+    """Invalidate the cached settings singleton.
+
+    This is useful in tests where environment variables are patched between
+    runs and a fresh ``Settings`` instance is required::
+
+        from app.config import clear_settings, get_settings
+
+        clear_settings()
+        settings = get_settings()  # re-reads env / .env
+    """
+    get_settings.cache_clear()

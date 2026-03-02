@@ -1,5 +1,5 @@
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
@@ -19,18 +19,11 @@ from app.schemas.document import (
     DocumentUploadRequest,
     DocumentUploadResponse,
 )
-from app.services.aws_services import AWSService
-from app.utils.access import get_owned_document
+from app.services.aws_services import AWSService, get_aws_service
+from app.utils.access import _assert_can_write, get_owned_document
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-
-aws_service = AWSService()
-
-
-def _viewer_guard(user: User) -> None:
-    if user.role == UserRole.viewer:
-        raise HTTPException(status_code=403, detail="Viewers have read-only access")
 
 
 @router.post(
@@ -42,8 +35,9 @@ async def get_upload_url(
     request: DocumentUploadRequest,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    aws_service: AWSService = Depends(get_aws_service),
 ):
-    _viewer_guard(current_user)
+    _assert_can_write(current_user)
 
     file_uuid = str(uuid.uuid4())
     s3_key = f"{file_uuid}_{request.file_name}"
@@ -59,7 +53,7 @@ async def get_upload_url(
     await db.commit()
     await db.refresh(new_doc)
 
-    upload_url = aws_service.generate_presigned_url(
+    upload_url = await aws_service.async_generate_presigned_url(
         s3_key=s3_key, file_type=request.file_type
     )
 
@@ -83,12 +77,13 @@ async def confirm_upload(
     statement_id: Optional[int] = Query(default=None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    aws_service: AWSService = Depends(get_aws_service),
 ):
-    _viewer_guard(current_user)
+    _assert_can_write(current_user)
 
     doc = await get_owned_document(document_id, current_user, db, write=True)
 
-    if not aws_service.verify_s3_upload(doc.s3_key):
+    if not await aws_service.async_verify_s3_upload(doc.s3_key):
         raise HTTPException(
             status_code=400,
             detail="File not found in S3. The upload might still be in progress.",
@@ -118,7 +113,9 @@ async def confirm_upload(
         else doc.statement_id,
     }
 
-    sqs_res = aws_service.enqueue_parsing(message_type=msg_type, payload=payload)
+    sqs_res = await aws_service.async_enqueue_parsing(
+        message_type=msg_type, payload=payload
+    )
 
     if not sqs_res:
         raise HTTPException(
@@ -208,13 +205,14 @@ async def delete_document(
     background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    aws_service: AWSService = Depends(get_aws_service),
 ):
-    _viewer_guard(current_user)
+    _assert_can_write(current_user)
 
     doc = await get_owned_document(document_id, current_user, db, write=True)
-    doc.deleted_at = datetime.now()
+    doc.deleted_at = datetime.now(timezone.utc)
     await db.commit()
 
-    background_tasks.add_task(aws_service.delete_s3_object, doc.s3_key)
+    background_tasks.add_task(aws_service.async_delete_s3_object, doc.s3_key)
 
     return Response(status_code=204)

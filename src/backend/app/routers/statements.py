@@ -5,6 +5,7 @@ from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
+from app.config import get_settings
 from app.database import get_db
 from app.enums import MatchStatus, UserRole
 from app.models.account_book_member import AccountBookMember
@@ -22,17 +23,11 @@ from app.schemas.bank_statement_line import (
     BankStatementLineUpdate,
 )
 from app.schemas.document import FileUrlResponse
-from app.services.aws_services import AWSService
+from app.services.aws_services import AWSService, get_aws_service
 from app.utils.access import get_owned_statement, get_owned_statement_line
 from app.utils.auth import get_current_user, verify_csrf_token
-from app.config import get_settings
 
 router = APIRouter(prefix="/statements", tags=["statements"])
-
-
-settings = get_settings()
-
-aws_service = AWSService()
 
 
 def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
@@ -197,11 +192,25 @@ async def update_statement_line(
         statement_id, line_id, current_user, db, write=True
     )
 
+    _LINE_WRITABLE_FIELDS = {
+        "description",
+        "vendor",
+        "charge",
+        "transaction_date",
+        "posting_date",
+        "mcc",
+    }
+
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
 
     for field, value in update_data.items():
+        if field not in _LINE_WRITABLE_FIELDS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Field '{field}' is not updatable",
+            )
         setattr(line, field, value)
 
     await db.commit()
@@ -215,6 +224,7 @@ async def get_statement_file_url(
     statement_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
+    aws_service: AWSService = Depends(get_aws_service),
 ):
     statement = await get_owned_statement(statement_id, current_user, db)
 
@@ -224,8 +234,9 @@ async def get_statement_file_url(
             detail="No document linked to this bank statement",
         )
 
+    settings = get_settings()
     expires_in = settings.s3_presigned_url_expire_minutes
-    url = aws_service.generate_presigned_get_url(
+    url = await aws_service.async_generate_presigned_get_url(
         statement.document.s3_key, expires_in=expires_in
     )
     if not url:

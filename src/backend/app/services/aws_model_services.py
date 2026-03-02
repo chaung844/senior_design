@@ -61,9 +61,7 @@ def _build_message(system_instruction_path, data_path=None, prompt=None):
         ):
             pil_image = Image.open(data_path)
             image_uri = encode_pil_image(pil_image)
-            user_content.append(
-                {"type": "image_url", "image_url": {"url": image_uri}}
-            )
+            user_content.append({"type": "image_url", "image_url": {"url": image_uri}})
 
         if data_path.endswith(".pdf"):
             pdf_uri_list = process_pdf(data_path)
@@ -148,7 +146,7 @@ def model_parse_image(image_data_path) -> Dict[str, Any]:
             data_path=image_data_path,
         )
     except Exception as e:
-        raise ValueError(f"(!) Error invoking model API for image parsing: {e}")
+        raise ValueError(f"(!) Error invoking model API for image parsing: {e}") from e
 
     # parse completion
     if response:
@@ -176,7 +174,7 @@ def model_parse_pdf(pdf_data_path) -> Dict[str, Any]:
             data_path=pdf_data_path,
         )
     except Exception as e:
-        raise ValueError(f"(!) Error invoking model API for PDF parsing: {e}")
+        raise ValueError(f"(!) Error invoking model API for PDF parsing: {e}") from e
 
     # parse completion
     if reponse:
@@ -201,9 +199,10 @@ def model_categorize_transaction(transaction_content) -> Dict[str, Any]:
         reponse = call_model(
             settings.vlm_model_id,
             settings.categorizing_instruction_path,
+            prompt=str(transaction_content),
         )
     except Exception as e:
-        raise ValueError(f"(!) Error invoking model API for categorization: {e}")
+        raise ValueError(f"(!) Error invoking model API for categorization: {e}") from e
 
     if reponse:
         sanitized_content = sanitize_llm_output(reponse)
@@ -232,7 +231,7 @@ def model_parse_bank_statement_metadata(file_path: str) -> Dict[str, Any]:
     except Exception as e:
         raise ValueError(
             f"(!) Error invoking model API for parsing bank statement: {e}"
-        )
+        ) from e
 
     if reponse:
         sanitized_content = sanitize_llm_output(reponse)

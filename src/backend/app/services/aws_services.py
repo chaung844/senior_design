@@ -1,9 +1,11 @@
 import json
 import logging
+from functools import lru_cache
 
 import boto3
 from botocore.config import Config
 from botocore.exceptions import ClientError
+from fastapi.concurrency import run_in_threadpool
 
 from app.config import get_settings
 
@@ -97,7 +99,7 @@ class AWSService:
 
     def generate_presigned_get_url(
         self, s3_key: str, expires_in: int = settings.s3_presigned_url_expire_minutes
-    ) -> str | None:
+    ) -> "str | None":
         try:
             return self.s3_client.generate_presigned_url(
                 "get_object",
@@ -125,3 +127,59 @@ class AWSService:
             )
         except ClientError as e:
             logging.error(f"SQS visibility timeout extension error: {e}")
+
+    # ------------------------------------------------------------------
+    # Async wrappers: use these from async route handlers / workers
+    # to avoid blocking the event loop with synchronous boto3 calls.
+    # ------------------------------------------------------------------
+
+    async def async_generate_presigned_url(self, s3_key: str, file_type: str):
+        return await run_in_threadpool(self.generate_presigned_url, s3_key, file_type)
+
+    async def async_verify_s3_upload(self, s3_key: str) -> bool:
+        return await run_in_threadpool(self.verify_s3_upload, s3_key)
+
+    async def async_download_file(self, s3_key: str, local_path: str) -> bool:
+        return await run_in_threadpool(self.download_file, s3_key, local_path)
+
+    async def async_enqueue_parsing(self, message_type: str, payload: dict):
+        return await run_in_threadpool(self.enqueue_parsing, message_type, payload)
+
+    async def async_receive_messages(self, max_messages: int = 1, wait_time: int = 20):
+        return await run_in_threadpool(self.receive_messages, max_messages, wait_time)
+
+    async def async_delete_message(self, receipt_handle: str):
+        return await run_in_threadpool(self.delete_message, receipt_handle)
+
+    async def async_generate_presigned_get_url(
+        self,
+        s3_key: str,
+        expires_in: int = settings.s3_presigned_url_expire_minutes,
+    ) -> "str | None":
+        return await run_in_threadpool(
+            self.generate_presigned_get_url, s3_key, expires_in
+        )
+
+    async def async_delete_s3_object(self, s3_key: str) -> bool:
+        return await run_in_threadpool(self.delete_s3_object, s3_key)
+
+    async def async_extend_visibility_timeout(
+        self, receipt_handle: str, timeout: int = 120
+    ):
+        return await run_in_threadpool(
+            self.extend_visibility_timeout, receipt_handle, timeout
+        )
+
+
+@lru_cache(maxsize=1)
+def get_aws_service() -> AWSService:
+    """Return a cached singleton AWSService instance.
+
+    Use as a FastAPI dependency::
+
+        aws: AWSService = Depends(get_aws_service)
+
+    This avoids module-level instantiation (which crashes imports when
+    env vars are missing) and makes the service easy to mock in tests.
+    """
+    return AWSService()

@@ -5,6 +5,7 @@ description: this script seeds the database with sample data for testing purpose
 """
 
 import asyncio
+import logging
 from typing import TYPE_CHECKING
 
 from sqlalchemy import select
@@ -13,6 +14,12 @@ from app.database import AsyncSessionLocal, engine
 from app.enums import AccountBookRole, AccountType, UserRole
 from app.models import AccountBook, AccountBookMember, User
 from app.utils.security import hash_password
+
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+)
+logger = logging.getLogger("seed")
 
 if TYPE_CHECKING:
     from app.models.account_book import AccountBook
@@ -62,7 +69,7 @@ async def seed_users(session) -> dict[str, User]:
         result = await session.execute(select(User).where(User.email == data["email"]))
         existing = result.scalar_one_or_none()
         if existing:
-            print(f"  User {data['email']} already exists. Skipping.")
+            logger.info("User %s already exists. Skipping.", data["email"])
             user_map[data["email"]] = existing
             continue
 
@@ -78,9 +85,9 @@ async def seed_users(session) -> dict[str, User]:
 
     if new_count:
         await session.flush()
-        print(f"  Added {new_count} new users.")
+        logger.info("Added %d new users.", new_count)
     else:
-        print("  No new users to add.")
+        logger.info("No new users to add.")
 
     return user_map
 
@@ -92,7 +99,7 @@ async def seed_account_books(session, user_map: dict[str, User]):
     viewer1 = user_map.get("viewer1@example.com")
 
     if not admin1 or not admin2:
-        print("  Admin users not found, skipping account book seed.")
+        logger.warning("Admin users not found, skipping account book seed.")
         return
 
     books_to_seed = [
@@ -127,9 +134,11 @@ async def seed_account_books(session, user_map: dict[str, User]):
             )
         )
         if existing.scalar_one_or_none():
-            print(
-                f"  Account book {data['bank_name']} ****{data['account_number_last4']} "
-                f"for {owner.email} already exists. Skipping."
+            logger.info(
+                "Account book %s ****%s for %s already exists. Skipping.",
+                data["bank_name"],
+                data["account_number_last4"],
+                owner.email,
             )
             continue
 
@@ -160,29 +169,32 @@ async def seed_account_books(session, user_map: dict[str, User]):
             session.add(viewer_member)
 
         new_count += 1
-        print(
-            f"  Created account book: {data['bank_name']} ****{data['account_number_last4']} "
-            f"(owner: {owner.email}, viewers: {[v.email for v in data['viewers']]})"
+        logger.info(
+            "Created account book: %s ****%s (owner: %s, viewers: %s)",
+            data["bank_name"],
+            data["account_number_last4"],
+            owner.email,
+            [v.email for v in data["viewers"]],
         )
 
     if not new_count:
-        print("  No new account books to add.")
+        logger.info("No new account books to add.")
 
 
 async def main():
     async with AsyncSessionLocal() as session:
         try:
-            print("Seeding users...")
+            logger.info("Seeding users...")
             user_map = await seed_users(session)
 
-            print("Seeding account books...")
+            logger.info("Seeding account books...")
             await seed_account_books(session, user_map)
 
             await session.commit()
-            print("Seed complete.")
+            logger.info("Seed complete.")
 
         except Exception as e:
-            print(f"Error during seeding: {e}")
+            logger.error("Error during seeding: %s", e, exc_info=True)
             await session.rollback()
         finally:
             await session.close()
