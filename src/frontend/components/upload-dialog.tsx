@@ -61,10 +61,7 @@ export function UploadDialog({
     const dragCounter = React.useRef(0);
 
     const acceptedExtensions = React.useMemo(
-        () =>
-            accept
-                .split(",")
-                .map((ext) => ext.trim().toLowerCase()),
+        () => accept.split(",").map((ext) => ext.trim().toLowerCase()),
         [accept],
     );
 
@@ -140,7 +137,7 @@ export function UploadDialog({
         const wasUploading = prevUploadingRef.current;
         prevUploadingRef.current = isUploading;
         if (wasUploading && !isUploading && uploadResults.length > 0) {
-            const allDone = uploadResults.every((r) => r.status === "done");
+            const allDone = uploadResults.every((r) => r?.status === "done");
             if (allDone) {
                 setOpen(false);
                 setFiles([]);
@@ -236,8 +233,7 @@ export function UploadDialog({
                         {files.map((file, i) => {
                             const result = uploadResults[i];
                             const status = result?.status;
-                            const isPending =
-                                !status || status === "pending";
+                            const isPending = !status || status === "pending";
                             const isInProgress =
                                 status === "uploading" ||
                                 status === "confirming";
@@ -316,10 +312,7 @@ export function UploadDialog({
 
                 <DialogFooter>
                     <DialogClose asChild>
-                        <Button
-                            variant="outline"
-                            disabled={isUploading}
-                        >
+                        <Button variant="outline" disabled={isUploading}>
                             Cancel
                         </Button>
                     </DialogClose>

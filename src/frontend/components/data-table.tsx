@@ -13,6 +13,8 @@ import {
     type ColumnFiltersState,
     type PaginationState,
     type VisibilityState,
+    type RowSelectionState,
+    type OnChangeFn,
 } from "@tanstack/react-table";
 import {
     TableBody,
@@ -58,6 +60,9 @@ interface DataTableProps<TData, TValue> {
     className?: string;
     rowClassName?: string;
     pageSize?: number;
+    rowSelection?: RowSelectionState;
+    onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+    getRowId?: (originalRow: TData, index: number, parent?: any) => string;
 }
 
 export function DataTable<TData, TValue>({
@@ -71,6 +76,9 @@ export function DataTable<TData, TValue>({
     className,
     rowClassName,
     pageSize: defaultPageSize = 10,
+    rowSelection,
+    onRowSelectionChange,
+    getRowId,
 }: DataTableProps<TData, TValue>) {
     const [sorting, setSorting] = React.useState<SortingState>([]);
     const [columnFilters, setColumnFilters] =
@@ -89,6 +97,8 @@ export function DataTable<TData, TValue>({
         onColumnFiltersChange: setColumnFilters,
         onColumnVisibilityChange: setColumnVisibility,
         onPaginationChange: setPagination,
+        onRowSelectionChange,
+        getRowId,
         getCoreRowModel: getCoreRowModel(),
         getSortedRowModel: getSortedRowModel(),
         getFilteredRowModel: getFilteredRowModel(),
@@ -99,6 +109,7 @@ export function DataTable<TData, TValue>({
             columnVisibility,
             globalFilter,
             pagination,
+            ...(rowSelection !== undefined && { rowSelection }),
         },
         onGlobalFilterChange,
     });
@@ -150,21 +161,17 @@ export function DataTable<TData, TValue>({
     return (
         <div className={cn("flex flex-col", className)}>
             {toolbar && (
-                <div className="shrink-0 pb-3">
-                    {toolbar(columnToggle)}
-                </div>
+                <div className="shrink-0 pb-3">{toolbar(columnToggle)}</div>
             )}
             <div className="border border-border overflow-x-hidden">
                 <table className="w-full table-fixed caption-bottom text-xs">
                     <colgroup>
-                        {table
-                            .getVisibleLeafColumns()
-                            .map((column) => (
-                                <col
-                                    key={column.id}
-                                    style={{ width: column.getSize() }}
-                                />
-                            ))}
+                        {table.getVisibleLeafColumns().map((column) => (
+                            <col
+                                key={column.id}
+                                style={{ width: column.getSize() }}
+                            />
+                        ))}
                     </colgroup>
                     <TableHeader className="bg-background">
                         {table.getHeaderGroups().map((headerGroup) => (
@@ -174,7 +181,7 @@ export function DataTable<TData, TValue>({
                                         key={header.id}
                                         className={cn(
                                             header.column.getCanSort() &&
-                                            "cursor-pointer select-none",
+                                                "cursor-pointer select-none",
                                         )}
                                         onClick={header.column.getToggleSortingHandler()}
                                     >
@@ -185,17 +192,17 @@ export function DataTable<TData, TValue>({
                                                     (
                                                         header.column.columnDef
                                                             .meta as {
-                                                                align?: string;
-                                                            }
+                                                            align?: string;
+                                                        }
                                                     )?.align === "right" &&
-                                                    "justify-end",
+                                                        "justify-end",
                                                     (
                                                         header.column.columnDef
                                                             .meta as {
-                                                                align?: string;
-                                                            }
+                                                            align?: string;
+                                                        }
                                                     )?.align === "center" &&
-                                                    "justify-center",
+                                                        "justify-center",
                                                 )}
                                             >
                                                 {flexRender(
@@ -205,20 +212,20 @@ export function DataTable<TData, TValue>({
                                                 )}
                                                 {header.column.getIsSorted() ===
                                                     "asc" && (
-                                                        <HugeiconsIcon
-                                                            icon={ArrowUp02Icon}
-                                                            strokeWidth={2}
-                                                            className="size-3 shrink-0"
-                                                        />
-                                                    )}
+                                                    <HugeiconsIcon
+                                                        icon={ArrowUp02Icon}
+                                                        strokeWidth={2}
+                                                        className="size-3 shrink-0"
+                                                    />
+                                                )}
                                                 {header.column.getIsSorted() ===
                                                     "desc" && (
-                                                        <HugeiconsIcon
-                                                            icon={ArrowDown02Icon}
-                                                            strokeWidth={2}
-                                                            className="size-3 shrink-0"
-                                                        />
-                                                    )}
+                                                    <HugeiconsIcon
+                                                        icon={ArrowDown02Icon}
+                                                        strokeWidth={2}
+                                                        className="size-3 shrink-0"
+                                                    />
+                                                )}
                                             </div>
                                         )}
                                     </TableHead>
@@ -238,9 +245,7 @@ export function DataTable<TData, TValue>({
                                         onRowClick && "cursor-pointer",
                                         rowClassName,
                                     )}
-                                    onClick={() =>
-                                        onRowClick?.(row.original)
-                                    }
+                                    onClick={() => onRowClick?.(row.original)}
                                 >
                                     {row.getVisibleCells().map((cell) => (
                                         <TableCell
@@ -303,9 +308,7 @@ export function DataTable<TData, TValue>({
                         </Button>
                     </div>
                     <Select
-                        value={String(
-                            table.getState().pagination.pageSize,
-                        )}
+                        value={String(table.getState().pagination.pageSize)}
                         onValueChange={(value) =>
                             table.setPageSize(Number(value))
                         }

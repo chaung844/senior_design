@@ -5,6 +5,18 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { StatCard } from "@/components/stat-card";
 import {
@@ -26,6 +38,7 @@ import {
     Invoice02Icon,
     File01Icon,
     LinkSquare02Icon,
+    Delete02Icon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
@@ -37,6 +50,8 @@ import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
 import { ReceiptEditDialog } from "@/components/receipt-edit-dialog";
 import type { ReceiptRead } from "@/lib/types";
 import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
+
+import { useDeleteDocument } from "@/hooks/use-documents";
 
 interface DashboardMonthProps {
     account: AccountBook;
@@ -286,6 +301,35 @@ function makeReceiptColumns(
     currency: string,
 ): ColumnDef<ReceiptRead, unknown>[] {
     return [
+        {
+            id: "select",
+            header: ({ table }) => (
+                <Checkbox
+                    checked={
+                        table.getIsAllPageRowsSelected() ||
+                        (table.getIsSomePageRowsSelected() && "indeterminate")
+                    }
+                    onCheckedChange={(value) =>
+                        table.toggleAllPageRowsSelected(!!value)
+                    }
+                    aria-label="Select all"
+                    className="translate-y-0.5"
+                />
+            ),
+            cell: ({ row }) => (
+                <div onClick={(e) => e.stopPropagation()}>
+                    <Checkbox
+                        checked={row.getIsSelected()}
+                        onCheckedChange={(value) => row.toggleSelected(!!value)}
+                        aria-label="Select row"
+                        className="translate-y-0.5"
+                    />
+                </div>
+            ),
+            enableSorting: false,
+            enableHiding: false,
+            size: 40,
+        },
         {
             accessorKey: "match_status",
             header: "Status",
@@ -556,6 +600,8 @@ export function DashboardMonth({
     statementId,
     onBack,
 }: DashboardMonthProps) {
+    const deleteDoc = useDeleteDocument();
+
     const {
         uploadFiles,
         isUploading,
@@ -576,6 +622,7 @@ export function DashboardMonth({
     const [selectedReceipt, setSelectedReceipt] =
         React.useState<ReceiptRead | null>(null);
     const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+    const [rowSelection, setRowSelection] = React.useState({});
 
     const filteredTransactions = React.useMemo(() => {
         let txns = monthData.transactions;
@@ -716,9 +763,74 @@ export function DashboardMonth({
                         placeholder="Search receipts..."
                         value={receiptSearch}
                         onChange={(e) => setReceiptSearch(e.target.value)}
-                        className="h-7 w-[200px] rounded-none border border-input bg-transparent pl-7 pr-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+                        className="h-7 w-50 rounded-none border border-input bg-transparent pl-7 pr-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
                     />
                 </div>
+                {/* Action buttons */}
+                {Object.keys(rowSelection).length > 0 && (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="xs"
+                                className="h-7 px-2 gap-1.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
+                                disabled={deleteDoc.isPending}
+                            >
+                                <HugeiconsIcon
+                                    icon={Delete02Icon}
+                                    strokeWidth={2}
+                                    className="size-3.5"
+                                />
+                                Delete {Object.keys(rowSelection).length}{" "}
+                                selected
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                    Delete {Object.keys(rowSelection).length}{" "}
+                                    {Object.keys(rowSelection).length === 1
+                                        ? "receipt"
+                                        : "receipts"}
+                                    ?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will permanently delete{" "}
+                                    {Object.keys(rowSelection).length === 1
+                                        ? "the selected receipt"
+                                        : `all ${Object.keys(rowSelection).length} selected receipts`}{" "}
+                                    and their associated files. This action
+                                    cannot be undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    variant="destructive"
+                                    onClick={async () => {
+                                        const ids =
+                                            Object.keys(rowSelection).map(
+                                                Number,
+                                            );
+                                        for (const id of ids) {
+                                            const receipt = allReceipts.find(
+                                                (r) => r.receipt_id === id,
+                                            );
+                                            if (receipt?.document_id) {
+                                                await deleteDoc.mutateAsync(
+                                                    receipt.document_id,
+                                                );
+                                            }
+                                        }
+                                        setRowSelection({});
+                                    }}
+                                >
+                                    Delete
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                )}
                 {/* Filter buttons */}
                 <div className="flex items-center border border-input rounded-none">
                     <Button
@@ -797,7 +909,7 @@ export function DashboardMonth({
                         placeholder="Search transactions..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="h-7 w-[200px] rounded-none border border-input bg-transparent pl-7 pr-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
+                        className="h-7 w-50 rounded-none border border-input bg-transparent pl-7 pr-2 text-xs outline-none placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/50"
                     />
                 </div>
                 {/* Filter buttons */}
@@ -1071,6 +1183,9 @@ export function DashboardMonth({
                             }
                             globalFilter={receiptSearch}
                             onGlobalFilterChange={setReceiptSearch}
+                            rowSelection={rowSelection}
+                            onRowSelectionChange={setRowSelection}
+                            getRowId={(row) => String(row.receipt_id)}
                             onRowClick={(row) => {
                                 setSelectedReceipt(row);
                                 setEditDialogOpen(true);
