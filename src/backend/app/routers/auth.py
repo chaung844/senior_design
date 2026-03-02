@@ -1,5 +1,3 @@
-import secrets
-
 from fastapi import APIRouter, Depends, HTTPException, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordRequestForm
@@ -10,16 +8,13 @@ from app.config import get_settings
 from app.database import get_db
 from app.models.user import User
 from app.schemas.user import UserRead
-from app.utils.auth import get_current_user, verify_csrf_token
+from app.utils.auth import create_csrf_token, get_current_user, verify_csrf_token
 from app.utils.jwt import create_access_token
 from app.utils.security import verify_password
 
 settings = get_settings()
 
 router = APIRouter(prefix="/auth", tags=["auth"])
-
-# Length (in bytes) of the random CSRF token — 32 bytes → 64-char hex string.
-_CSRF_TOKEN_BYTES = 32
 
 
 @router.post("/login", status_code=status.HTTP_200_OK)
@@ -59,7 +54,7 @@ async def login(
         )
 
     access_token = create_access_token(data={"sub": str(user.user_id)})
-    csrf_token = secrets.token_hex(_CSRF_TOKEN_BYTES)
+    csrf_token = create_csrf_token(user.user_id)
 
     # HttpOnly — the JWT is never accessible from JavaScript.
     response.set_cookie(

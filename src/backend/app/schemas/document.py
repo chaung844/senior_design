@@ -1,9 +1,25 @@
+import re
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 from app.enums import DocumentStatus, DocumentType
+
+# Allowed MIME types for document uploads.
+_ALLOWED_MIME_TYPES: set[str] = {
+    "application/pdf",
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+}
+
+# file_name must contain only alphanumeric characters, hyphens, underscores,
+# dots, and spaces — no path separators, null bytes, or other control chars.
+_SAFE_FILENAME_RE: re.Pattern[str] = re.compile(r"^[\w\-. ]+$")
+
+_MAX_FILENAME_LENGTH = 255
 
 
 class DocumentUploadRequest(BaseModel):
@@ -11,6 +27,37 @@ class DocumentUploadRequest(BaseModel):
     file_type: str
     document_type: DocumentType
     account_id: Optional[int] = None
+
+    @field_validator("file_name")
+    @classmethod
+    def validate_file_name(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("file_name must not be empty")
+        if len(v) > _MAX_FILENAME_LENGTH:
+            raise ValueError(
+                f"file_name must be at most {_MAX_FILENAME_LENGTH} characters"
+            )
+        if not _SAFE_FILENAME_RE.match(v):
+            raise ValueError(
+                "file_name contains invalid characters; "
+                "only alphanumeric characters, hyphens, underscores, dots, "
+                "and spaces are allowed"
+            )
+        # Reject hidden files and directory traversal fragments
+        if v.startswith(".") or ".." in v:
+            raise ValueError("file_name must not start with '.' or contain '..'")
+        return v
+
+    @field_validator("file_type")
+    @classmethod
+    def validate_file_type(cls, v: str) -> str:
+        v = v.strip().lower()
+        if v not in _ALLOWED_MIME_TYPES:
+            raise ValueError(
+                f"file_type must be one of: {', '.join(sorted(_ALLOWED_MIME_TYPES))}"
+            )
+        return v
 
 
 class DocumentUploadResponse(BaseModel):
