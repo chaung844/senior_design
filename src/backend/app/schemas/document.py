@@ -15,10 +15,6 @@ _ALLOWED_MIME_TYPES: set[str] = {
     "image/webp",
 }
 
-# file_name must contain only alphanumeric characters, hyphens, underscores,
-# dots, and spaces — no path separators, null bytes, or other control chars.
-_SAFE_FILENAME_RE: re.Pattern[str] = re.compile(r"^[\w\-. ]+$")
-
 _MAX_FILENAME_LENGTH = 255
 
 
@@ -32,21 +28,25 @@ class DocumentUploadRequest(BaseModel):
     @classmethod
     def validate_file_name(cls, v: str) -> str:
         v = v.strip()
+
+        # Replace invalid characters with underscore
+        v = re.sub(r"[^\w\-. ]", "_", v)
+
+        # Prevent directory traversal
+        while ".." in v:
+            v = v.replace("..", ".")
+
+        # Prevent hidden files
+        v = v.lstrip(".")
+
+        v = v.strip()
+
         if not v:
-            raise ValueError("file_name must not be empty")
+            raise ValueError("file_name must not be empty after sanitization")
         if len(v) > _MAX_FILENAME_LENGTH:
             raise ValueError(
                 f"file_name must be at most {_MAX_FILENAME_LENGTH} characters"
             )
-        if not _SAFE_FILENAME_RE.match(v):
-            raise ValueError(
-                "file_name contains invalid characters; "
-                "only alphanumeric characters, hyphens, underscores, dots, "
-                "and spaces are allowed"
-            )
-        # Reject hidden files and directory traversal fragments
-        if v.startswith(".") or ".." in v:
-            raise ValueError("file_name must not start with '.' or contain '..'")
         return v
 
     @field_validator("file_type")
