@@ -36,6 +36,7 @@ def _receipt_to_read(receipt: Receipt) -> ReceiptRead:
         expense_type=receipt.expense_type,
         match_status=receipt.match_status,
         created_at=receipt.created_at,
+        statement_id=receipt.statement_id,
         document_id=doc.document_id if doc else None,
         file_name=doc.file_name if doc else None,
     )
@@ -45,6 +46,7 @@ def _receipt_to_read(receipt: Receipt) -> ReceiptRead:
 async def list_receipts(
     match_status: Optional[MatchStatus] = Query(default=None),
     account_id: Optional[int] = Query(default=None),
+    statement_id: Optional[int] = Query(default=None),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -72,6 +74,8 @@ async def list_receipts(
         base_filter.append(Receipt.match_status == match_status)
     if account_id is not None:
         base_filter.append(Document.account_id == account_id)
+    if statement_id is not None:
+        base_filter.append(Receipt.statement_id == statement_id)
 
     count_stmt = (
         select(func.count())

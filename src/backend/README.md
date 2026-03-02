@@ -71,7 +71,7 @@ docker compose up -d
 
 - Generate alembic versioning
 ```bash
-uv run alembic revision --autogenerate
+uv run alembic revision --autogenerate -m "Description of changes"
 ```
 - Apply database migrations and (optional) seed test data:
 ```bash

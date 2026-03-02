@@ -33,21 +33,31 @@ def _safe_decimal(value) -> Decimal:
         raise ValueError(f"Cannot convert '{value}' to Decimal")
 
 
-def _safe_date(value) -> date:
+def _safe_date(value, field_name: str = "date") -> date:
     if value is None or str(value).strip().lower() == "n/a":
-        raise ValueError("Missing required date field")
+        raise ValueError(f"Missing required date field: '{field_name}'")
     raw = str(value).strip()
-    return datetime.strptime(raw, "%Y-%m-%d").date()
+    try:
+        return datetime.strptime(raw, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError(
+            f"Invalid date format for '{field_name}': expected YYYY-MM-DD, got '{raw}'"
+        )
 
 
-def _construct_date_with_year(value, year) -> date:
+def _construct_date_with_year(value, year, field_name: str = "date") -> date:
     if value is None or str(value).strip().lower() == "n/a":
-        raise ValueError("Missing required date field")
+        raise ValueError(f"Missing required date field: '{field_name}'")
     raw = str(value).strip()
     parts = raw.split("/")
     # add year to raw month/date
     constructed_date = f"{year}-{parts[0]}-{parts[1]}"
-    return datetime.strptime(constructed_date, "%Y-%m-%d").date()
+    try:
+        return datetime.strptime(constructed_date, "%Y-%m-%d").date()
+    except ValueError:
+        raise ValueError(
+            f"Invalid date format for '{field_name}': expected MM/DD, got '{raw}'"
+        )
 
 
 def _safe_str(value, fallback: str = "") -> str:
@@ -70,6 +80,7 @@ def _download_to_temp(aws: AWSService, s3_key: str) -> str:
 async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSService):
     document_id = payload["document_id"]
     s3_key = payload["s3_key"]
+    statement_id = payload.get("statement_id")
 
     tmp_path = _download_to_temp(aws, s3_key)
     try:
@@ -89,9 +100,10 @@ async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSSer
         receipt = Receipt(
             vendor=_safe_str(parsed.get("vendor"), "Unknown"),
             invoice_number=_safe_str(parsed.get("invoice_number")) or None,
-            billing_date=_safe_date(parsed.get("date")),
+            billing_date=_safe_date(parsed.get("date"), "date"),
             charged_amount=_safe_decimal(parsed.get("total")),
             description=_safe_str(parsed.get("purchase_desc")) or None,
+            statement_id=statement_id,
         )
         session.add(receipt)
         await session.flush()
@@ -118,7 +130,7 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
         if not metadata:
             raise ValueError("Model returned empty metadata for bank statement")
 
-        stmt_date = _safe_date(metadata.get("statement_date"))
+        stmt_date = _safe_date(metadata.get("statement_date"), "statement_date")
 
         df = parse_statement(tmp_path)
         if df.empty:
@@ -143,13 +155,11 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
                 statement_id=statement.statement_id,
                 line_number=idx + 1,
                 reference_number=str(row.get("reference", "")),
-                transaction_date=_safe_date(
-                    _construct_date_with_year(
-                        row.get("transaction_date"), stmt_date.year
-                    )
+                transaction_date=_construct_date_with_year(
+                    row.get("transaction_date"), stmt_date.year, "transaction_date"
                 ),
-                posting_date=_safe_date(
-                    _construct_date_with_year(row.get("posting_date"), stmt_date.year)
+                posting_date=_construct_date_with_year(
+                    row.get("posting_date"), stmt_date.year, "posting_date"
                 ),
                 description=str(row.get("description", "")),
                 vendor=str(row.get("description", "")).split()[0]
