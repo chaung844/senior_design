@@ -18,6 +18,7 @@ class ReceiptRead(BaseModel):
     expense_type: Optional[str] = None
     match_status: MatchStatus
     created_at: datetime
+    statement_id: Optional[int] = None
     document_id: Optional[int] = None
     file_name: Optional[str] = None
 

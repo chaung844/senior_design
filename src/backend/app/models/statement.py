@@ -11,6 +11,7 @@ from app.models.base import Base, TimestampMixin
 if TYPE_CHECKING:
     from app.models.account_book import AccountBook
     from app.models.document import Document
+    from app.models.receipt import Receipt
     from app.models.reconciliation import ReconciliationMatch
 
 
@@ -30,6 +31,9 @@ class BankStatement(Base, TimestampMixin):
     )
     document: Mapped[Optional["Document"]] = relationship(
         "Document", back_populates="bank_statement", uselist=False
+    )
+    receipts: Mapped[List["Receipt"]] = relationship(
+        "Receipt", back_populates="bank_statement"
     )
     lines: Mapped[List["BankStatementLine"]] = relationship(
         "BankStatementLine",

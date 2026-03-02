@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
-from sqlalchemy import Enum, Numeric, String, func
+from sqlalchemy import Enum, ForeignKey, Numeric, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import MatchStatus
@@ -10,6 +10,7 @@ from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.document import Document
+    from app.models.statement import BankStatement
     from app.models.reconciliation import ReconciliationMatch
 
 
@@ -41,6 +42,13 @@ class Receipt(Base, TimestampMixin):
 
     document: Mapped[Optional["Document"]] = relationship(
         "Document", back_populates="receipt", uselist=False
+    )
+    statement_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("bank_statements.statement_id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    bank_statement: Mapped[Optional["BankStatement"]] = relationship(
+        "BankStatement", back_populates="receipts"
     )
     matches: Mapped[List["ReconciliationMatch"]] = relationship(
         "ReconciliationMatch", back_populates="receipt", cascade="all, delete-orphan"
