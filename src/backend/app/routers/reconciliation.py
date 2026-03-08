@@ -39,6 +39,12 @@ from app.schemas.reconciliation import (
 )
 from app.utils.access import can_view_job, require_account_access
 from app.utils.auth import get_current_user, verify_csrf_token
+from app.services.reconciliation_matching import (
+    apply_perfect_matches,
+    apply_receipts_to_line,
+    apply_lines_to_receipt,
+    _print_match_summary,
+)
 
 router = APIRouter(prefix="/reconciliation", tags=["reconciliation"])
 
@@ -123,28 +129,36 @@ async def _run_matching(
         receipts_result = await db.execute(receipts_stmt)
         receipts = list(receipts_result.unique().scalars().all())
 
-        # Simple matching: exact amount + date (transaction_date vs billing_date)
-        for line in lines:
-            if line.match_status != MatchStatus.unmatched:
-                continue
-            for receipt in receipts:
-                if receipt.match_status != MatchStatus.unmatched:
-                    continue
-                if (
-                    line.charge == receipt.charged_amount
-                    and line.transaction_date == receipt.billing_date
-                ):
-                    match = ReconciliationMatch(
-                        job_id=job.job_id,
-                        line_id=line.line_id,
-                        receipt_id=receipt.receipt_id,
-                        match_type=MatchStatus.perfect_matched,
-                        created_by=current_user.user_id,
-                    )
-                    db.add(match)
-                    line.match_status = MatchStatus.perfect_matched
-                    receipt.match_status = MatchStatus.perfect_matched
-                    break
+        # --- matching algorithm ---
+        await apply_perfect_matches(
+            job=job,
+            lines=lines,
+            receipts=receipts,
+            db=db,
+            current_user=current_user,
+        )
+
+        await apply_lines_to_receipt(
+            job=job,
+            lines=lines,
+            receipts=receipts,
+            db=db,
+            current_user=current_user,
+        )
+
+        await apply_receipts_to_line(
+            job=job,
+            lines=lines,
+            receipts=receipts,
+            db=db,
+            current_user=current_user,
+        )
+
+        # For debugging only
+        # await db.flush()
+        # for line in lines:
+        #     await db.refresh(line, ["matches"])
+        # _print_match_summary(lines, receipts)
 
         job.status = JobStatus.completed
     except Exception:
@@ -240,6 +254,16 @@ async def start_reconciliation(
         )
     total_lines = (await db.execute(total_lines_stmt)).scalar() or 0
 
+    bundle_matched_result = await db.execute(
+        select(func.count())
+        .select_from(ReconciliationMatch)
+        .where(
+            ReconciliationMatch.job_id == job.job_id,
+            ReconciliationMatch.match_type == MatchStatus.bundle_matched,
+        )
+    )
+    bundle_matched = bundle_matched_result.scalar() or 0
+
     return ReconciliationStartResponse(
         job_id=job.job_id,
         status=job.status.value,
@@ -247,7 +271,7 @@ async def start_reconciliation(
             total_lines=total_lines,
             matched=matched,
             unmatched=max(0, total_lines - matched),
-            bundle_matched=0,
+            bundle_matched=bundle_matched,
         ),
     )
 
