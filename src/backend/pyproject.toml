@@ -27,6 +27,7 @@ dependencies = [
     "sqlalchemy>=2.0.46",
     "uvicorn>=0.40.0",
     "uvloop>=0.22.1",
+    "rapidfuzz>=3.14.3",
 ]
 
 [tool.ruff.lint.per-file-ignores]
