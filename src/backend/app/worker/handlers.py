@@ -44,13 +44,20 @@ def _safe_date(value, field_name: str = "date") -> date:
         )
 
 
-def _construct_date_with_year(value, year, field_name: str = "date") -> date:
+def _construct_date_with_year(
+    value, year, start_month, field_name: str = "date"
+) -> date:
     if value is None or str(value).strip().lower() == "n/a":
         raise ValueError(f"Missing required date field: '{field_name}'")
     raw = str(value).strip()
     parts = raw.split("/")
-    # add year to raw month/date
-    constructed_date = f"{year}-{parts[0]}-{parts[1]}"
+    month = int(parts[0])
+    day = int(parts[1])
+    adjusted_year = (
+        year + 1 if month < start_month else year
+    )  # for statements that span across 2 years (Dec - Jan)
+    # add adjusted year to raw month/date
+    constructed_date = f"{adjusted_year}-{month:02d}-{day:02d}"
     try:
         return datetime.strptime(constructed_date, "%Y-%m-%d").date()
     except ValueError:
@@ -153,10 +160,16 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
                 line_number=idx + 1,
                 reference_number=str(row.get("reference", "")),
                 transaction_date=_construct_date_with_year(
-                    row.get("transaction_date"), stmt_date.year, "transaction_date"
+                    row.get("transaction_date"),
+                    stmt_date.year,
+                    stmt_date.month,
+                    "transaction_date",
                 ),
                 posting_date=_construct_date_with_year(
-                    row.get("posting_date"), stmt_date.year, "posting_date"
+                    row.get("posting_date"),
+                    stmt_date.year,
+                    stmt_date.month,
+                    "posting_date",
                 ),
                 description=str(row.get("description", "")),
                 vendor=str(row.get("description", "")).split()[0]
