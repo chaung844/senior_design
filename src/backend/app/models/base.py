@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from sqlalchemy import func
@@ -75,11 +75,16 @@ class SoftDeleteMixin:
         now:
             The timestamp to record.  When omitted, the current UTC time is
             used.  Pass an explicit value in tests for deterministic results.
+
+        Note: ``deleted_at`` is a ``TIMESTAMP WITHOUT TIME ZONE`` column, so
+        any timezone-aware datetime is normalised to a naive UTC datetime
+        before being stored to avoid a PostgreSQL/asyncpg type mismatch.
         """
         if now is None:
-            from datetime import timezone
-
             now = datetime.now(timezone.utc)
+        # Strip tzinfo so the value is compatible with TIMESTAMP WITHOUT TIME ZONE.
+        if now.tzinfo is not None:
+            now = now.astimezone(timezone.utc).replace(tzinfo=None)
         self.deleted_at = now
 
     @classmethod

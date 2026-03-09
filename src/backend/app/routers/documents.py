@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
@@ -198,7 +197,7 @@ async def delete_document(
     _assert_can_write(current_user)
 
     doc = await get_owned_document(document_id, current_user, db, write=True)
-    doc.deleted_at = datetime.now(timezone.utc)
+    doc.soft_delete()
     await db.commit()
 
     background_tasks.add_task(aws_service.async_delete_s3_object, doc.s3_key)

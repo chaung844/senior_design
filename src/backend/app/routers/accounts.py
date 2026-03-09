@@ -1,5 +1,3 @@
-from datetime import datetime, timezone
-
 from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -203,7 +201,7 @@ async def delete_account_book(
     current_user: User = Depends(require_admin_or_dev),
 ):
     account = await require_account_access(account_id, current_user, db, write=True)
-    account.deleted_at = datetime.now(timezone.utc)
+    account.soft_delete()
     await db.commit()
     return Response(status_code=204)
 
