@@ -2,7 +2,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.schemas.bank_statement_line import BankStatementLineRead
 
@@ -43,6 +43,16 @@ class BankStatementRead(BaseModel):
 
 class BankStatementDetailRead(BankStatementRead):
     lines: list[BankStatementLineRead] = []
+
+
+class BankStatementUpdate(BaseModel):
+    month: Optional[int] = Field(default=None, ge=1, le=12)
+    year: Optional[int] = Field(default=None, ge=2000, le=2100)
+    account_number_last4: Optional[str] = Field(
+        default=None, min_length=4, max_length=4
+    )
+    currency: Optional[str] = Field(default=None, min_length=3, max_length=3)
+    total_amount: Optional[Decimal] = None
 
 
 class BankStatementListResponse(BaseModel):

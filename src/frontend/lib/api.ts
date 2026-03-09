@@ -31,6 +31,7 @@ import type {
     BankStatementDetailRead,
     BankStatementListResponse,
     BankStatementListParams,
+    BankStatementUpdate,
     BankStatementLineRead,
     BankStatementLineUpdate,
     BankStatementLineListResponse,
@@ -337,6 +338,17 @@ export async function updateStatementLine(
             body: JSON.stringify(body),
         },
     );
+}
+
+export async function updateStatement(
+    statementId: number,
+    body: BankStatementUpdate,
+): Promise<BankStatementRead> {
+    return request<BankStatementRead>(`/statements/${statementId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
 }
 
 export async function getStatementFileUrl(

@@ -6,14 +6,18 @@ import {
     getStatement,
     listStatementLines,
     updateStatementLine,
+    updateStatement,
+    deleteDocument,
     getStatementFileUrl,
 } from "@/lib/api";
 import type {
     BankStatementListParams,
     BankStatementLineListParams,
     BankStatementLineUpdate,
+    BankStatementUpdate,
 } from "@/lib/types";
 import { accountKeys } from "@/hooks/use-accounts";
+import { receiptKeys } from "@/hooks/use-receipts";
 import { DEFAULT_LIST_LIMIT } from "@/lib/constants";
 
 export const statementKeys = {
@@ -76,6 +80,40 @@ export function useUpdateStatementLine() {
                 queryKey: statementKeys.lines(vars.statementId),
             });
             qc.invalidateQueries({ queryKey: accountKeys.all });
+        },
+    });
+}
+
+export function useUpdateStatement() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            statementId,
+            body,
+        }: {
+            statementId: number;
+            body: BankStatementUpdate;
+        }) => updateStatement(statementId, body),
+        onSuccess: (_data, vars) => {
+            qc.invalidateQueries({
+                queryKey: statementKeys.detail(vars.statementId),
+            });
+            qc.invalidateQueries({ queryKey: statementKeys.all });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+        },
+    });
+}
+
+export function useDeleteStatement() {
+    const qc = useQueryClient();
+    // Deleting a statement goes through the document endpoint, which handles
+    // cascaded reconciliation cleanup server-side.
+    return useMutation({
+        mutationFn: (documentId: number) => deleteDocument(documentId),
+        onSuccess: () => {
+            qc.invalidateQueries({ queryKey: statementKeys.all });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+            qc.invalidateQueries({ queryKey: receiptKeys.all });
         },
     });
 }

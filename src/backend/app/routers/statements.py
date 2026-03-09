@@ -15,6 +15,7 @@ from app.schemas.bank_statement import (
     BankStatementDetailRead,
     BankStatementListResponse,
     BankStatementRead,
+    BankStatementUpdate,
 )
 from app.schemas.bank_statement_line import (
     BankStatementLineListResponse,
@@ -126,6 +127,47 @@ async def list_statements(
         offset=offset,
         limit=limit,
     )
+
+
+@router.patch(
+    "/{statement_id}",
+    response_model=BankStatementRead,
+    dependencies=[Depends(verify_csrf_token)],
+)
+async def update_statement(
+    statement_id: int,
+    body: BankStatementUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    statement = await get_owned_statement(statement_id, current_user, db, write=True)
+
+    _STATEMENT_WRITABLE_FIELDS = {
+        "month",
+        "year",
+        "account_number_last4",
+        "currency",
+        "total_amount",
+    }
+
+    update_data = body.model_dump(exclude_unset=True)
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+
+    for field, value in update_data.items():
+        if field not in _STATEMENT_WRITABLE_FIELDS:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Field '{field}' is not updatable",
+            )
+        setattr(statement, field, value)
+
+    await db.commit()
+
+    # Re-fetch with relationships so _statement_to_read can access document/lines
+    # (relationships may be expired after commit).
+    refreshed = await get_owned_statement(statement_id, current_user, db)
+    return _statement_to_read(refreshed)
 
 
 @router.get("/{statement_id}", response_model=BankStatementDetailRead)

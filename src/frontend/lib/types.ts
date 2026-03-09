@@ -194,6 +194,14 @@ export interface BankStatementDetailRead extends BankStatementRead {
     lines: BankStatementLineRead[];
 }
 
+export interface BankStatementUpdate {
+    month?: number;
+    year?: number;
+    account_number_last4?: string;
+    currency?: string;
+    total_amount?: number;
+}
+
 export interface BankStatementListResponse {
     statements: BankStatementRead[];
     total: number;

@@ -40,6 +40,7 @@ import {
     LinkSquare02Icon,
     Delete02Icon,
     ArrowDataTransferHorizontalIcon,
+    Settings01Icon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
@@ -49,10 +50,12 @@ import { ExportDialog } from "@/components/export-dialog";
 import { useDocumentUpload } from "@/hooks/use-document-upload";
 import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
 import { ReceiptEditDialog } from "@/components/receipt-edit-dialog";
+import { StatementEditDialog } from "@/components/statement-edit-dialog";
 import type { ReceiptRead } from "@/lib/types";
 import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
 import { useStartReconciliation } from "@/hooks/use-reconciliation";
 import { useDeleteDocument } from "@/hooks/use-documents";
+import { useStatement } from "@/hooks/use-statements";
 import { StatementLineDialog } from "@/components/statement-line-dialog";
 import type { BankStatementLineRead } from "@/lib/types";
 
@@ -668,6 +671,10 @@ export function DashboardMonth({
         React.useState<ReceiptRead | null>(null);
     const [editDialogOpen, setEditDialogOpen] = React.useState(false);
     const [rowSelection, setRowSelection] = React.useState({});
+    const [stmtEditDialogOpen, setStmtEditDialogOpen] = React.useState(false);
+
+    // Fetch the raw statement record so the edit dialog has document_id, etc.
+    const { data: statementDetail } = useStatement(statementId ?? null);
 
     const filteredTransactions = React.useMemo(() => {
         let txns = monthData.transactions;
@@ -1049,12 +1056,20 @@ export function DashboardMonth({
                 }
                 actions={
                     <div className="flex items-center gap-2">
-                        <ExportDialog
-                            account={account}
-                            yearValue={yearValue}
-                            monthData={monthData}
-                            statementId={statementId}
-                        />
+                        {statementId != null && statementDetail && (
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setStmtEditDialogOpen(true)}
+                            >
+                                <HugeiconsIcon
+                                    icon={Settings01Icon}
+                                    strokeWidth={2}
+                                    className="size-3.5"
+                                />
+                                Edit Statement
+                            </Button>
+                        )}
                         <UploadDialog
                             title="Upload Receipts"
                             description="Upload receipt images or PDFs for reconciliation matching."
@@ -1161,6 +1176,12 @@ export function DashboardMonth({
                                 </AlertDialogContent>
                             </AlertDialog>
                         )}
+                        <ExportDialog
+                            account={account}
+                            yearValue={yearValue}
+                            monthData={monthData}
+                            statementId={statementId}
+                        />
                     </div>
                 }
             />
@@ -1342,6 +1363,12 @@ export function DashboardMonth({
                     if (!open) setSelectedReceipt(null);
                 }}
                 currency={account.currency}
+            />
+            <StatementEditDialog
+                statement={statementDetail ?? null}
+                open={stmtEditDialogOpen}
+                onOpenChange={setStmtEditDialogOpen}
+                onDeleted={onBack}
             />
             <StatementLineDialog
                 line={selectedLine}
