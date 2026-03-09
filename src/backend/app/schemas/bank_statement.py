@@ -2,9 +2,12 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, model_validator
 
 from app.schemas.bank_statement_line import BankStatementLineRead
+
+# A month is considered reconciled when its match rate meets or exceeds this threshold (%).
+RECONCILE_THRESHOLD = 90.0
 
 
 class BankStatementRead(BaseModel):
@@ -19,8 +22,23 @@ class BankStatementRead(BaseModel):
     document_id: Optional[int] = None
     file_name: Optional[str] = None
     line_count: int = 0
+    matched_count: int = 0
+    unmatched_count: int = 0
+    match_rate: float = 0.0
+    reconciled: bool = False
 
     model_config = ConfigDict(from_attributes=True)
+
+    @model_validator(mode="after")
+    def _compute_derived(self) -> "BankStatementRead":
+        """Derive match_rate and reconciled from raw counts after construction."""
+        if self.line_count > 0:
+            self.match_rate = round((self.matched_count / self.line_count) * 1000) / 10
+            self.reconciled = self.match_rate >= RECONCILE_THRESHOLD
+        else:
+            self.match_rate = 0.0
+            self.reconciled = False
+        return self
 
 
 class BankStatementDetailRead(BankStatementRead):

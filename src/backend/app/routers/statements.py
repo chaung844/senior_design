@@ -35,6 +35,10 @@ router = APIRouter(prefix="/statements", tags=["statements"])
 
 def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
     doc = stmt.document
+    lines = stmt.lines or []
+    matched_count = sum(
+        1 for line in lines if line.match_status != MatchStatus.unmatched
+    )
     return BankStatementRead(
         statement_id=stmt.statement_id,
         account_id=stmt.account_id,
@@ -46,12 +50,18 @@ def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
         created_at=stmt.created_at,
         document_id=doc.document_id if doc else None,
         file_name=doc.file_name if doc else None,
-        line_count=len(stmt.lines) if stmt.lines else 0,
+        line_count=len(lines),
+        matched_count=matched_count,
+        unmatched_count=len(lines) - matched_count,
     )
 
 
 def _statement_to_detail(stmt: BankStatement) -> BankStatementDetailRead:
     doc = stmt.document
+    lines = stmt.lines or []
+    matched_count = sum(
+        1 for line in lines if line.match_status != MatchStatus.unmatched
+    )
     return BankStatementDetailRead(
         statement_id=stmt.statement_id,
         account_id=stmt.account_id,
@@ -63,13 +73,13 @@ def _statement_to_detail(stmt: BankStatement) -> BankStatementDetailRead:
         created_at=stmt.created_at,
         document_id=doc.document_id if doc else None,
         file_name=doc.file_name if doc else None,
-        line_count=len(stmt.lines) if stmt.lines else 0,
+        line_count=len(lines),
+        matched_count=matched_count,
+        unmatched_count=len(lines) - matched_count,
         lines=[
             BankStatementLineRead.model_validate(line)
-            for line in sorted(stmt.lines, key=lambda l: l.line_number)
-        ]
-        if stmt.lines
-        else [],
+            for line in sorted(lines, key=lambda l: l.line_number)
+        ],
     )
 
 

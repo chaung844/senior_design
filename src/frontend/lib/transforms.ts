@@ -17,7 +17,7 @@ import type {
     MonthData,
     Transaction,
 } from "@/lib/domain-types";
-import { MONTH_LABELS } from "@/lib/constants";
+import { MONTH_LABELS, RECONCILE_THRESHOLD } from "@/lib/constants";
 
 // ── Statement Line → Transaction ─────────────────────────────────────
 
@@ -74,10 +74,7 @@ export function statementToMonthData(
         txn.balance = Math.round(runningBalance * 100) / 100;
     }
 
-    const totalDebit = transactions.reduce(
-        (sum, t) => sum + (t.debit ?? 0),
-        0,
-    );
+    const totalDebit = transactions.reduce((sum, t) => sum + (t.debit ?? 0), 0);
     const totalCredit = transactions.reduce(
         (sum, t) => sum + (t.credit ?? 0),
         0,
@@ -88,17 +85,16 @@ export function statementToMonthData(
         transactions.length > 0
             ? Math.round((matchedCount / transactions.length) * 1000) / 10
             : 0;
+    const now = new Date();
+    const isInPast =
+        new Date(statement.year, statement.month - 1) <
+        new Date(now.getFullYear(), now.getMonth());
 
     const totalAmount = Number(statement.total_amount);
     const closingBalance =
         transactions.length > 0
             ? transactions[transactions.length - 1].balance
             : totalAmount;
-
-    const now = new Date();
-    const isInPast =
-        new Date(statement.year, statement.month - 1) <
-        new Date(now.getFullYear(), now.getMonth());
 
     return {
         month: statement.month,
@@ -112,7 +108,7 @@ export function statementToMonthData(
         unmatchedCount,
         matchRate,
         statementCount: transactions.length,
-        reconciled: isInPast && matchRate > 90,
+        reconciled: isInPast && matchRate >= RECONCILE_THRESHOLD,
     };
 }
 
@@ -122,6 +118,25 @@ export function statementSummaryToMonthData(
     stmt: BankStatementRead,
 ): MonthData {
     const totalAmount = Number(stmt.total_amount);
+    // Use backend-computed counts and match_rate directly — they are
+    // authoritative since the backend iterates actual line.match_status values.
+    const matchedCount = stmt.matched_count ?? 0;
+    const unmatchedCount = stmt.unmatched_count ?? stmt.line_count;
+    const matchRate =
+        stmt.match_rate ??
+        (stmt.line_count > 0
+            ? Math.round((matchedCount / stmt.line_count) * 1000) / 10
+            : 0);
+    // Guard future months: a month whose period hasn't closed yet should
+    // never appear as fully reconciled in the sidebar / year dashboard.
+    const now = new Date();
+    const isInPast =
+        new Date(stmt.year, stmt.month - 1) <
+        new Date(now.getFullYear(), now.getMonth());
+    // `stmt.reconciled` is computed by the backend's model_validator using the
+    // same RECONCILE_THRESHOLD; we only add the isInPast guard on top.
+    const reconciled =
+        isInPast && (stmt.reconciled ?? matchRate >= RECONCILE_THRESHOLD);
     return {
         month: stmt.month,
         label: MONTH_LABELS[stmt.month - 1] ?? `Month ${stmt.month}`,
@@ -130,11 +145,11 @@ export function statementSummaryToMonthData(
         totalCredit: totalAmount < 0 ? Math.abs(totalAmount) : 0,
         openingBalance: 0,
         closingBalance: totalAmount,
-        matchedCount: 0,
-        unmatchedCount: stmt.line_count,
-        matchRate: 0,
+        matchedCount,
+        unmatchedCount,
+        matchRate,
         statementCount: stmt.line_count,
-        reconciled: false,
+        reconciled,
     };
 }
 

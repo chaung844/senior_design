@@ -184,6 +184,10 @@ export interface BankStatementRead {
     document_id: number | null;
     file_name: string | null;
     line_count: number;
+    matched_count: number;
+    unmatched_count: number;
+    match_rate: number;
+    reconciled: boolean;
 }
 
 export interface BankStatementDetailRead extends BankStatementRead {

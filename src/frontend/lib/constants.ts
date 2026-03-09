@@ -1,5 +1,8 @@
 import type { ChartConfig } from "@/components/ui/chart";
 
+/** A month is considered "reconciled" when its match rate meets or exceeds this percentage. */
+export const RECONCILE_THRESHOLD = 90;
+
 /** Default fetch limit for list endpoints. Increase or implement cursor pagination when data exceeds this. */
 export const DEFAULT_LIST_LIMIT = 100;
 
