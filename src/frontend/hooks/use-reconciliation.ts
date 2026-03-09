@@ -1,6 +1,6 @@
 "use client";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
 import { startReconciliation } from "@/lib/api";
 import { useJobStatus } from "@/hooks/use-job-status";
@@ -9,6 +9,8 @@ import { statementKeys } from "@/hooks/use-statements";
 import { receiptKeys } from "@/hooks/use-receipts";
 import { documentKeys } from "@/hooks/use-documents";
 import type { ReconciliationStartResponse } from "@/lib/types";
+import { createManualMatch, deleteMatch, listMatchesByLine } from "@/lib/api";
+import type { ManualMatchCreate } from "@/lib/types";
 
 // ── Hook ──────────────────────────────────────────────────────────────
 
@@ -47,10 +49,9 @@ export function useStartReconciliation() {
             // already terminal (completed/failed) by the time this callback
             // fires, the widget handles that gracefully and shows the final
             // status before auto-dismissing after its linger period.
-            const label =
-                vars.label
-                    ? `Reconciling ${vars.label}`
-                    : "Reconciliation";
+            const label = vars.label
+                ? `Reconciling ${vars.label}`
+                : "Reconciliation";
             trackJob(data.job_id, "reconciliation", label);
 
             // Refresh all related caches so the dashboard reflects the
@@ -81,4 +82,98 @@ export function useStartReconciliation() {
         /** Full TanStack Query mutation object for advanced use. */
         mutation,
     };
+}
+
+/**
+ * Mutation hook for manually linking a statement line to one or more receipts.
+ *
+ * On success, invalidates statements, receipts, and accounts so that
+ * match statuses refresh across the dashboard immediately.
+ *
+ * Usage:
+ * ```ts
+ * const createMatch = useCreateManualMatch(statementId);
+ * await createMatch.mutateAsync({ line_id, receipt_ids: [rid] });
+ * ```
+ */
+export function useCreateManualMatch(statementId: number) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (body: ManualMatchCreate) => createManualMatch(body),
+        onSuccess: () => {
+            qc.invalidateQueries({
+                queryKey: statementKeys.detail(statementId),
+            });
+            qc.invalidateQueries({
+                queryKey: statementKeys.lines(statementId),
+            });
+            qc.invalidateQueries({ queryKey: statementKeys.all });
+            qc.invalidateQueries({ queryKey: receiptKeys.all });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+        },
+    });
+}
+
+/**
+ * Mutation hook for removing an existing reconciliation match by its match_id.
+ *
+ * On success, the backend resets match_status on both the line and receipt to
+ * "unmatched" (when no other matches remain). The same query invalidation as
+ * useCreateManualMatch is applied so the UI stays in sync.
+ *
+ * Usage:
+ * ```ts
+ * const removeMatch = useDeleteMatch(statementId);
+ * await removeMatch.mutateAsync(matchId);
+ * ```
+ */
+export function useDeleteMatch(statementId: number, lineId?: number) {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: (matchId: number) => deleteMatch(matchId),
+        onSuccess: (_data, vars) => {
+            if (lineId !== undefined) {
+                qc.invalidateQueries({
+                    queryKey: reconciliationKeys.matchesByLine(lineId),
+                });
+            }
+            qc.invalidateQueries({
+                queryKey: statementKeys.detail(statementId),
+            });
+            qc.invalidateQueries({
+                queryKey: statementKeys.lines(statementId),
+            });
+            qc.invalidateQueries({ queryKey: statementKeys.all });
+            qc.invalidateQueries({ queryKey: receiptKeys.all });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+        },
+    });
+}
+
+// ── Query keys ────────────────────────────────────────────────────────
+
+export const reconciliationKeys = {
+    all: ["reconciliation"] as const,
+    matchesByLine: (lineId: number) =>
+        [...reconciliationKeys.all, "matches", "line", lineId] as const,
+};
+
+/**
+ * Query hook that returns all existing reconciliation matches for a single
+ * statement line.  Used by the statement-line detail dialog to display which
+ * receipts are currently linked and to supply match_ids for removal.
+ *
+ * Usage:
+ * ```ts
+ * const { data } = useMatchesByLine(lineId);
+ * // data.matches → ReconciliationMatchRead[]
+ * ```
+ */
+export function useMatchesByLine(lineId: number | null) {
+    return useQuery({
+        queryKey: reconciliationKeys.matchesByLine(lineId!),
+        queryFn: () => listMatchesByLine(lineId!),
+        enabled: lineId !== null,
+        staleTime: 0, // always re-fetch when the dialog opens
+    });
 }

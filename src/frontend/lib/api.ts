@@ -47,6 +47,10 @@ import type {
     JobStatusResponse,
     ReconciliationStartRequest,
     ReconciliationStartResponse,
+    ReconciliationMatchListResponse,
+    ManualMatchCreate,
+    ManualMatchCreateResponse,
+    DeleteMatchResponse,
 } from "@/lib/types";
 
 // ── Internals ────────────────────────────────────────────────────────
@@ -408,6 +412,42 @@ export async function startReconciliation(
     });
 }
 
+/**
+ * Manually create a match between a statement line and one or more receipts.
+ * match_type defaults to "manual" when omitted.
+ */
+export async function createManualMatch(
+    body: ManualMatchCreate,
+): Promise<ManualMatchCreateResponse> {
+    return request<ManualMatchCreateResponse>("/reconciliation/matches", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+}
+/**
+ * List reconciliation matches for a specific statement line.
+ * Returns all match rows (with match_id) so the dialog can offer remove actions.
+ */
+export async function listMatchesByLine(
+    lineId: number,
+): Promise<ReconciliationMatchListResponse> {
+    return request<ReconciliationMatchListResponse>(
+        `/reconciliation/matches?line_id=${lineId}&limit=100`,
+    );
+}
+/**
+ * Remove an existing reconciliation match by match_id.
+ * Resets line and receipt match_status to "unmatched" when no other matches remain.
+ */
+export async function deleteMatch(
+    matchId: number,
+): Promise<DeleteMatchResponse> {
+    return request<DeleteMatchResponse>(`/reconciliation/matches/${matchId}`, {
+        method: "DELETE",
+    });
+}
+
 // ── Account Members (Tier 5) ────────────────────────────────────────
 
 export async function lookupUserByEmail(email: string): Promise<UserRead> {
@@ -531,6 +571,9 @@ export const apiClient = {
     getJobStatus,
     // Reconciliation
     startReconciliation,
+    listMatchesByLine,
+    createManualMatch,
+    deleteMatch,
     // Admin users
     listAdminUsers,
     createAdminUser,

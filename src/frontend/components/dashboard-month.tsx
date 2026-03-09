@@ -53,12 +53,16 @@ import type { ReceiptRead } from "@/lib/types";
 import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
 import { useStartReconciliation } from "@/hooks/use-reconciliation";
 import { useDeleteDocument } from "@/hooks/use-documents";
+import { StatementLineDialog } from "@/components/statement-line-dialog";
+import type { BankStatementLineRead } from "@/lib/types";
 
 interface DashboardMonthProps {
     account: AccountBook;
     yearValue: number;
     monthData: MonthData;
     statementId: number;
+    /** Raw API statement lines — used to open the line-detail dialog. */
+    rawLines: BankStatementLineRead[];
     onBack: () => void;
 }
 
@@ -599,6 +603,7 @@ export function DashboardMonth({
     yearValue,
     monthData,
     statementId,
+    rawLines,
     onBack,
 }: DashboardMonthProps) {
     const deleteDoc = useDeleteDocument();
@@ -638,6 +643,19 @@ export function DashboardMonth({
             return;
         }
         setReconcileDialogOpen(false);
+    }
+
+    // ── Statement-line dialog state ───────────────────────────────────
+    const [selectedLine, setSelectedLine] =
+        React.useState<BankStatementLineRead | null>(null);
+    const [lineDialogOpen, setLineDialogOpen] = React.useState(false);
+
+    function handleTransactionRowClick(txn: Transaction) {
+        const lineId = Number(txn.id);
+        const raw = rawLines.find((l) => l.line_id === lineId) ?? null;
+        if (!raw) return;
+        setSelectedLine(raw);
+        setLineDialogOpen(true);
     }
 
     const [filter, setFilter] = React.useState<FilterMode>("all");
@@ -1274,6 +1292,7 @@ export function DashboardMonth({
                         emptyMessage="No transactions found."
                         globalFilter={searchQuery}
                         onGlobalFilterChange={setSearchQuery}
+                        onRowClick={handleTransactionRowClick}
                     />
                 </TabsContent>
 
@@ -1323,6 +1342,18 @@ export function DashboardMonth({
                     if (!open) setSelectedReceipt(null);
                 }}
                 currency={account.currency}
+            />
+            <StatementLineDialog
+                line={selectedLine}
+                receipts={allReceipts}
+                receiptsLoading={receiptsLoading}
+                statementId={statementId}
+                currency={account.currency}
+                open={lineDialogOpen}
+                onOpenChange={(open) => {
+                    setLineDialogOpen(open);
+                    if (!open) setSelectedLine(null);
+                }}
             />
         </div>
     );

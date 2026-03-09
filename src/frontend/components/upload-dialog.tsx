@@ -229,7 +229,7 @@ export function UploadDialog({
 
                 {/* File list */}
                 {files.length > 0 && (
-                    <div className="flex flex-col gap-1.5 max-h-[180px] overflow-y-auto">
+                    <div className="flex flex-col gap-1.5 max-h-45 overflow-y-auto">
                         {files.map((file, i) => {
                             const result = uploadResults[i];
                             const status = result?.status;
@@ -280,7 +280,7 @@ export function UploadDialog({
                                         </span>
                                     )}
                                     {isError && result?.error && (
-                                        <span className="shrink-0 max-w-[120px] truncate text-[10px] text-destructive">
+                                        <span className="shrink-0 max-w-30truncate text-[10px] text-destructive">
                                             {result.error}
                                         </span>
                                     )}

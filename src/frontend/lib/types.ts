@@ -315,6 +315,36 @@ export interface JobStatusResponse {
 }
 
 // ── Reconciliation (Tier 4) ─────────────────────────────────────────
+export interface ReconciliationMatchListResponse {
+    matches: ReconciliationMatchRead[];
+    total: number;
+    offset: number;
+    limit: number;
+}
+
+export interface ReconciliationMatchRead {
+    match_id: number;
+    job_id: number | null;
+    line_id: number;
+    receipt_id: number;
+    match_type: MatchStatus;
+    matched_at: string;
+}
+
+export interface ManualMatchCreate {
+    line_id: number;
+    receipt_ids: number[];
+    match_type?: MatchStatus;
+}
+
+export interface ManualMatchCreateResponse {
+    created: number;
+    match_type: string;
+}
+
+export interface DeleteMatchResponse {
+    deleted: number;
+}
 
 export interface ReconciliationStartRequest {
     account_id: number;

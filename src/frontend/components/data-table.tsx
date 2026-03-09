@@ -315,7 +315,7 @@ export function DataTable<TData, TValue>({
                     >
                         <SelectTrigger
                             size="sm"
-                            className="h-6 w-[53px] text-[11px] px-1.5 gap-1"
+                            className="h-6 w-13.25 text-[11px] px-1.5 gap-1"
                         >
                             <SelectValue />
                         </SelectTrigger>

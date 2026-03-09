@@ -30,6 +30,8 @@ from app.schemas.reconciliation import (
     MatchLineSummary,
     MatchReceiptSummary,
     ReconciliationMatchDetail,
+    ReconciliationMatchListResponse,
+    ReconciliationMatchRead,
     ReconciliationResultsResponse,
     ReconciliationRunRequest,
     ReconciliationRunResponse,
@@ -37,14 +39,13 @@ from app.schemas.reconciliation import (
     ReconciliationStartResponse,
     ReconciliationSummary,
 )
-from app.utils.access import can_view_job, require_account_access
-from app.utils.auth import get_current_user, verify_csrf_token
 from app.services.reconciliation_matching import (
+    apply_lines_to_receipt,
     apply_perfect_matches,
     apply_receipts_to_line,
-    apply_lines_to_receipt,
-    _print_match_summary,
 )
+from app.utils.access import can_view_job, require_account_access
+from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/reconciliation", tags=["reconciliation"])
 
@@ -164,6 +165,71 @@ async def _run_matching(
     except Exception:
         job.status = JobStatus.failed
         raise
+
+
+# ---------------------------------------------------------------------------
+# GET /reconciliation/matches  –  list matches, optionally filtered by line_id
+# ---------------------------------------------------------------------------
+
+
+@router.get(
+    "/matches",
+    response_model=ReconciliationMatchListResponse,
+)
+async def list_matches(
+    line_id: Optional[int] = Query(
+        default=None, description="Filter by statement line ID"
+    ),
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=100, ge=1, le=200),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    List reconciliation matches.  When ``line_id`` is provided only matches
+    for that specific statement line are returned.  Used by the statement-line
+    detail dialog so it can display (and remove) existing matches without
+    needing a job_id.
+    """
+    if line_id is not None:
+        # Verify the caller has at least view access to the statement that owns this line.
+        line = await db.get(BankStatementLine, line_id)
+        if line is None:
+            raise HTTPException(status_code=404, detail="Statement line not found")
+
+        # Check account access via the statement.
+        stmt_obj = await db.get(BankStatement, line.statement_id)
+        if stmt_obj is None:
+            raise HTTPException(status_code=404, detail="Statement not found")
+        await require_account_access(stmt_obj.account_id, current_user, db)
+
+    count_q = select(func.count()).select_from(ReconciliationMatch)
+    rows_q = select(ReconciliationMatch).order_by(ReconciliationMatch.match_id)
+
+    if line_id is not None:
+        count_q = count_q.where(ReconciliationMatch.line_id == line_id)
+        rows_q = rows_q.where(ReconciliationMatch.line_id == line_id)
+
+    total: int = (await db.execute(count_q)).scalar_one()
+    rows_result = await db.execute(rows_q.offset(offset).limit(limit))
+    rows = list(rows_result.scalars().all())
+
+    return ReconciliationMatchListResponse(
+        matches=[
+            ReconciliationMatchRead(
+                match_id=m.match_id,
+                job_id=m.job_id,
+                line_id=m.line_id,
+                receipt_id=m.receipt_id,
+                match_type=m.match_type,
+                matched_at=m.matched_at,
+            )
+            for m in rows
+        ],
+        total=total,
+        offset=offset,
+        limit=limit,
+    )
 
 
 # ---------------------------------------------------------------------------

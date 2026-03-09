@@ -52,6 +52,7 @@ export default function DashboardMonthPage() {
             yearValue={year}
             monthData={monthData}
             statementId={statement!.statement_id}
+            rawLines={statementDetail!.lines}
             onBack={() => router.push(`/dashboard/${accountId}/${year}`)}
         />
     );
