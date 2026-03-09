@@ -4,9 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
 from sqlalchemy import text
 
 from app.config import get_settings
@@ -21,6 +20,7 @@ from app.routers import (
     reconciliation,
     statements,
 )
+from app.utils.limiter import limiter as _limiter
 
 logger = logging.getLogger("matcha.access")
 
@@ -46,8 +46,9 @@ app = FastAPI(title="Matcha Backend", lifespan=lifespan)
 # ---------------------------------------------------------------------------
 # 7.2 — Register the rate-limiter state and its 429 exception handler so that
 #        the @limiter.limit() decorators in the routers take effect globally.
+#        The limiter is imported from app.utils.limiter so that this instance
+#        and every router decorator share the same object and counter storage.
 # ---------------------------------------------------------------------------
-_limiter = Limiter(key_func=get_remote_address)
 app.state.limiter = _limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
