@@ -292,6 +292,7 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 | **Tier 1** — Upload | `POST /documents/upload-url`, `POST /documents/{id}/confirm-upload` | `useDocumentUpload()`, `useTrackedDocumentUpload()` |
 | **Tier 2** — Documents | `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}` | `useDocuments()`, `useDocument()`, `useDeleteDocument()` |
 | **Tier 2** — Jobs | `GET /jobs/{id}/status` | `useJobStatus()` (polling via `getJobStatus()` in `lib/api.ts`) |
+| **Tier 4** — Reconciliation | `POST /reconciliation/start` | `useStartReconciliation()` (`hooks/use-reconciliation.ts`) |
 | **Tier 3** — Receipts | `GET /receipts`, `GET /receipts/{id}`, `PATCH /receipts/{id}`, `GET /receipts/{id}/file-url` | `useReceipts()`, `useReceipt()`, `useUpdateReceipt()`, `useReceiptFileUrl()` |
 | **Tier 3** — Statements | `GET /statements`, `GET /statements/{id}`, `GET /statements/{id}/lines`, `PATCH /statements/{id}/lines/{lineId}`, `GET /statements/{id}/file-url` | `useStatements()`, `useStatement()`, `useStatementLines()`, `useUpdateStatementLine()`, `useStatementFileUrl()` |
 | **Tier 5** — Accounts | `POST /accounts`, `GET /accounts`, `GET /accounts/{id}`, `PATCH /accounts/{id}`, `DELETE /accounts/{id}` | `useAccounts()`, `useAccount()`, `useAccountBook()`, `useAccountBooks()`, `useCreateAccount()`, `useUpdateAccount()`, `useDeleteAccount()` |

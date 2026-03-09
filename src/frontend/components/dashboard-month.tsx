@@ -39,6 +39,7 @@ import {
     File01Icon,
     LinkSquare02Icon,
     Delete02Icon,
+    ArrowDataTransferHorizontalIcon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
@@ -50,7 +51,7 @@ import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
 import { ReceiptEditDialog } from "@/components/receipt-edit-dialog";
 import type { ReceiptRead } from "@/lib/types";
 import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
-
+import { useStartReconciliation } from "@/hooks/use-reconciliation";
 import { useDeleteDocument } from "@/hooks/use-documents";
 
 interface DashboardMonthProps {
@@ -613,6 +614,32 @@ export function DashboardMonth({
         statementId,
     );
 
+    const {
+        startReconciliation,
+        isPending: isReconciling,
+        error: reconcileError,
+        reset: resetReconcile,
+    } = useStartReconciliation();
+
+    const [reconcileDialogOpen, setReconcileDialogOpen] = React.useState(false);
+
+    async function handleReconcile() {
+        if (!statementId) return;
+        resetReconcile();
+        try {
+            await startReconciliation({
+                accountId: Number(account.id),
+                statementId,
+                label: `${monthData.label} ${yearValue}`,
+            });
+        } catch {
+            // Error is surfaced via reconcileError; keep dialog open so the
+            // user can see it.
+            return;
+        }
+        setReconcileDialogOpen(false);
+    }
+
     const [filter, setFilter] = React.useState<FilterMode>("all");
     const [searchQuery, setSearchQuery] = React.useState("");
     const [activeTab, setActiveTab] = React.useState("transactions");
@@ -1023,6 +1050,99 @@ export function DashboardMonth({
                                 if (!open) resetUpload();
                             }}
                         />
+                        {statementId != null && (
+                            <AlertDialog
+                                open={reconcileDialogOpen}
+                                onOpenChange={(open) => {
+                                    setReconcileDialogOpen(open);
+                                    if (!open) resetReconcile();
+                                }}
+                            >
+                                <AlertDialogTrigger asChild>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={isReconciling}
+                                    >
+                                        {isReconciling ? (
+                                            <span
+                                                className="size-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"
+                                                aria-hidden
+                                            />
+                                        ) : (
+                                            <HugeiconsIcon
+                                                icon={
+                                                    ArrowDataTransferHorizontalIcon
+                                                }
+                                                strokeWidth={2}
+                                                className="size-3.5"
+                                            />
+                                        )}
+                                        {isReconciling
+                                            ? "Reconciling…"
+                                            : "Reconcile"}
+                                    </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                    <AlertDialogHeader>
+                                        <AlertDialogTitle>
+                                            Run Reconciliation
+                                        </AlertDialogTitle>
+                                        <AlertDialogDescription>
+                                            This will match all bank statement
+                                            transactions for{" "}
+                                            <strong>
+                                                {monthData.label} {yearValue}
+                                            </strong>{" "}
+                                            against uploaded receipts. Any
+                                            existing automatic matches will be
+                                            replaced. Manual matches are
+                                            preserved.
+                                        </AlertDialogDescription>
+                                    </AlertDialogHeader>
+                                    {reconcileError && (
+                                        <p className="text-xs text-destructive px-1">
+                                            {reconcileError.message}
+                                        </p>
+                                    )}
+                                    <AlertDialogFooter>
+                                        <AlertDialogCancel
+                                            disabled={isReconciling}
+                                        >
+                                            Cancel
+                                        </AlertDialogCancel>
+                                        <AlertDialogAction
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                handleReconcile();
+                                            }}
+                                            disabled={isReconciling}
+                                        >
+                                            {isReconciling ? (
+                                                <>
+                                                    <span
+                                                        className="size-3.5 border-2 border-current border-t-transparent rounded-full animate-spin"
+                                                        aria-hidden
+                                                    />
+                                                    Reconciling…
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <HugeiconsIcon
+                                                        icon={
+                                                            ArrowDataTransferHorizontalIcon
+                                                        }
+                                                        strokeWidth={2}
+                                                        className="size-3.5"
+                                                    />
+                                                    Run Reconciliation
+                                                </>
+                                            )}
+                                        </AlertDialogAction>
+                                    </AlertDialogFooter>
+                                </AlertDialogContent>
+                            </AlertDialog>
+                        )}
                     </div>
                 }
             />

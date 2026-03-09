@@ -45,6 +45,8 @@ import type {
     MemberAdd,
     UserRole,
     JobStatusResponse,
+    ReconciliationStartRequest,
+    ReconciliationStartResponse,
 } from "@/lib/types";
 
 // ── Internals ────────────────────────────────────────────────────────
@@ -389,6 +391,23 @@ export async function getJobStatus(jobId: number): Promise<JobStatusResponse> {
     return request<JobStatusResponse>(`/jobs/${jobId}/status`);
 }
 
+// ── Reconciliation (Tier 4) ─────────────────────────────────────────
+
+/**
+ * Creates a reconciliation job and immediately runs the matching algorithm
+ * for the given account + statement in a single call.
+ * Returns the job id, terminal status, and a summary of matched lines.
+ */
+export async function startReconciliation(
+    body: ReconciliationStartRequest,
+): Promise<ReconciliationStartResponse> {
+    return request<ReconciliationStartResponse>("/reconciliation/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+    });
+}
+
 // ── Account Members (Tier 5) ────────────────────────────────────────
 
 export async function lookupUserByEmail(email: string): Promise<UserRead> {
@@ -510,6 +529,8 @@ export const apiClient = {
     removeAccountMember,
     // Jobs
     getJobStatus,
+    // Reconciliation
+    startReconciliation,
     // Admin users
     listAdminUsers,
     createAdminUser,

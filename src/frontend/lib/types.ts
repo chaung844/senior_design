@@ -313,3 +313,23 @@ export interface JobStatusResponse {
     job_type: JobType;
     documents: JobStatusDocument[];
 }
+
+// ── Reconciliation (Tier 4) ─────────────────────────────────────────
+
+export interface ReconciliationStartRequest {
+    account_id: number;
+    statement_id: number;
+}
+
+export interface ReconciliationSummary {
+    total_lines: number;
+    matched: number;
+    unmatched: number;
+    bundle_matched: number;
+}
+
+export interface ReconciliationStartResponse {
+    job_id: number;
+    status: string;
+    summary: ReconciliationSummary;
+}
