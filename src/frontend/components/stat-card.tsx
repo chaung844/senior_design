@@ -27,11 +27,11 @@ export function StatCard({
         <Card size="sm">
             <CardHeader>
                 <CardDescription>
-                    <span className="flex items-center gap-1.5">
+                    <span className="flex items-center leading-none gap-1.5">
                         <HugeiconsIcon
                             icon={icon}
                             strokeWidth={2}
-                            className="size-3.5"
+                            className="size-3.5 shrink-0"
                         />
                         {label}
                     </span>

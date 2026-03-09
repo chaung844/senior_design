@@ -41,6 +41,7 @@ import {
     Delete02Icon,
     ArrowDataTransferHorizontalIcon,
     Settings01Icon,
+    TransactionHistoryIcon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
@@ -1189,7 +1190,7 @@ export function DashboardMonth({
             {/* Summary Cards */}
             <div className="shrink-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
-                    icon={BarChartIcon}
+                    icon={TransactionHistoryIcon}
                     label="Statements"
                     value={formatNumber(monthData.statementCount)}
                 >

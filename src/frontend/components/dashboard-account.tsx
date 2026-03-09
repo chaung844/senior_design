@@ -23,6 +23,7 @@ import {
     MoneyReceiveSquareIcon,
     MoneySendSquareIcon,
     BarChartIcon,
+    TransactionHistoryIcon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
@@ -272,9 +273,9 @@ export function DashboardAccount({
             </div>
 
             {/* Summary Cards */}
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-1">
                 <StatCard
-                    icon={BarChartIcon}
+                    icon={TransactionHistoryIcon}
                     label="Total Transactions"
                     value={formatNumber(totalTransactions)}
                 >

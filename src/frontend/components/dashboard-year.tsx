@@ -42,6 +42,7 @@ import {
     MoneySendSquareIcon,
     BarChartIcon,
     ArrowLeft01Icon,
+    TransactionHistoryIcon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -299,7 +300,7 @@ export function DashboardYear({
             {/* Summary Cards */}
             <div className="shrink-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 <StatCard
-                    icon={BarChartIcon}
+                    icon={TransactionHistoryIcon}
                     label="Transactions"
                     value={formatNumber(yearData.totalTransactions)}
                 >
