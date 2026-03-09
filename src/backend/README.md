@@ -84,6 +84,10 @@ uv run uvicorn app.main:app --reload --loop uvloop --http httptools
 ```
 - From the localhost link, append `/docs` to get swagger UI
 
+- Run the worker
+```bash
+ uv run python -m app.worker.main
+```
 ---
 
 ## Notes

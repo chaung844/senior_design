@@ -1,8 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
 from fastapi.concurrency import run_in_threadpool
 from fastapi.security import OAuth2PasswordRequestForm
-from slowapi import Limiter
-from slowapi.util import get_remote_address
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -12,6 +10,7 @@ from app.models.user import User
 from app.schemas.user import UserRead
 from app.utils.auth import create_csrf_token, get_current_user, verify_csrf_token
 from app.utils.jwt import create_access_token
+from app.utils.limiter import limiter
 from app.utils.security import verify_password
 
 settings = get_settings()
@@ -19,21 +18,11 @@ settings = get_settings()
 # ---------------------------------------------------------------------------
 # 7.2 — Rate limiting
 # ---------------------------------------------------------------------------
-# The limiter is keyed by the client's remote IP address.  The state is
-# stored in-memory (default), which is sufficient for a single-process
-# deployment.  For multi-process / multi-replica deployments swap the
-# storage backend to Redis via:
-#
-#   Limiter(key_func=get_remote_address, storage_uri="redis://redis:6379")
-#
-# and register it on the FastAPI app in main.py:
-#
-#   from slowapi import _rate_limit_exceeded_handler
-#   from slowapi.errors import RateLimitExceeded
-#   app.state.limiter = limiter
-#   app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+# ``limiter`` is the application-wide singleton defined in app.utils.limiter
+# and registered on app.state.limiter in main.py.  Using the same object here
+# ensures the @limiter.limit() decorator and the slowapi middleware share the
+# same counter storage, so limits are actually enforced.
 # ---------------------------------------------------------------------------
-limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 

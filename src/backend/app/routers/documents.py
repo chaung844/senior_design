@@ -1,5 +1,4 @@
 import uuid
-from datetime import datetime, timezone
 from typing import Optional
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response
@@ -7,9 +6,12 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import DocumentStatus, DocumentType, JobStatus, JobType
+from app.enums import DocumentStatus, DocumentType, JobStatus, JobType, MatchStatus
 from app.models.document import Document
 from app.models.job import Job
+from app.models.receipt import Receipt
+from app.models.reconciliation import ReconciliationMatch
+from app.models.statement import BankStatementLine
 from app.models.user import User
 from app.schemas.document import (
     DocumentConfirmResponse,
@@ -198,7 +200,94 @@ async def delete_document(
     _assert_can_write(current_user)
 
     doc = await get_owned_document(document_id, current_user, db, write=True)
-    doc.deleted_at = datetime.now(timezone.utc)
+
+    # ------------------------------------------------------------------
+    # Clean up reconciliation matches linked to this document before
+    # soft-deleting it, then reset match_status on the orphaned counterparts.
+    # ------------------------------------------------------------------
+
+    if doc.document_type == DocumentType.receipt and doc.receipt_id is not None:
+        # Fetch all matches for this receipt
+        matches_result = await db.execute(
+            select(ReconciliationMatch).where(
+                ReconciliationMatch.receipt_id == doc.receipt_id
+            )
+        )
+        matches = matches_result.scalars().all()
+
+        # Collect the line_ids affected before we delete the matches
+        affected_line_ids = {m.line_id for m in matches}
+
+        for match in matches:
+            await db.delete(match)
+
+        await db.flush()
+
+        # Reset match_status on any line that now has no remaining matches
+        for line_id in affected_line_ids:
+            remaining = (
+                await db.execute(
+                    select(func.count())
+                    .select_from(ReconciliationMatch)
+                    .where(ReconciliationMatch.line_id == line_id)
+                )
+            ).scalar_one()
+            if remaining == 0:
+                line = await db.get(BankStatementLine, line_id)
+                if line:
+                    line.match_status = MatchStatus.unmatched
+
+    elif (
+        doc.document_type == DocumentType.bank_statement
+        and doc.statement_id is not None
+    ):
+        # Fetch all lines belonging to this statement
+        lines_result = await db.execute(
+            select(BankStatementLine).where(
+                BankStatementLine.statement_id == doc.statement_id
+            )
+        )
+        lines = lines_result.scalars().all()
+
+        # Collect all match rows for these lines and the affected receipt_ids
+        line_ids = [line.line_id for line in lines]
+        affected_receipt_ids: set[int] = set()
+
+        if line_ids:
+            matches_result = await db.execute(
+                select(ReconciliationMatch).where(
+                    ReconciliationMatch.line_id.in_(line_ids)
+                )
+            )
+            matches = matches_result.scalars().all()
+            affected_receipt_ids = {m.receipt_id for m in matches}
+
+            for match in matches:
+                await db.delete(match)
+
+            await db.flush()
+
+        # Reset match_status on any line in this statement (they are all
+        # going away with the document, but update the ORM objects in case
+        # they are referenced later in the session)
+        for line in lines:
+            line.match_status = MatchStatus.unmatched
+
+        # Reset match_status on any receipt that now has no remaining matches
+        for receipt_id in affected_receipt_ids:
+            remaining = (
+                await db.execute(
+                    select(func.count())
+                    .select_from(ReconciliationMatch)
+                    .where(ReconciliationMatch.receipt_id == receipt_id)
+                )
+            ).scalar_one()
+            if remaining == 0:
+                receipt = await db.get(Receipt, receipt_id)
+                if receipt:
+                    receipt.match_status = MatchStatus.unmatched
+
+    doc.soft_delete()
     await db.commit()
 
     background_tasks.add_task(aws_service.async_delete_s3_object, doc.s3_key)

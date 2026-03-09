@@ -33,37 +33,49 @@ def _safe_decimal(value) -> Decimal:
 
 
 def _safe_date(value, field_name: str = "date") -> date:
+    today = date.today()
     if value is None or str(value).strip().lower() == "n/a":
-        raise ValueError(f"Missing required date field: '{field_name}'")
+        logger.warning(
+            f"Missing date field '{field_name}', defaulting to today ({today})"
+        )
+        return today
     raw = str(value).strip()
     try:
         return datetime.strptime(raw, "%Y-%m-%d").date()
     except ValueError:
-        raise ValueError(
-            f"Invalid date format for '{field_name}': expected YYYY-MM-DD, got '{raw}'"
+        logger.warning(
+            f"Invalid date format for '{field_name}': expected YYYY-MM-DD, got '{raw}'. "
+            f"Defaulting to today ({today})"
         )
+        return today
 
 
 def _construct_date_with_year(
     value, year, start_month, field_name: str = "date"
 ) -> date:
+    today = date.today()
     if value is None or str(value).strip().lower() == "n/a":
-        raise ValueError(f"Missing required date field: '{field_name}'")
-    raw = str(value).strip()
-    parts = raw.split("/")
-    month = int(parts[0])
-    day = int(parts[1])
-    adjusted_year = (
-        year + 1 if month < start_month else year
-    )  # for statements that span across 2 years (Dec - Jan)
-    # add adjusted year to raw month/date
-    constructed_date = f"{adjusted_year}-{month:02d}-{day:02d}"
-    try:
-        return datetime.strptime(constructed_date, "%Y-%m-%d").date()
-    except ValueError:
-        raise ValueError(
-            f"Invalid date format for '{field_name}': expected MM/DD, got '{raw}'"
+        logger.warning(
+            f"Missing date field '{field_name}', defaulting to today ({today})"
         )
+        return today
+    raw = str(value).strip()
+    try:
+        parts = raw.split("/")
+        month = int(parts[0])
+        day = int(parts[1])
+        adjusted_year = (
+            year + 1 if month < start_month else year
+        )  # for statements that span across 2 years (Dec - Jan)
+        # add adjusted year to raw month/date
+        constructed_date = f"{adjusted_year}-{month:02d}-{day:02d}"
+        return datetime.strptime(constructed_date, "%Y-%m-%d").date()
+    except (ValueError, IndexError):
+        logger.warning(
+            f"Invalid date format for '{field_name}': expected MM/DD, got '{raw}'. "
+            f"Defaulting to today ({today})"
+        )
+        return today
 
 
 def _safe_str(value, fallback: str = "") -> str:
