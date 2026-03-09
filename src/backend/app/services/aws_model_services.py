@@ -47,7 +47,10 @@ def _build_message(system_instruction_path, data_path=None, prompt=None):
     Returns:
         dict: The message object.
     """
-    messages = [{"role": "system", "content": None}, {"role": "user", "content": []}]
+    messages: list[dict[str, str | list[dict[str, str | dict[str, str]]] | None]] = [
+        {"role": "system", "content": None},
+        {"role": "user", "content": []},
+    ]
     user_content = []
 
     system_instruction = _get_system_instruction(system_instruction_path)

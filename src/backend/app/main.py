@@ -50,7 +50,7 @@ app = FastAPI(title="Matcha Backend", lifespan=lifespan)
 #        and every router decorator share the same object and counter storage.
 # ---------------------------------------------------------------------------
 app.state.limiter = _limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 
 # ---------------------------------------------------------------------------
@@ -78,7 +78,7 @@ async def log_requests(request: Request, call_next) -> Response:
 # CORS
 # ---------------------------------------------------------------------------
 app.add_middleware(
-    CORSMiddleware,
+    CORSMiddleware,  # type: ignore[arg-type]
     allow_origins=settings.cors_origins,
     allow_credentials=True,
     allow_methods=["*"],

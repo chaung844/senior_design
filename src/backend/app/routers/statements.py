@@ -1,7 +1,7 @@
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import func, select
+from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
 
@@ -81,7 +81,7 @@ async def list_statements(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    base_filter = [Document.deleted_at.is_(None)]
+    base_filter: list[ColumnElement[bool]] = [Document.deleted_at.is_(None)]
     apply_document_access_filter(base_filter, current_user)
 
     if account_id is not None:

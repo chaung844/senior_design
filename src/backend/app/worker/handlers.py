@@ -125,6 +125,8 @@ async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSSer
         await session.flush()
 
         doc = await session.get(Document, document_id)
+        if doc is None:
+            raise ValueError(f"Document {document_id} not found")
         doc.receipt_id = receipt.receipt_id
 
         logger.info(f"Created Receipt {receipt.receipt_id} for document {document_id}")
@@ -166,10 +168,10 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
         session.add(statement)
         await session.flush()
 
-        for idx, row in df.iterrows():
+        for line_num, (_, row) in enumerate(df.iterrows(), start=1):
             line = BankStatementLine(
                 statement_id=statement.statement_id,
-                line_number=idx + 1,
+                line_number=line_num,
                 reference_number=str(row.get("reference", "")),
                 transaction_date=_construct_date_with_year(
                     row.get("transaction_date"),
@@ -195,6 +197,8 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
         await session.flush()
 
         doc = await session.get(Document, document_id)
+        if doc is None:
+            raise ValueError(f"Document {document_id} not found")
         doc.statement_id = statement.statement_id
 
         logger.info(

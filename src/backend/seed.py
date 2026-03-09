@@ -6,7 +6,7 @@ description: this script seeds the database with sample data for testing purpose
 
 import asyncio
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from sqlalchemy import select
 
@@ -14,6 +14,17 @@ from app.database import AsyncSessionLocal, engine
 from app.enums import AccountBookRole, AccountType, UserRole
 from app.models import AccountBook, AccountBookMember, User
 from app.utils.security import hash_password
+
+
+class AccountBookSeed(TypedDict):
+    bank_name: str
+    account_name: str
+    account_type: AccountType
+    currency: str
+    account_number_last4: str
+    owner: "User"
+    viewers: "list[User]"
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -102,7 +113,7 @@ async def seed_account_books(session, user_map: dict[str, User]):
         logger.warning("Admin users not found, skipping account book seed.")
         return
 
-    books_to_seed = [
+    books_to_seed: list[AccountBookSeed] = [
         {
             "bank_name": "Chase",
             "account_name": "Business Credit Card",
@@ -125,7 +136,7 @@ async def seed_account_books(session, user_map: dict[str, User]):
 
     new_count = 0
     for data in books_to_seed:
-        owner: User = data["owner"]
+        owner = data["owner"]
         existing = await session.execute(
             select(AccountBook).where(
                 AccountBook.bank_name == data["bank_name"],
