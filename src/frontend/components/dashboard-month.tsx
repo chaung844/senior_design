@@ -654,6 +654,19 @@ export function DashboardMonth({
         React.useState<BankStatementLineRead | null>(null);
     const [lineDialogOpen, setLineDialogOpen] = React.useState(false);
 
+    // Keep selectedLine in sync with the latest rawLines so the dialog
+    // reflects updated match_status after linking/unlinking a receipt.
+    React.useEffect(() => {
+        if (selectedLine) {
+            const fresh = rawLines.find(
+                (l) => l.line_id === selectedLine.line_id,
+            );
+            if (fresh && fresh !== selectedLine) {
+                setSelectedLine(fresh);
+            }
+        }
+    }, [rawLines, selectedLine]);
+
     function handleTransactionRowClick(txn: Transaction) {
         const lineId = Number(txn.id);
         const raw = rawLines.find((l) => l.line_id === lineId) ?? null;

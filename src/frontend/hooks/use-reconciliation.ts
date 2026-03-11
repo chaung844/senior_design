@@ -100,7 +100,13 @@ export function useCreateManualMatch(statementId: number) {
     const qc = useQueryClient();
     return useMutation({
         mutationFn: (body: ManualMatchCreate) => createManualMatch(body),
-        onSuccess: () => {
+        onSuccess: (_data, vars) => {
+            // Invalidate the matches-by-line query so the receipt match
+            // pane refreshes immediately (e.g. badge, linked count, button
+            // state all reflect the new match).
+            qc.invalidateQueries({
+                queryKey: reconciliationKeys.matchesByLine(vars.line_id),
+            });
             qc.invalidateQueries({
                 queryKey: statementKeys.detail(statementId),
             });
