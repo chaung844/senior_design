@@ -127,7 +127,7 @@ function makeTransactionColumns(
             meta: { align: "left" },
             cell: ({ row }) =>
                 row.original.matched ? (
-                    <Badge variant="default" className="text-[9px] h-4 px-1.5">
+                    <Badge variant="default" className="text-[9px] h-5 px-1.5">
                         <HugeiconsIcon
                             icon={Tick02Icon}
                             strokeWidth={2.5}
@@ -138,7 +138,7 @@ function makeTransactionColumns(
                 ) : (
                     <Badge
                         variant="outline"
-                        className="text-[9px] h-4 px-1.5 text-muted-foreground"
+                        className="text-[9px] h-5 px-1.5 text-muted-foreground"
                     >
                         <HugeiconsIcon
                             icon={Alert02Icon}
@@ -351,12 +351,12 @@ function makeReceiptColumns(
                     return (
                         <Badge
                             variant="default"
-                            className="text-[9px] h-4 px-1.5"
+                            className="text-[9px] h-5 px-1.5"
                         >
                             <HugeiconsIcon
                                 icon={Tick02Icon}
                                 strokeWidth={2.5}
-                                className="size-2.5 mr-0.5"
+                                className="size-2.5 mr-0.5 mb-0.5"
                             />
                             Perfect Match
                         </Badge>
@@ -366,12 +366,12 @@ function makeReceiptColumns(
                     return (
                         <Badge
                             variant="secondary"
-                            className="text-[9px] h-4 px-1.5"
+                            className="text-[9px] h-5 px-1.5"
                         >
                             <HugeiconsIcon
                                 icon={Tick02Icon}
                                 strokeWidth={2.5}
-                                className="size-2.5 mr-0.5"
+                                className="size-2.5 mr-0.5 mb-0.5"
                             />
                             Bundle Match
                         </Badge>
@@ -381,7 +381,7 @@ function makeReceiptColumns(
                     return (
                         <Badge
                             variant="outline"
-                            className="text-[9px] h-4 px-1.5"
+                            className="text-[9px] h-5 px-1.5"
                         >
                             Manual
                         </Badge>
@@ -390,12 +390,12 @@ function makeReceiptColumns(
                 return (
                     <Badge
                         variant="outline"
-                        className="text-[9px] h-4 px-1.5 text-muted-foreground"
+                        className="text-[9px] h-5 px-1.5 text-muted-foreground"
                     >
                         <HugeiconsIcon
                             icon={Alert02Icon}
                             strokeWidth={2}
-                            className="size-2.5 mr-0.5"
+                            className="size-2.5 mr-0.5 mb-0.5"
                         />
                         Unmatched
                     </Badge>
@@ -1199,7 +1199,13 @@ export function DashboardMonth({
                             {formatNumber(monthData.matchedCount)} matched
                         </span>
                         <span>·</span>
-                        <span>
+                        <span
+                            className={
+                                monthData.unmatchedCount > 0
+                                    ? "text-destructive"
+                                    : undefined
+                            }
+                        >
                             {formatNumber(monthData.unmatchedCount)} unmatched
                         </span>
                     </div>
