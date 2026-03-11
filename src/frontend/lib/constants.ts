@@ -24,11 +24,11 @@ export const MONTH_LABELS = [
 export const reconciliationChartConfig = {
     matched: {
         label: "Matched",
-        color: "var(--chart-1)",
+        color: "var(--chart-4)",
     },
     unmatched: {
         label: "Unmatched",
-        color: "var(--chart-4)",
+        color: "var(--chart-1)",
     },
 } satisfies ChartConfig;
 

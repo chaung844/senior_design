@@ -336,7 +336,7 @@ export function EditAccountDialog({ account }: EditAccountDialogProps) {
                         strokeWidth={2}
                         className="size-3.5"
                     />
-                    Edit
+                    Edit Account Book
                 </Button>
             </DialogTrigger>
 
