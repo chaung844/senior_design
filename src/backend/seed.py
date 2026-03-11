@@ -6,13 +6,29 @@ description: this script seeds the database with sample data for testing purpose
 
 import asyncio
 import logging
+from datetime import date
+from decimal import Decimal
 from typing import TYPE_CHECKING, TypedDict
 
 from sqlalchemy import select
 
 from app.database import AsyncSessionLocal, engine
-from app.enums import AccountBookRole, AccountType, UserRole
-from app.models import AccountBook, AccountBookMember, User
+from app.enums import (
+    AccountBookRole,
+    AccountType,
+    DocumentStatus,
+    DocumentType,
+    MatchStatus,
+    UserRole,
+)
+from app.models import (
+    AccountBook,
+    AccountBookMember,
+    BankStatement,
+    BankStatementLine,
+    Document,
+    User,
+)
 from app.utils.security import hash_password
 
 
@@ -192,6 +208,142 @@ async def seed_account_books(session, user_map: dict[str, User]):
         logger.info("No new account books to add.")
 
 
+# Stable seed s3_key — must never change so the UNIQUE constraint doesn't
+# cause a rollback on repeated runs.
+_SEED_STATEMENT_S3_KEY = "seed/statements/chase-4321-dec-2025.pdf"
+
+
+async def seed_statements(session, user_map: dict[str, "User"]):
+    """Seed a bank statement with 5 lines for the Business Credit Card account book."""
+    admin1 = user_map.get("admin1@example.com")
+    if not admin1:
+        logger.warning("admin1 not found, skipping statement seed.")
+        return
+
+    result = await session.execute(
+        select(AccountBook).where(
+            AccountBook.account_name == "Business Credit Card",
+            AccountBook.user_id == admin1.user_id,
+        )
+    )
+    book = result.scalar_one_or_none()
+    if not book:
+        logger.warning(
+            "Business Credit Card account book not found, skipping statement seed."
+        )
+        return
+
+    # Check by the stable s3_key on Document — if it exists the full statement
+    # was committed successfully on a previous run.
+    existing_doc = await session.execute(
+        select(Document).where(Document.s3_key == _SEED_STATEMENT_S3_KEY)
+    )
+    if existing_doc.scalar_one_or_none():
+        logger.info(
+            "Statement for Business Credit Card Dec 2025 already exists. Skipping."
+        )
+        return
+
+    statement = BankStatement(
+        account_id=book.account_id,
+        month=12,
+        year=2025,
+        account_number_last4=book.account_number_last4,
+        total_amount=Decimal("297.56"),
+        currency="USD",
+    )
+    session.add(statement)
+    await session.flush()
+
+    # A paired Document row is required so list_statements (which inner-joins
+    # Document) can see this statement on the frontend.
+    document = Document(
+        uploaded_by=admin1.user_id,
+        file_name="chase-4321-dec-2025.pdf",
+        document_type=DocumentType.bank_statement,
+        s3_key=_SEED_STATEMENT_S3_KEY,
+        status=DocumentStatus.parsed,
+        account_id=book.account_id,
+        statement_id=statement.statement_id,
+    )
+    session.add(document)
+    await session.flush()
+
+    lines_data = [
+        {
+            "line_number": 1,
+            "reference_number": "REF20250103001",
+            "transaction_date": date(2026, 1, 23),
+            "posting_date": date(2026, 1, 24),
+            "description": "KROGER - FRESH FOR EVERYONE",
+            "vendor": "Kroger",
+            "mcc": "5411",
+            "charge": Decimal("46.49"),
+        },
+        {
+            "line_number": 2,
+            "reference_number": "REF20250108002",
+            "transaction_date": date(2026, 1, 15),
+            "posting_date": date(2026, 1, 16),
+            "description": "TARGET GROCERY",
+            "vendor": "Target",
+            "mcc": "5411",
+            "charge": Decimal("9.78"),
+        },
+        {
+            "line_number": 3,
+            "reference_number": "REF20250103003",
+            "transaction_date": date(2026, 12, 27),
+            "posting_date": date(2026, 12, 28),
+            "description": "KROGER - FRESH FOR EVERYONE",
+            "vendor": "Kroger",
+            "mcc": "5411",
+            "charge": Decimal("233.86"),
+        },
+        {
+            "line_number": 4,
+            "reference_number": "REF20251220004",
+            "transaction_date": date(2026, 1, 17),
+            "posting_date": date(2026, 1, 19),
+            "description": "AMAZON AMZ AMAZON.COM",
+            "vendor": "Amazon",
+            "mcc": "5999",
+            "charge": Decimal("3.24"),
+        },
+        {
+            "line_number": 5,
+            "reference_number": "REF20251227005",
+            "transaction_date": date(2026, 1, 17),
+            "posting_date": date(2026, 1, 18),
+            "description": "AMAZON AMZ AMAZON.COM",
+            "vendor": "Amazon",
+            "mcc": "5999",
+            "charge": Decimal("4.19"),
+        },
+    ]
+
+    for line_data in lines_data:
+        line = BankStatementLine(
+            statement_id=statement.statement_id,
+            line_number=line_data["line_number"],
+            reference_number=line_data["reference_number"],
+            transaction_date=line_data["transaction_date"],
+            posting_date=line_data["posting_date"],
+            description=line_data["description"],
+            vendor=line_data["vendor"],
+            mcc=line_data["mcc"],
+            charge=line_data["charge"],
+            currency="USD",
+            match_status=MatchStatus.unmatched,
+        )
+        session.add(line)
+
+    logger.info(
+        "Created statement for Business Credit Card Dec 2025 with 5 lines (account_id: %d).",
+        book.account_id,
+    )
+
+
 async def main():
     async with AsyncSessionLocal() as session:
         try:
@@ -200,6 +352,9 @@ async def main():
 
             logger.info("Seeding account books...")
             await seed_account_books(session, user_map)
+
+            logger.info("Seeding statements...")
+            await seed_statements(session, user_map)
 
             await session.commit()
             logger.info("Seed complete.")

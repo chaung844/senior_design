@@ -41,7 +41,7 @@ class AWSService:
                     "Key": s3_key,
                     "ContentType": file_type,
                 },
-                ExpiresIn=settings.s3_presigned_url_expire_minutes,
+                ExpiresIn=settings.s3_presigned_url_expire_time,
             )
         except ClientError as e:
             logging.error(f"Error generating presigned URL: {e}")
@@ -98,7 +98,7 @@ class AWSService:
             logging.error(f"SQS delete error: {e}")
 
     def generate_presigned_get_url(
-        self, s3_key: str, expires_in: int = settings.s3_presigned_url_expire_minutes
+        self, s3_key: str, expires_in: int = settings.s3_presigned_url_expire_time
     ) -> "str | None":
         try:
             return self.s3_client.generate_presigned_url(
@@ -154,7 +154,7 @@ class AWSService:
     async def async_generate_presigned_get_url(
         self,
         s3_key: str,
-        expires_in: int = settings.s3_presigned_url_expire_minutes,
+        expires_in: int = settings.s3_presigned_url_expire_time,
     ) -> "str | None":
         return await run_in_threadpool(
             self.generate_presigned_get_url, s3_key, expires_in
@@ -217,7 +217,7 @@ async def generate_file_url(
         raise HTTPException(status_code=404, detail=not_found_detail)
 
     _settings = get_settings()
-    expires_in = _settings.s3_presigned_url_expire_minutes
+    expires_in = _settings.s3_presigned_url_expire_time
     url = await aws_service.async_generate_presigned_get_url(
         s3_key, expires_in=expires_in
     )

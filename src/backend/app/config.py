@@ -51,8 +51,8 @@ class Settings(BaseSettings):
     aws_sqs_url: str = Field(
         ..., description="AWS SQS URL for document processing queue"
     )
-    s3_presigned_url_expire_minutes: int = Field(
-        default=300, description="S3 Presigned URl expiration time"
+    s3_presigned_url_expire_time: int = Field(
+        default=5, description="S3 Presigned URl expiration time in seconds."
     )
 
     # ── Model Configuration ───────────────────────────────────────────

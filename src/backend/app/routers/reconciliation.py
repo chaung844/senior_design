@@ -40,6 +40,7 @@ from app.schemas.reconciliation import (
     ReconciliationSummary,
 )
 from app.services.reconciliation_matching import (
+    _print_match_summary,
     apply_lines_to_receipt,
     apply_perfect_matches,
     apply_receipts_to_line,
@@ -156,10 +157,10 @@ async def _run_matching(
         )
 
         # For debugging only
-        # await db.flush()
-        # for line in lines:
-        #     await db.refresh(line, ["matches"])
-        # _print_match_summary(lines, receipts)
+        await db.flush()
+        for line in lines:
+            await db.refresh(line, ["matches"])
+        _print_match_summary(lines, receipts)
 
         job.status = JobStatus.completed
     except Exception:

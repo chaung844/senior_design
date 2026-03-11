@@ -276,4 +276,4 @@ async def get_statement_file_url(
     )
 
     settings = get_settings()
-    return FileUrlResponse(url=url, expires_in=settings.s3_presigned_url_expire_minutes)
+    return FileUrlResponse(url=url, expires_in=settings.s3_presigned_url_expire_time)
