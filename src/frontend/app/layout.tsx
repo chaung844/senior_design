@@ -10,7 +10,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-    title: "Matcha — Reconciliation System",
+    title: "Matcha Reconciliation System",
     description:
         "Bank reconciliation dashboard for managing account books, statements, and transaction matching.",
 };

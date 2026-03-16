@@ -61,30 +61,43 @@ function transactionsToCsv(
     currency: string,
 ): string {
     const headers = [
-        "Date",
+        "Invoice number on receipt",
+        "Invoice Type",
+        "Invoice Date",
+        "Amount",
         "Description",
-        "Reference",
-        `Debit (${currency})`,
-        `Credit (${currency})`,
-        `Balance (${currency})`,
-        "Category",
-        "Matched",
-        "Match Confidence (%)",
-        "Matched With",
+        "Match type",
     ];
 
-    const rows = transactions.map((t) => [
-        escapeCsvField(t.date),
-        escapeCsvField(t.description),
-        escapeCsvField(t.reference),
-        escapeCsvField(t.debit),
-        escapeCsvField(t.credit),
-        escapeCsvField(t.balance),
-        escapeCsvField(t.category),
-        escapeCsvField(t.matched ? "Yes" : "No"),
-        escapeCsvField(t.matchConfidence),
-        escapeCsvField(t.matchedWith),
-    ]);
+    const rows = transactions
+        .filter((t) => t.matched)
+        .map((t) => {
+            const debit = Number.parseFloat(
+                String(t.debit ?? "").replace(/,/g, ""),
+            );
+            const credit = Number.parseFloat(
+                String(t.credit ?? "").replace(/,/g, ""),
+            );
+            const amount = Number.isFinite(debit)
+                ? debit
+                : Number.isFinite(credit)
+                  ? -credit
+                  : 0;
+            const invoiceType = amount < 0 ? "Credit-Memo" : "Standard";
+            const matchTypeRaw = String(t.matchedWith ?? "").toLowerCase();
+            const matchType = matchTypeRaw.includes("bundle")
+                ? "bundle match"
+                : "perfect match";
+
+            return [
+                escapeCsvField(t.reference),
+                escapeCsvField(invoiceType),
+                escapeCsvField(t.date),
+                escapeCsvField(amount.toFixed(2)),
+                escapeCsvField(t.description),
+                escapeCsvField(matchType),
+            ];
+        });
 
     return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
 }
@@ -533,7 +546,7 @@ export function ExportDialog({
             downloadMatchingCsv(
                 monthData.transactions,
                 account.currency,
-                `${filePrefix}_matching.csv`,
+                `${filePrefix}_vendor_sheet.csv`,
             );
             setCsvState({ status: "done" });
         } catch (err) {
