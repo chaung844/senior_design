@@ -22,8 +22,9 @@ Bundle (Pass 2 & 3):
 See matching_flow.md for full details.
 """
 
-from itertools import combinations
 import re
+from itertools import combinations
+
 from rapidfuzz import fuzz
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,7 +58,9 @@ def _vendor_similarity(lv: str, rv: str) -> float:
 
 
 def _vendor_score(line: BankStatementLine, receipt: Receipt) -> int:
-    lv = _clean_vendor(line.vendor or "")
+    lv = _clean_vendor(
+        line.description or ""
+    )  # compare with line desciption for more context
     rv = _clean_vendor(receipt.vendor or "")
     return round((_vendor_similarity(lv, rv) / 100) * 30)
 
