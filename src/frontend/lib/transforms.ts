@@ -49,7 +49,7 @@ export function lineToTransaction(line: BankStatementLineRead): Transaction {
         debit: isDebit ? charge : null,
         credit: isDebit ? null : Math.abs(charge),
         balance: 0, // running balance is computed after sorting
-        category: line.vendor,
+        vendor: line.vendor,
         matched: isMatchedStatus(line.match_status),
         matchConfidence: matchConfidenceFromStatus(line.match_status),
         matchedWith: isMatchedStatus(line.match_status)

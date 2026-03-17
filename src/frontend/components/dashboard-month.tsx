@@ -73,8 +73,8 @@ interface DashboardMonthProps {
 type FilterMode = "all" | "matched" | "unmatched";
 type ReceiptFilterMode = "all" | "matched" | "unmatched";
 
-type CategoryRow = {
-    category: string;
+type VendorRow = {
+    vendor: string;
     count: number;
     debit: number;
     credit: number;
@@ -183,13 +183,13 @@ function makeTransactionColumns(
             ),
         },
         {
-            accessorKey: "category",
-            header: "Category",
+            accessorKey: "vendor",
+            header: "Vendor",
             size: 100,
             enableSorting: false,
             cell: ({ row }) => (
                 <Badge variant="secondary" className="text-[9px] h-4 px-1.5">
-                    {row.original.category}
+                    {row.original.vendor}
                 </Badge>
             ),
         },
@@ -510,19 +510,19 @@ function makeReceiptColumns(
     ];
 }
 
-function makeCategoryColumns(
+function makeVendorColumns(
     currency: string,
-): ColumnDef<CategoryRow, unknown>[] {
+): ColumnDef<VendorRow, unknown>[] {
     return [
         {
-            accessorKey: "category",
-            header: "Category",
+            accessorKey: "vendor",
+            header: "Vendor",
             size: 150,
             enableSorting: false,
             enableHiding: false,
             cell: ({ row }) => (
                 <Badge variant="secondary" className="text-[10px] h-5 px-2">
-                    {row.original.category}
+                    {row.original.vendor}
                 </Badge>
             ),
         },
@@ -702,12 +702,12 @@ export function DashboardMonth({
 
     const netFlow = monthData.totalCredit - monthData.totalDebit;
 
-    // Category breakdown
-    const categoryBreakdown = React.useMemo(() => {
-        const map = new Map<string, CategoryRow>();
+    // Vendor breakdown
+    const vendorBreakdown = React.useMemo(() => {
+        const map = new Map<string, VendorRow>();
         for (const txn of monthData.transactions) {
-            const existing = map.get(txn.category) || {
-                category: txn.category,
+            const existing = map.get(txn.vendor) || {
+                vendor: txn.vendor,
                 count: 0,
                 debit: 0,
                 credit: 0,
@@ -718,7 +718,7 @@ export function DashboardMonth({
             existing.debit += txn.debit || 0;
             existing.credit += txn.credit || 0;
             if (txn.matched) existing.matched += 1;
-            map.set(txn.category, existing);
+            map.set(txn.vendor, existing);
         }
         const rows = Array.from(map.values()).sort((a, b) => b.count - a.count);
         for (const row of rows) {
@@ -735,8 +735,8 @@ export function DashboardMonth({
         [account.currency],
     );
 
-    const categoryColumns = React.useMemo(
-        () => makeCategoryColumns(account.currency),
+    const vendorColumns = React.useMemo(
+        () => makeVendorColumns(account.currency),
         [account.currency],
     );
 
@@ -1021,12 +1021,12 @@ export function DashboardMonth({
         </div>
     );
 
-    const categoriesToolbar = (columnToggle: React.ReactNode) => (
+    const vendorsToolbar = (columnToggle: React.ReactNode) => (
         <div className="flex items-center justify-between">
             <div>
-                <h3 className="text-sm font-medium">Transaction Categories</h3>
+                <h3 className="text-sm font-medium">Transaction Vendors</h3>
                 <p className="text-xs text-muted-foreground">
-                    Breakdown of transactions by category for {monthData.label}{" "}
+                    Breakdown of transactions by vendor for {monthData.label}{" "}
                     {yearValue}
                 </p>
             </div>
@@ -1305,8 +1305,8 @@ export function DashboardMonth({
                     <TabsTrigger value="transactions">
                         Transactions ({formatNumber(monthData.statementCount)})
                     </TabsTrigger>
-                    <TabsTrigger value="categories">
-                        Categories ({formatNumber(categoryBreakdown.length)})
+                    <TabsTrigger value="vendors">
+                        Vendors ({formatNumber(vendorBreakdown.length)})
                     </TabsTrigger>
                     <TabsTrigger value="receipts">
                         {/*<HugeiconsIcon
@@ -1338,12 +1338,12 @@ export function DashboardMonth({
                     />
                 </TabsContent>
 
-                <TabsContent value="categories" className="flex flex-col mt-3">
+                <TabsContent value="vendors" className="flex flex-col mt-3">
                     <DataTable
-                        columns={categoryColumns}
-                        data={categoryBreakdown}
-                        toolbar={categoriesToolbar}
-                        emptyMessage="No categories found."
+                        columns={vendorColumns}
+                        data={vendorBreakdown}
+                        toolbar={vendorsToolbar}
+                        emptyMessage="No vendors found."
                     />
                 </TabsContent>
 

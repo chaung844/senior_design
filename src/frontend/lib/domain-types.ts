@@ -16,7 +16,7 @@ export type Transaction = {
     debit: number | null;
     credit: number | null;
     balance: number;
-    category: string;
+    vendor: string;
     matched: boolean;
     matchConfidence: number | null;
     matchedWith: string | null;
