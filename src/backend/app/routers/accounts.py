@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, Response, status
-from sqlalchemy import func, select
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Response, status
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
@@ -7,6 +7,8 @@ from app.database import get_db
 from app.enums import AccountBookRole, UserRole
 from app.models.account_book import AccountBook
 from app.models.account_book_member import AccountBookMember
+from app.models.document import Document
+from app.models.statement import BankStatement
 from app.models.user import User
 from app.schemas.account_book import (
     AccountBookCreate,
@@ -25,6 +27,7 @@ from app.utils.access import (
     require_any,
 )
 from app.utils.auth import verify_csrf_token
+from app.services.aws_services import AWSService, get_aws_service
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -197,12 +200,37 @@ async def update_account_book(
 )
 async def delete_account_book(
     account_id: int,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_admin_or_dev),
+    aws_service: AWSService = Depends(get_aws_service),
 ):
     account = await require_account_access(account_id, current_user, db, write=True)
+
+    stmt = (
+        select(Document)
+        .outerjoin(
+            BankStatement,
+            Document.statement_id == BankStatement.statement_id,
+        )
+        .where(
+            Document.deleted_at.is_(None),
+            or_(
+                Document.account_id == account_id,
+                BankStatement.account_id == account_id,
+            ),
+        )
+    )
+    docs = (await db.execute(stmt)).scalars().unique().all()
+    for doc in docs:
+        doc.soft_delete()
+
     account.soft_delete()
     await db.commit()
+
+    for doc in docs:
+        background_tasks.add_task(aws_service.async_delete_s3_object, doc.s3_key)
+
     return Response(status_code=204)
 
 

@@ -200,6 +200,7 @@ async def delete_document(
     _assert_can_write(current_user)
 
     doc = await get_owned_document(document_id, current_user, db, write=True)
+    receipt_docs: list[Document] = []
 
     # ------------------------------------------------------------------
     # Clean up reconciliation matches linked to this document before
@@ -287,9 +288,23 @@ async def delete_document(
                 if receipt:
                     receipt.match_status = MatchStatus.unmatched
 
+        receipt_docs_result = await db.execute(
+            select(Document)
+            .join(Receipt, Document.receipt_id == Receipt.receipt_id)
+            .where(
+                Receipt.statement_id == doc.statement_id,
+                Document.deleted_at.is_(None),
+            )
+        )
+        receipt_docs = receipt_docs_result.scalars().all()
+        for receipt_doc in receipt_docs:
+            receipt_doc.soft_delete()
+
     doc.soft_delete()
     await db.commit()
 
     background_tasks.add_task(aws_service.async_delete_s3_object, doc.s3_key)
+    for receipt_doc in receipt_docs:
+        background_tasks.add_task(aws_service.async_delete_s3_object, receipt_doc.s3_key)
 
     return Response(status_code=204)
