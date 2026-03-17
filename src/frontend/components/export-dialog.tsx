@@ -650,7 +650,7 @@ export function ExportDialog({
                     <ExportRow
                         icon={FileZipIcon}
                         title="Receipts Archive (.zip)"
-                        description="Package all uploaded receipts for this account into a ZIP file."
+                        description="Package all matched receipts for this account into a ZIP file."
                         state={zipState}
                         onDownload={handleZipDownload}
                     />
@@ -660,7 +660,7 @@ export function ExportDialog({
                     <ExportRow
                         icon={Invoice02Icon}
                         title="Matching Results (.csv)"
-                        description="Export all transactions with their match status and confidence scores."
+                        description="Export matched transactions to vendor sheet."
                         state={csvState}
                         onDownload={handleCsvDownload}
                     />
