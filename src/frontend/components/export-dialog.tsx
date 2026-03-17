@@ -26,8 +26,10 @@ import {
     getStatementFileUrl,
     getReceiptFileUrl,
     listReceipts,
+    listMatchesByLine,
 } from "@/lib/api";
 import type { MonthData, AccountBook, Transaction } from "@/lib/domain-types";
+import type { BankStatementLineRead } from "@/lib/types";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -43,6 +45,7 @@ interface ExportDialogProps {
     yearValue: number;
     monthData: MonthData;
     statementId: number;
+    rawLines: BankStatementLineRead[];
 }
 
 // ── CSV helpers ───────────────────────────────────────────────────────
@@ -81,8 +84,8 @@ function transactionsToCsv(
             const amount = Number.isFinite(debit)
                 ? debit
                 : Number.isFinite(credit)
-                  ? -credit
-                  : 0;
+                    ? -credit
+                    : 0;
             const invoiceType = amount < 0 ? "Credit-Memo" : "Standard";
             const matchTypeRaw = String(t.matchedWith ?? "").toLowerCase();
             const matchType = matchTypeRaw.includes("bundle")
@@ -310,44 +313,92 @@ async function downloadStatementPdf(
     triggerDownload(blob, filename);
 }
 
-async function downloadReceiptsZip(
-    accountId: number,
-    filename: string,
-): Promise<void> {
-    // Fetch all receipts for this account
-    const { receipts } = await listReceipts({
-        account_id: accountId,
-        limit: 1000,
+async function buildReceiptLineNumberMap(
+    rawLines: BankStatementLineRead[],
+): Promise<Map<number, number>> {
+    const map = new Map<number, number>();
+
+    if (rawLines.length === 0) {
+        return map;
+    }
+
+    const results = await Promise.allSettled(
+        rawLines.map((line) => listMatchesByLine(line.line_id)),
+    );
+
+    rawLines.forEach((line, index) => {
+        const result = results[index];
+        if (result.status !== "fulfilled") return;
+        for (const match of result.value.matches) {
+            const existing = map.get(match.receipt_id);
+            const n = line.line_number;
+            if (existing == null || n < existing) {
+                map.set(match.receipt_id, n);
+            }
+        }
     });
 
-    if (receipts.length === 0) {
-        throw new Error("No receipts found for this statement period.");
+    return map;
+}
+
+async function downloadReceiptsZip(
+    accountId: number,
+    statementId: number,
+    rawLines: BankStatementLineRead[],
+    filename: string,
+): Promise<void> {
+    const { receipts } = await listReceipts({
+        account_id: accountId,
+        statement_id: statementId,
+        limit: 100,
+    });
+
+    const matchedReceipts = receipts.filter(
+        (r) => r.match_status !== "unmatched",
+    );
+
+    if (matchedReceipts.length === 0) {
+        throw new Error("No reconciled receipts found for this statement.");
     }
+
+    const lineMap = await buildReceiptLineNumberMap(rawLines);
 
     const entries: ZipEntry[] = [];
     const seen = new Set<string>();
 
-    for (const receipt of receipts) {
+    for (const receipt of matchedReceipts) {
         try {
             const { url } = await getReceiptFileUrl(receipt.receipt_id);
             const blob = await fetchAsBlob(url);
             const buf = (await blob.arrayBuffer()) as ArrayBuffer;
 
-            // Derive a safe filename
-            const originalName =
-                receipt.file_name ?? `receipt_${receipt.receipt_id}`;
-            let name = originalName;
-            // Deduplicate names
-            if (seen.has(name)) {
-                const ext = name.includes(".")
-                    ? `.${name.split(".").pop()}`
-                    : "";
-                const base = name.slice(0, name.length - ext.length);
-                let counter = 2;
-                while (seen.has(`${base}_${counter}${ext}`)) counter++;
-                name = `${base}_${counter}${ext}`;
+            const lineNumber = lineMap.get(receipt.receipt_id);
+            const lineLabel =
+                lineNumber != null
+                    ? lineNumber.toString().padStart(3, "0")
+                    : "000";
+
+            const amountStr = Number(receipt.charged_amount).toFixed(2);
+            const vendorSafe = (receipt.vendor ?? "")
+                .replace(/[/\\:*?"<>|]/g, "_")
+                .trim()
+                .replace(/\s+/g, " ") || `receipt_${receipt.receipt_id}`;
+
+            const ext =
+                receipt.file_name?.includes(".")
+                    ? `.${receipt.file_name.split(".").pop()}`
+                    : ".pdf";
+
+            const baseWithLine = `${lineLabel}_${amountStr}_${vendorSafe}`;
+
+            let name = `${baseWithLine}${ext}`;
+            let counter = 2;
+            while (seen.has(name)) {
+                name = `${baseWithLine}_${counter}${ext}`;
+                counter += 1;
             }
             seen.add(name);
+
             entries.push({ name, data: new Uint8Array(buf) });
         } catch {
             // Skip receipts that can't be fetched — don't abort the whole zip
@@ -460,10 +511,10 @@ function ExportRow({
                 {isLoading
                     ? "Preparing…"
                     : isDone
-                      ? "Downloaded"
-                      : isError
-                        ? "Retry"
-                        : "Download"}
+                        ? "Downloaded"
+                        : isError
+                            ? "Retry"
+                            : "Download"}
             </Button>
         </div>
     );
@@ -476,6 +527,7 @@ export function ExportDialog({
     yearValue,
     monthData,
     statementId,
+    rawLines,
 }: ExportDialogProps) {
     const [open, setOpen] = React.useState(false);
 
@@ -530,6 +582,8 @@ export function ExportDialog({
         try {
             await downloadReceiptsZip(
                 Number(account.id),
+                statementId,
+                rawLines,
                 `${filePrefix}_receipts.zip`,
             );
             setZipState({ status: "done" });

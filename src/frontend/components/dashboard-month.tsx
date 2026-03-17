@@ -1195,6 +1195,7 @@ export function DashboardMonth({
                             yearValue={yearValue}
                             monthData={monthData}
                             statementId={statementId}
+                            rawLines={rawLines}
                         />
                     </div>
                 }
