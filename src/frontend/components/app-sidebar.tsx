@@ -40,11 +40,13 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { AddAccountDialog } from "@/components/add-account-dialog";
 import { useAuth } from "@/lib/auth";
 import type { AccountBook, Selection } from "@/lib/domain-types";
 import { getMatchRateBadgeVariant } from "@/lib/constants";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
+    Add01Icon,
     ArrowRight01Icon,
     Calendar01Icon,
     Calendar03Icon,
@@ -71,6 +73,7 @@ export function AppSidebar({
     const router = useRouter();
     const { logout, user } = useAuth();
     const [profileOpen, setProfileOpen] = React.useState(false);
+    const [addAccountOpen, setAddAccountOpen] = React.useState(false);
     const currentAccount = accountBooks.find(
         (a) => a.id === selection.accountId,
     );
@@ -141,9 +144,25 @@ export function AppSidebar({
                 </div>
                 <SidebarSeparator className="mx-0 data-horizontal:w-auto" />
                 <div className="px-2 pt-1">
-                    <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground mb-1.5 block">
-                        Account Book
-                    </label>
+                    <div className="flex items-center justify-between gap-2 mb-1.5">
+                        <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground block">
+                            Account Book
+                        </label>
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            className="text-muted-foreground"
+                            onClick={() => setAddAccountOpen(true)}
+                            aria-label="Add account book"
+                        >
+                            <HugeiconsIcon
+                                icon={Add01Icon}
+                                strokeWidth={2}
+                                className="size-3"
+                            />
+                        </Button>
+                    </div>
                     <Select
                         value={selection.accountId}
                         onValueChange={handleAccountChange}
@@ -172,6 +191,19 @@ export function AppSidebar({
                             <span>{currentAccount.currency}</span>
                         </div>
                     )}
+
+                    <AddAccountDialog
+                        open={addAccountOpen}
+                        onOpenChange={setAddAccountOpen}
+                        onCreated={(accountId) => {
+                            onSelectionChange({
+                                accountId: String(accountId),
+                                year: null,
+                                month: null,
+                                level: "account",
+                            });
+                        }}
+                    />
                 </div>
             </SidebarHeader>
 
