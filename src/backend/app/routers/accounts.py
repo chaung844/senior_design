@@ -28,6 +28,7 @@ from app.utils.access import (
 )
 from app.utils.auth import verify_csrf_token
 from app.services.aws_services import AWSService, get_aws_service
+from app.services.document_cleanup import schedule_s3_deletes
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
@@ -228,8 +229,7 @@ async def delete_account_book(
     account.soft_delete()
     await db.commit()
 
-    for doc in docs:
-        background_tasks.add_task(aws_service.async_delete_s3_object, doc.s3_key)
+    schedule_s3_deletes(background_tasks, aws_service, docs)
 
     return Response(status_code=204)
 
