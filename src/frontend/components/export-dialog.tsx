@@ -62,6 +62,7 @@ function escapeCsvField(value: string | number | null | undefined): string {
 function transactionsToCsv(
     transactions: Transaction[],
     currency: string,
+    receiptDescriptions: Map<string, string>,
 ): string {
     const headers = [
         "Invoice number on receipt",
@@ -91,18 +92,61 @@ function transactionsToCsv(
             const matchType = matchTypeRaw.includes("bundle")
                 ? "bundle match"
                 : "perfect match";
+            const description =
+                receiptDescriptions.get(t.id) ?? t.description;
 
             return [
                 escapeCsvField(t.reference),
                 escapeCsvField(invoiceType),
                 escapeCsvField(t.date),
                 escapeCsvField(amount.toFixed(2)),
-                escapeCsvField(t.description),
+                escapeCsvField(description),
                 escapeCsvField(matchType),
             ];
         });
 
     return [headers.join(","), ...rows.map((r) => r.join(","))].join("\n");
+}
+
+async function buildReceiptDescriptionMap(
+    accountId: number,
+    statementId: number,
+    rawLines: BankStatementLineRead[],
+): Promise<Map<string, string>> {
+    const map = new Map<string, string>();
+
+    if (rawLines.length === 0) return map;
+
+    const { receipts } = await listReceipts({
+        account_id: accountId,
+        statement_id: statementId,
+        limit: 100,
+    });
+
+    const receiptDescById = new Map<number, string>();
+    for (const r of receipts) {
+        if (r.description) receiptDescById.set(r.receipt_id, r.description);
+    }
+
+    if (receiptDescById.size === 0) return map;
+
+    const results = await Promise.allSettled(
+        rawLines.map((line) => listMatchesByLine(line.line_id)),
+    );
+
+    rawLines.forEach((line, index) => {
+        const result = results[index];
+        if (result.status !== "fulfilled") return;
+        for (const match of result.value.matches) {
+            const desc = receiptDescById.get(match.receipt_id);
+            if (desc) {
+                map.set(String(line.line_id), desc);
+                break;
+            }
+        }
+    });
+
+    return map;
 }
 
 function triggerDownload(blob: Blob, filename: string) {
@@ -417,8 +461,9 @@ function downloadMatchingCsv(
     transactions: Transaction[],
     currency: string,
     filename: string,
+    receiptDescriptions: Map<string, string>,
 ): void {
-    const csv = transactionsToCsv(transactions, currency);
+    const csv = transactionsToCsv(transactions, currency, receiptDescriptions);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     triggerDownload(blob, filename);
 }
@@ -594,13 +639,19 @@ export function ExportDialog({
         }
     }
 
-    function handleCsvDownload() {
+    async function handleCsvDownload() {
         setCsvState({ status: "loading" });
         try {
+            const descMap = await buildReceiptDescriptionMap(
+                Number(account.id),
+                statementId,
+                rawLines,
+            );
             downloadMatchingCsv(
                 monthData.transactions,
                 account.currency,
                 `${filePrefix}_vendor_sheet.csv`,
+                descMap,
             );
             setCsvState({ status: "done" });
         } catch (err) {
