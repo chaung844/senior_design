@@ -618,12 +618,16 @@ interface ReconciliationSummaryTabProps {
     summaries: ReconciliationLineSummaryRead[];
     loading: boolean;
     currency: string;
+    onLineClick: (lineId: number) => void;
+    onReceiptClick: (receiptId: number) => void;
 }
 
 function ReconciliationSummaryTab({
     summaries,
     loading,
     currency,
+    onLineClick,
+    onReceiptClick,
 }: ReconciliationSummaryTabProps) {
     if (loading) {
         return (
@@ -676,6 +680,8 @@ function ReconciliationSummaryTab({
                         key={item.id}
                         item={item}
                         currency={currency}
+                        onLineClick={onLineClick}
+                        onReceiptClick={onReceiptClick}
                     />
                 ))}
             </div>
@@ -686,12 +692,19 @@ function ReconciliationSummaryTab({
 function SummaryCard({
     item,
     currency,
+    onLineClick,
+    onReceiptClick,
 }: {
     item: ReconciliationLineSummaryRead;
     currency: string;
+    onLineClick: (lineId: number) => void;
+    onReceiptClick: (receiptId: number) => void;
 }) {
     return (
-        <div className="border border-border rounded-none p-4 space-y-3">
+        <div
+            className="border border-border rounded-none p-4 space-y-3 cursor-pointer hover:bg-muted/30 transition-colors"
+            onClick={() => onLineClick(item.line_id)}
+        >
             {/* Line header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
@@ -754,6 +767,7 @@ function SummaryCard({
                                 key={c.receipt_id}
                                 candidate={c}
                                 currency={currency}
+                                onReceiptClick={onReceiptClick}
                             />
                         ))}
                     </div>
@@ -766,12 +780,20 @@ function SummaryCard({
 function CandidateRow({
     candidate,
     currency,
+    onReceiptClick,
 }: {
     candidate: CandidateReceiptDetail;
     currency: string;
+    onReceiptClick: (receiptId: number) => void;
 }) {
     return (
-        <div className="flex items-center gap-2 px-2 py-1.5 bg-background border border-border/40 rounded-none text-[11px]">
+        <div
+            className="flex items-center gap-2 px-2 py-1.5 bg-background border border-border/40 rounded-none text-[11px] cursor-pointer hover:bg-muted/50 transition-colors"
+            onClick={(e) => {
+                e.stopPropagation();
+                onReceiptClick(candidate.receipt_id);
+            }}
+        >
             <Badge
                 variant={
                     candidate.confidence >= 60 ? "secondary" : "outline"
@@ -849,6 +871,8 @@ export function DashboardMonth({
     const [selectedLine, setSelectedLine] =
         React.useState<BankStatementLineRead | null>(null);
     const [lineDialogOpen, setLineDialogOpen] = React.useState(false);
+    const [lineDialogInitialFilter, setLineDialogInitialFilter] =
+        React.useState<"all" | "unmatched" | "matched">("all");
 
     // Keep selectedLine in sync with the latest rawLines so the dialog
     // reflects updated match_status after linking/unlinking a receipt.
@@ -869,6 +893,22 @@ export function DashboardMonth({
         if (!raw) return;
         setSelectedLine(raw);
         setLineDialogOpen(true);
+    }
+
+    function handleSummaryCardClick(lineId: number) {
+        const raw = rawLines.find((l) => l.line_id === lineId) ?? null;
+        if (!raw) return;
+        setSelectedLine(raw);
+        setLineDialogInitialFilter("unmatched");
+        setLineDialogOpen(true);
+    }
+
+    function handleCandidateReceiptClick(receiptId: number) {
+        const receipt =
+            allReceipts.find((r) => r.receipt_id === receiptId) ?? null;
+        if (!receipt) return;
+        setSelectedReceipt(receipt);
+        setEditDialogOpen(true);
     }
 
     const [filter, setFilter] = React.useState<FilterMode>("all");
@@ -1538,6 +1578,8 @@ export function DashboardMonth({
                         summaries={aiSummaryData?.summaries ?? []}
                         loading={aiSummaryLoading}
                         currency={account.currency}
+                        onLineClick={handleSummaryCardClick}
+                        onReceiptClick={handleCandidateReceiptClick}
                     />
                 </TabsContent>
             </Tabs>
@@ -1563,10 +1605,14 @@ export function DashboardMonth({
                 receiptsLoading={receiptsLoading}
                 statementId={statementId}
                 currency={account.currency}
+                initialReceiptFilter={lineDialogInitialFilter}
                 open={lineDialogOpen}
                 onOpenChange={(open) => {
                     setLineDialogOpen(open);
-                    if (!open) setSelectedLine(null);
+                    if (!open) {
+                        setSelectedLine(null);
+                        setLineDialogInitialFilter("all");
+                    }
                 }}
             />
         </div>

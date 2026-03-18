@@ -229,6 +229,10 @@ export function ReceiptEditDialog({
 
     const isBusy = updateMutation.isPending || deleteMutation.isPending;
 
+    const billingDateObj = billingDate
+        ? new Date(billingDate + "T00:00:00")
+        : undefined;
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
@@ -321,13 +325,23 @@ export function ReceiptEditDialog({
                                 >
                                     <Calendar
                                         mode="single"
-                                        selected={
-                                            billingDate
-                                                ? new Date(
-                                                      billingDate + "T00:00:00",
-                                                  )
-                                                : undefined
+                                        captionLayout="dropdown"
+                                        startMonth={
+                                            // start month = current year - 10 years
+                                            new Date(
+                                                new Date().getFullYear() - 10,
+                                                0,
+                                            )
                                         }
+                                        endMonth={
+                                            // end month = current year + 10 years
+                                            new Date(
+                                                new Date().getFullYear() + 10,
+                                                11,
+                                            )
+                                        }
+                                        selected={billingDateObj}
+                                        defaultMonth={billingDateObj}
                                         onSelect={(date) => {
                                             if (date) {
                                                 const yyyy = date.getFullYear();

@@ -64,6 +64,8 @@ interface StatementLineDialogProps {
     statementId: number;
     /** Account currency for formatting. */
     currency: string;
+    /** Which receipts filter pill should be active on open. */
+    initialReceiptFilter?: "all" | "unmatched" | "matched";
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -369,6 +371,9 @@ function LineEditPane({
                             >
                                 <Calendar
                                     mode="single"
+                                    captionLayout="dropdown"
+                                    fromYear={2000}
+                                    toYear={2100}
                                     selected={
                                         transactionDate
                                             ? new Date(
@@ -376,10 +381,15 @@ function LineEditPane({
                                               )
                                             : undefined
                                     }
+                                    defaultMonth={
+                                        transactionDate
+                                            ? new Date(
+                                                  transactionDate + "T00:00:00",
+                                              )
+                                            : undefined
+                                    }
                                     onSelect={(d) => {
-                                        setTransactionDate(
-                                            d ? isoFromDate(d) : "",
-                                        );
+                                        setTransactionDate(d ? isoFromDate(d) : "");
                                         setTxCalOpen(false);
                                     }}
                                     initialFocus
@@ -391,10 +401,7 @@ function LineEditPane({
                     {/* Posting date */}
                     <div className="grid gap-1.5">
                         <Label className="text-xs">Posting Date</Label>
-                        <Popover
-                            open={postCalOpen}
-                            onOpenChange={setPostCalOpen}
-                        >
+                        <Popover open={postCalOpen} onOpenChange={setPostCalOpen}>
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
@@ -427,11 +434,17 @@ function LineEditPane({
                             >
                                 <Calendar
                                     mode="single"
+                                    captionLayout="dropdown"
+                                    fromYear={2000}
+                                    toYear={2100}
                                     selected={
                                         postingDate
-                                            ? new Date(
-                                                  postingDate + "T00:00:00",
-                                              )
+                                            ? new Date(postingDate + "T00:00:00")
+                                            : undefined
+                                    }
+                                    defaultMonth={
+                                        postingDate
+                                            ? new Date(postingDate + "T00:00:00")
                                             : undefined
                                     }
                                     onSelect={(d) => {
@@ -691,6 +704,7 @@ interface ReceiptMatchPaneProps {
     receiptsLoading: boolean;
     statementId: number;
     currency: string;
+    initialReceiptFilter?: "all" | "unmatched" | "matched";
 }
 
 function ReceiptMatchPane({
@@ -699,11 +713,12 @@ function ReceiptMatchPane({
     receiptsLoading,
     statementId,
     currency,
+    initialReceiptFilter,
 }: ReceiptMatchPaneProps) {
     const [search, setSearch] = React.useState("");
     const [filterMode, setFilterMode] = React.useState<
         "all" | "unmatched" | "matched"
-    >("all");
+    >(initialReceiptFilter ?? "all");
 
     const { data: matchesData, isLoading: matchesLoading } = useMatchesByLine(
         line.line_id,
@@ -934,6 +949,7 @@ export function StatementLineDialog({
     receiptsLoading = false,
     statementId,
     currency,
+    initialReceiptFilter,
     open,
     onOpenChange,
 }: StatementLineDialogProps) {
@@ -997,6 +1013,7 @@ export function StatementLineDialog({
                             receiptsLoading={receiptsLoading}
                             statementId={statementId}
                             currency={currency}
+                            initialReceiptFilter={initialReceiptFilter}
                         />
                     </div>
                 </div>
