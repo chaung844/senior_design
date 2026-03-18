@@ -178,7 +178,7 @@ async def _run_matching(
         await db.flush()
         for line in lines:
             await db.refresh(line, ["matches"])
-        _print_match_summary(lines, receipts)
+        _print_match_summary(lines, receipts, config=match_config)
 
         job.status = JobStatus.completed
     except Exception:

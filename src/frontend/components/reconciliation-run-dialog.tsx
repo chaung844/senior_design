@@ -116,16 +116,34 @@ export function ReconciliationRunDialog({
     const [advancedOpen, setAdvancedOpen] = React.useState(false);
     const [config, setConfig] =
         React.useState<ReconciliationConfig>(DEFAULT_CONFIG);
+    const [draftValues, setDraftValues] = React.useState<
+        Record<keyof ReconciliationConfig, string>
+    >({
+        max_date_window: String(DEFAULT_CONFIG.max_date_window),
+        confidence_threshold: String(DEFAULT_CONFIG.confidence_threshold),
+        bundle_vendor_threshold: String(DEFAULT_CONFIG.bundle_vendor_threshold),
+        max_bundle_size: String(DEFAULT_CONFIG.max_bundle_size),
+    });
 
     // Reset state whenever the dialog opens.
     React.useEffect(() => {
         if (open) {
             setConfig(DEFAULT_CONFIG);
+            setDraftValues({
+                max_date_window: String(DEFAULT_CONFIG.max_date_window),
+                confidence_threshold: String(DEFAULT_CONFIG.confidence_threshold),
+                bundle_vendor_threshold: String(
+                    DEFAULT_CONFIG.bundle_vendor_threshold,
+                ),
+                max_bundle_size: String(DEFAULT_CONFIG.max_bundle_size),
+            });
             setAdvancedOpen(false);
         }
     }, [open]);
 
     function handleFieldChange(key: keyof ReconciliationConfig, raw: string) {
+        setDraftValues((prev) => ({ ...prev, [key]: raw }));
+        if (raw.trim() === "") return;
         const value = parseInt(raw, 10);
         if (Number.isNaN(value)) return;
         setConfig((prev) => ({ ...prev, [key]: value }));
@@ -133,6 +151,12 @@ export function ReconciliationRunDialog({
 
     function handleReset() {
         setConfig(DEFAULT_CONFIG);
+        setDraftValues({
+            max_date_window: String(DEFAULT_CONFIG.max_date_window),
+            confidence_threshold: String(DEFAULT_CONFIG.confidence_threshold),
+            bundle_vendor_threshold: String(DEFAULT_CONFIG.bundle_vendor_threshold),
+            max_bundle_size: String(DEFAULT_CONFIG.max_bundle_size),
+        });
     }
 
     async function handleRun() {
@@ -217,7 +241,7 @@ export function ReconciliationRunDialog({
                                             type="number"
                                             min={field.min}
                                             max={field.max}
-                                            value={config[field.key]}
+                                            value={draftValues[field.key]}
                                             onChange={(e) =>
                                                 handleFieldChange(
                                                     field.key,

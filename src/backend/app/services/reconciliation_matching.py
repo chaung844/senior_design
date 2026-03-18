@@ -370,9 +370,10 @@ async def apply_receipts_to_line(
 def _print_match_summary(
     lines: list[BankStatementLine],
     receipts: list[Receipt],
+    config: MatchConfig | None = None,
 ) -> None:
     console = Console()
-    cfg = MatchConfig()
+    cfg = config if config is not None else MatchConfig()
     receipt_map = {r.receipt_id: r for r in receipts}
     unmatched_receipts = [
         r for r in receipts if r.match_status == MatchStatus.unmatched
