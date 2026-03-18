@@ -17,6 +17,7 @@ import { accountKeys } from "@/hooks/use-accounts";
 import { statementKeys } from "@/hooks/use-statements";
 import { receiptKeys } from "@/hooks/use-receipts";
 import { documentKeys } from "@/hooks/use-documents";
+import { reconciliationKeys } from "@/hooks/use-reconciliation";
 
 // ── Types ─────────────────────────────────────────────────────────────
 
@@ -254,6 +255,7 @@ export function useJobStatusProvider(): JobStatusContextValue {
                 qc.invalidateQueries({ queryKey: accountKeys.all });
                 qc.invalidateQueries({ queryKey: statementKeys.all });
                 qc.invalidateQueries({ queryKey: receiptKeys.all });
+                qc.invalidateQueries({ queryKey: reconciliationKeys.all });
             }
         }
 

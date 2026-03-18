@@ -1,10 +1,10 @@
 """
 Reconciliation API (Tier 4).
 
-- POST /reconciliation/start: create a job + run reconciliation in one call (preferred).
+- POST /reconciliation/start: create a job, enqueue for async processing, return immediately.
       Body: { account_id: int, statement_id: int, config?: ReconciliationConfig }
-      Returns: job_id, status, summary.
-- POST /reconciliation/jobs/{job_id}/run: re-trigger run on an existing job (legacy).
+      Returns: job_id, status (pending), summary=null.
+- POST /reconciliation/jobs/{job_id}/run: re-trigger run on an existing job (legacy, synchronous).
 - GET /reconciliation/jobs/{job_id}/results: summary + matches (no separate GET matches/unmatched).
 - Manual matching: POST/DELETE/PATCH /reconciliation/matches.
 """
@@ -14,7 +14,7 @@ from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import distinct, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import joinedload, selectinload
+from sqlalchemy.orm import joinedload
 
 from app.database import get_db
 from app.enums import JobStatus, JobType, MatchStatus
@@ -44,14 +44,8 @@ from app.schemas.reconciliation import (
     ReconciliationStartResponse,
     ReconciliationSummary,
 )
-from app.services.reconciliation_analysis import analyze_and_store
-from app.services.reconciliation_matching import (
-    MatchConfig,
-    _print_match_summary,
-    apply_lines_to_receipt,
-    apply_perfect_matches,
-    apply_receipts_to_line,
-)
+from app.services.aws_services import get_aws_service
+from app.services.reconciliation_runner import run_reconciliation
 from app.utils.access import can_view_job, require_account_access
 from app.utils.auth import get_current_user, verify_csrf_token
 
@@ -79,125 +73,6 @@ async def _get_reconciliation_job(
     if not can_view_job(job, user):
         raise HTTPException(status_code=403, detail="Not authorized to view this job")
     return job
-
-
-# ---------------------------------------------------------------------------
-# Internal helper: run the matching algorithm for a job
-# ---------------------------------------------------------------------------
-
-
-async def _run_matching(
-    job: Job,
-    account_id: int,
-    statement_id: int | None,
-    db: AsyncSession,
-    current_user: User,
-    config: ReconciliationConfig | None = None,
-) -> None:
-    """Load lines & receipts scoped by account (and optionally statement), run
-    exact-match, persist results, and mark the job completed/failed."""
-
-    # Convert the API schema config to the service-layer dataclass.
-    match_config = (
-        MatchConfig(
-            max_date_window=config.max_date_window,
-            confidence_threshold=config.confidence_threshold,
-            bundle_vendor_threshold=config.bundle_vendor_threshold,
-            max_bundle_size=config.max_bundle_size,
-        )
-        if config is not None
-        else MatchConfig()
-    )
-
-    try:
-        job.status = JobStatus.reconciling
-        await db.flush()
-
-        # --- statement lines ---
-        lines_stmt = (
-            select(BankStatementLine)
-            .join(
-                BankStatement,
-                BankStatementLine.statement_id == BankStatement.statement_id,
-            )
-            .join(Document, Document.statement_id == BankStatement.statement_id)
-            .where(
-                BankStatement.account_id == account_id,
-                Document.deleted_at.is_(None),
-            )
-            .options(selectinload(BankStatementLine.matches))
-        )
-        if statement_id is not None:
-            lines_stmt = lines_stmt.where(
-                BankStatementLine.statement_id == statement_id
-            )
-
-        lines_result = await db.execute(lines_stmt)
-        lines = list(lines_result.unique().scalars().all())
-
-        # --- receipts ---
-        receipts_stmt = (
-            select(Receipt)
-            .join(Document, Document.receipt_id == Receipt.receipt_id)
-            .where(
-                Document.account_id == account_id,
-                Document.deleted_at.is_(None),
-            )
-            .options(selectinload(Receipt.matches))
-        )
-        if statement_id is not None:
-            receipts_stmt = receipts_stmt.where(Receipt.statement_id == statement_id)
-
-        receipts_result = await db.execute(receipts_stmt)
-        receipts = list(receipts_result.unique().scalars().all())
-
-        # --- matching algorithm ---
-        await apply_perfect_matches(
-            job=job,
-            lines=lines,
-            receipts=receipts,
-            db=db,
-            current_user=current_user,
-            config=match_config,
-        )
-
-        await apply_lines_to_receipt(
-            job=job,
-            lines=lines,
-            receipts=receipts,
-            db=db,
-            current_user=current_user,
-            config=match_config,
-        )
-
-        await apply_receipts_to_line(
-            job=job,
-            lines=lines,
-            receipts=receipts,
-            db=db,
-            current_user=current_user,
-            config=match_config,
-        )
-
-        # For debugging only
-        await db.flush()
-        for line in lines:
-            await db.refresh(line, ["matches"])
-        _print_match_summary(lines, receipts, config=match_config)
-
-        await analyze_and_store(
-            job=job,
-            lines=lines,
-            receipts=receipts,
-            db=db,
-            config=match_config,
-            statement_id=statement_id,
-        )
-
-        job.status = JobStatus.completed
-    except Exception:
-        job.status = JobStatus.failed
-        raise
 
 
 # ---------------------------------------------------------------------------
@@ -282,13 +157,15 @@ async def start_reconciliation(
     _: None = Depends(verify_csrf_token),
 ):
     """
-    Create a reconciliation job **and** run the matching algorithm in a single
-    call.  The frontend only needs to supply ``account_id`` and, optionally,
-    ``statement_id`` to scope the run to a single statement.  Pass a
-    ``config`` object to override the default matching thresholds; omit it
-    (or set it to ``null``) to use the built-in defaults.
+    Create a reconciliation job and enqueue it for asynchronous processing.
 
-    Returns the created job id, its status, and a short summary of results.
+    The frontend supplies ``account_id`` and, optionally, ``statement_id`` to
+    scope the run.  Pass a ``config`` object to override matching thresholds;
+    omit it (or set to ``null``) for built-in defaults.
+
+    Returns immediately with the created ``job_id`` and ``status=pending``.
+    The actual matching + AI analysis runs in the SQS worker. Poll
+    ``GET /jobs/{job_id}/status`` for progress.
     """
     account_id = body.account_id
     statement_id = body.statement_id
@@ -323,57 +200,21 @@ async def start_reconciliation(
     db.add(job)
     await db.flush()  # assigns job.job_id
 
-    # Run matching
-    await _run_matching(job, account_id, statement_id, db, current_user, body.config)
+    # Enqueue the reconciliation message for async processing
+    aws = get_aws_service()
+    await aws.async_enqueue_message("run_reconciliation", {
+        "job_id": job.job_id,
+        "account_id": account_id,
+        "statement_id": statement_id,
+        "user_id": current_user.user_id,
+        "config": body.config.model_dump() if body.config else None,
+    })
     await db.commit()
-    await db.refresh(job)
-
-    # Build a lightweight summary
-    match_count_result = await db.execute(
-        select(func.count())
-        .select_from(ReconciliationMatch)
-        .where(ReconciliationMatch.job_id == job.job_id)
-    )
-    matched = match_count_result.scalar() or 0
-
-    # Total lines in scope
-    total_lines_stmt = (
-        select(func.count())
-        .select_from(BankStatementLine)
-        .join(
-            BankStatement, BankStatementLine.statement_id == BankStatement.statement_id
-        )
-        .join(Document, Document.statement_id == BankStatement.statement_id)
-        .where(
-            BankStatement.account_id == account_id,
-            Document.deleted_at.is_(None),
-        )
-    )
-    if statement_id is not None:
-        total_lines_stmt = total_lines_stmt.where(
-            BankStatementLine.statement_id == statement_id
-        )
-    total_lines = (await db.execute(total_lines_stmt)).scalar() or 0
-
-    bundle_matched_result = await db.execute(
-        select(func.count())
-        .select_from(ReconciliationMatch)
-        .where(
-            ReconciliationMatch.job_id == job.job_id,
-            ReconciliationMatch.match_type == MatchStatus.bundle_matched,
-        )
-    )
-    bundle_matched = bundle_matched_result.scalar() or 0
 
     return ReconciliationStartResponse(
         job_id=job.job_id,
         status=job.status.value,
-        summary=ReconciliationSummary(
-            total_lines=total_lines,
-            matched=matched,
-            unmatched=max(0, total_lines - matched),
-            bundle_matched=bundle_matched,
-        ),
+        summary=None,
     )
 
 
@@ -387,7 +228,7 @@ async def start_reconciliation(
     response_model=ReconciliationRunResponse,
     status_code=202,
 )
-async def run_reconciliation(
+async def run_reconciliation_legacy(
     job_id: int,
     body: ReconciliationRunRequest,
     db: AsyncSession = Depends(get_db),
@@ -416,7 +257,6 @@ async def run_reconciliation(
 
     statement_id = body.statement_id
 
-    # Validate the statement belongs to this account (when provided)
     if statement_id is not None:
         stmt_check = await db.execute(
             select(BankStatement).where(
@@ -430,7 +270,7 @@ async def run_reconciliation(
                 detail="Statement not found in this account",
             )
 
-    await _run_matching(job, account_id, statement_id, db, current_user)
+    await run_reconciliation(job, account_id, statement_id, db, current_user)
     await db.commit()
     await db.refresh(job)
     return ReconciliationRunResponse(

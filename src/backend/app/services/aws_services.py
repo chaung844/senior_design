@@ -65,7 +65,7 @@ class AWSService:
             logging.error(f"Error downloading file from S3: {e}")
             return False
 
-    def enqueue_parsing(self, message_type: str, payload: dict):
+    def enqueue_message(self, message_type: str, payload: dict):
         try:
             return self.sqs_client.send_message(
                 QueueUrl=self.sqs_url,
@@ -74,6 +74,9 @@ class AWSService:
         except ClientError as e:
             logging.error(f"SQS error: {e}")
             return None
+
+    # Backward-compatible alias
+    enqueue_parsing = enqueue_message
 
     def receive_messages(self, max_messages: int = 1, wait_time: int = 20):
         try:
@@ -142,8 +145,11 @@ class AWSService:
     async def async_download_file(self, s3_key: str, local_path: str) -> bool:
         return await run_in_threadpool(self.download_file, s3_key, local_path)
 
-    async def async_enqueue_parsing(self, message_type: str, payload: dict):
-        return await run_in_threadpool(self.enqueue_parsing, message_type, payload)
+    async def async_enqueue_message(self, message_type: str, payload: dict):
+        return await run_in_threadpool(self.enqueue_message, message_type, payload)
+
+    # Backward-compatible alias
+    async_enqueue_parsing = async_enqueue_message
 
     async def async_receive_messages(self, max_messages: int = 1, wait_time: int = 20):
         return await run_in_threadpool(self.receive_messages, max_messages, wait_time)

@@ -7,7 +7,6 @@ import { useJobStatus } from "@/hooks/use-job-status";
 import { accountKeys } from "@/hooks/use-accounts";
 import { statementKeys } from "@/hooks/use-statements";
 import { receiptKeys } from "@/hooks/use-receipts";
-import { documentKeys } from "@/hooks/use-documents";
 import type {
     ReconciliationConfig,
     ReconciliationStartResponse,
@@ -34,7 +33,6 @@ import type { ManualMatchCreate } from "@/lib/types";
  */
 export function useStartReconciliation() {
     const { trackJob } = useJobStatus();
-    const qc = useQueryClient();
 
     const mutation = useMutation<
         ReconciliationStartResponse,
@@ -48,23 +46,12 @@ export function useStartReconciliation() {
                 config,
             }),
         onSuccess: (data, vars) => {
-            // Register the job with the floating status widget so it is
-            // polled and its progress shown — even though the job is often
-            // already terminal (completed/failed) by the time this callback
-            // fires, the widget handles that gracefully and shows the final
-            // status before auto-dismissing after its linger period.
             const label = vars.label
                 ? `Reconciling ${vars.label}`
                 : "Reconciliation";
             trackJob(data.job_id, "reconciliation", label);
-
-            // Refresh all related caches so the dashboard reflects the
-            // new match statuses immediately.
-            qc.invalidateQueries({ queryKey: accountKeys.all });
-            qc.invalidateQueries({ queryKey: statementKeys.all });
-            qc.invalidateQueries({ queryKey: receiptKeys.all });
-            qc.invalidateQueries({ queryKey: documentKeys.all });
-            qc.invalidateQueries({ queryKey: reconciliationKeys.all });
+            // Cache invalidation happens in use-job-status.ts when the
+            // async job reaches a terminal state.
         },
     });
 

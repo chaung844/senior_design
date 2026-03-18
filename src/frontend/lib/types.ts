@@ -381,7 +381,7 @@ export interface ReconciliationSummary {
 export interface ReconciliationStartResponse {
     job_id: number;
     status: string;
-    summary: ReconciliationSummary;
+    summary: ReconciliationSummary | null;
 }
 
 // ── Reconciliation AI Summary ────────────────────────────────────────

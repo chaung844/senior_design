@@ -11,7 +11,11 @@ from app.enums import DocumentStatus, JobStatus, JobType
 from app.models.document import Document
 from app.models.job import Job
 from app.services.aws_services import get_aws_service
-from app.worker.handlers import handle_parse_receipt, handle_parse_statement
+from app.worker.handlers import (
+    handle_parse_receipt,
+    handle_parse_statement,
+    handle_reconciliation,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -22,6 +26,7 @@ logger = logging.getLogger("sqs_worker")
 HANDLER_REGISTRY: Dict[str, Any] = {
     "parse_receipt": handle_parse_receipt,
     "parse_statement": handle_parse_statement,
+    "run_reconciliation": handle_reconciliation,
 }
 
 HEARTBEAT_INTERVAL_SEC = 60
@@ -165,6 +170,32 @@ class SQSWorker:
 
             await err_session.commit()
 
+    # --- Job-centric helpers (for messages without a document_id) ----------
+
+    async def _mark_job_status(self, job_id: int, status: JobStatus) -> None:
+        """Set a job's status in a dedicated session."""
+        async with AsyncSessionLocal() as session:
+            job = await session.get(Job, job_id)
+            if job is not None:
+                job.status = status
+            await session.commit()
+
+    async def _run_job_handler(
+        self, handler, payload: dict, job_id: int
+    ) -> None:
+        """Run a job-only handler; the handler itself sets final status."""
+        async with AsyncSessionLocal() as session:
+            await handler(payload, session, self.aws)
+            await session.commit()
+
+    async def _mark_job_failed(self, job_id: int, error: str) -> None:
+        """Mark a job as failed in a fresh session."""
+        async with AsyncSessionLocal() as err_session:
+            job = await err_session.get(Job, job_id)
+            if job is not None:
+                job.status = JobStatus.failed
+            await err_session.commit()
+
     async def _with_retry(self, operation_name: str, coro_factory):
         """
         Execute an async callable with retry logic for transient DB connection errors.
@@ -202,8 +233,6 @@ class SQSWorker:
             body = json.loads(message["Body"])
             msg_type = body["type"]
             payload = body["payload"]
-            document_id = payload["document_id"]
-            job_id = payload.get("job_id")
 
             handler = HANDLER_REGISTRY.get(msg_type)
             if handler is None:
@@ -211,58 +240,108 @@ class SQSWorker:
                 await self.aws.async_delete_message(receipt_handle)
                 return
 
-            # --- Phase 1: mark the document as "processing" (with retry) ---
-            result = await self._with_retry(
-                f"mark_processing(doc={document_id})",
-                lambda: self._mark_processing(document_id, job_id),
-            )
+            document_id = payload.get("document_id")
 
-            if result == "discard":
-                logger.error(f"Document {document_id} not found, discarding")
-                await self.aws.async_delete_message(receipt_handle)
-                return
-
-            if result == "skip":
-                logger.info(
-                    f"Document {document_id} already processing/parsed, skipping"
+            if document_id is not None:
+                await self._process_document_message(
+                    handler, msg_type, payload, document_id, receipt_handle
                 )
-                await self.aws.async_delete_message(receipt_handle)
-                return
-
-            # --- Phase 2: run the handler (with retry) ---
-            logger.info(f"Processing document {document_id} with handler '{msg_type}'")
-
-            try:
-                await self._with_retry(
-                    f"handler({msg_type}, doc={document_id})",
-                    lambda: self._run_handler(handler, payload, document_id, job_id),
+            else:
+                await self._process_job_message(
+                    handler, msg_type, payload, receipt_handle
                 )
-                logger.info(f"Document {document_id} parsed successfully")
-                await self.aws.async_delete_message(receipt_handle)
-
-            except Exception as e:
-                handler_error = e
-                logger.exception(
-                    f"Handler failed for document {document_id}: {handler_error}"
-                )
-                # Try to mark the document as failed (also with retry so the
-                # error status actually persists even if the DB was flaky).
-                try:
-                    await self._with_retry(
-                        f"mark_failed(doc={document_id})",
-                        lambda: self._mark_failed(
-                            document_id, job_id, str(handler_error)
-                        ),
-                    )
-                except Exception as mark_err:
-                    logger.error(
-                        f"Could not mark document {document_id} as failed: {mark_err}"
-                    )
 
         except Exception as e:
             logger.exception(f"Failed to process SQS message: {e}")
         finally:
             stop_heartbeat.set()
+
+    async def _process_document_message(
+        self, handler, msg_type: str, payload: dict,
+        document_id: int, receipt_handle: str,
+    ) -> None:
+        """Document-centric flow (parsing jobs)."""
+        job_id = payload.get("job_id")
+
+        result = await self._with_retry(
+            f"mark_processing(doc={document_id})",
+            lambda: self._mark_processing(document_id, job_id),
+        )
+
+        if result == "discard":
+            logger.error(f"Document {document_id} not found, discarding")
+            await self.aws.async_delete_message(receipt_handle)
+            return
+
+        if result == "skip":
+            logger.info(
+                f"Document {document_id} already processing/parsed, skipping"
+            )
+            await self.aws.async_delete_message(receipt_handle)
+            return
+
+        logger.info(f"Processing document {document_id} with handler '{msg_type}'")
+
+        try:
+            await self._with_retry(
+                f"handler({msg_type}, doc={document_id})",
+                lambda: self._run_handler(handler, payload, document_id, job_id),
+            )
+            logger.info(f"Document {document_id} parsed successfully")
+            await self.aws.async_delete_message(receipt_handle)
+
+        except Exception as e:
+            handler_error = e
+            logger.exception(
+                f"Handler failed for document {document_id}: {handler_error}"
+            )
+            try:
+                await self._with_retry(
+                    f"mark_failed(doc={document_id})",
+                    lambda: self._mark_failed(
+                        document_id, job_id, str(handler_error)
+                    ),
+                )
+            except Exception as mark_err:
+                logger.error(
+                    f"Could not mark document {document_id} as failed: {mark_err}"
+                )
+
+    async def _process_job_message(
+        self, handler, msg_type: str, payload: dict, receipt_handle: str,
+    ) -> None:
+        """Job-centric flow (reconciliation and other non-document jobs)."""
+        job_id = payload.get("job_id")
+
+        if job_id is not None:
+            await self._with_retry(
+                f"mark_job_processing(job={job_id})",
+                lambda: self._mark_job_status(job_id, JobStatus.processing),
+            )
+
+        logger.info(f"Processing job {job_id} with handler '{msg_type}'")
+
+        try:
+            await self._with_retry(
+                f"handler({msg_type}, job={job_id})",
+                lambda: self._run_job_handler(handler, payload, job_id),
+            )
+            logger.info(f"Job {job_id} completed via handler '{msg_type}'")
+            await self.aws.async_delete_message(receipt_handle)
+
+        except Exception as e:
+            handler_error = e
+            logger.exception(f"Handler failed for job {job_id}: {handler_error}")
+            if job_id is not None:
+                try:
+                    await self._with_retry(
+                        f"mark_job_failed(job={job_id})",
+                        lambda: self._mark_job_failed(job_id, str(handler_error)),
+                    )
+                except Exception as mark_err:
+                    logger.error(
+                        f"Could not mark job {job_id} as failed: {mark_err}"
+                    )
 
     async def run(self):
         self._register_signals()

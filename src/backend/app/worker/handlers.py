@@ -7,13 +7,17 @@ from decimal import Decimal, InvalidOperation
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.document import Document
+from app.models.job import Job
 from app.models.receipt import Receipt
 from app.models.statement import BankStatement, BankStatementLine
+from app.models.user import User
 from app.services.aws_model_services import (
     model_parse_bank_statement_metadata,
     model_parse_document,
 )
 from app.services.aws_services import AWSService
+from app.services.reconciliation_matching import MatchConfig
+from app.services.reconciliation_runner import run_reconciliation
 from app.utils.pdf_plumber import parse_statement
 
 logger = logging.getLogger("sqs_worker.handlers")
@@ -207,3 +211,26 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
         )
     finally:
         os.unlink(tmp_path)
+
+
+async def handle_reconciliation(
+    payload: dict, session: AsyncSession, aws: AWSService
+):
+    job_id = payload["job_id"]
+    account_id = payload["account_id"]
+    statement_id = payload.get("statement_id")
+    user_id = payload["user_id"]
+    config_data = payload.get("config")
+
+    job = await session.get(Job, job_id)
+    if job is None:
+        raise ValueError(f"Job {job_id} not found")
+
+    user = await session.get(User, user_id)
+    if user is None:
+        raise ValueError(f"User {user_id} not found")
+
+    match_config = MatchConfig(**config_data) if config_data else None
+
+    await run_reconciliation(job, account_id, statement_id, session, user, match_config)
+    logger.info(f"Reconciliation job {job_id} completed")

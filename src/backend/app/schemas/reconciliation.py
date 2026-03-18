@@ -103,7 +103,7 @@ class ReconciliationStartRequest(BaseModel):
 class ReconciliationStartResponse(BaseModel):
     job_id: int
     status: str
-    summary: "ReconciliationSummary"
+    summary: Optional["ReconciliationSummary"] = None
 
 
 class ReconciliationRunRequest(BaseModel):
