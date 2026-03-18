@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
@@ -14,10 +14,20 @@ from app.models.user import User
 from app.schemas.document import FileUrlResponse
 from app.schemas.receipt import ReceiptListResponse, ReceiptRead, ReceiptUpdate
 from app.services.aws_services import AWSService, generate_file_url, get_aws_service
-from app.utils.access import apply_document_access_filter, get_owned_receipt
+from app.utils.access import apply_document_access_filter, apply_patch_fields, get_owned_receipt
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
+
+_RECEIPT_WRITABLE_FIELDS = {
+    "vendor",
+    "invoice_number",
+    "billing_date",
+    "charged_amount",
+    "currency",
+    "description",
+    "expense_type",
+}
 
 
 def _receipt_to_read(receipt: Receipt) -> ReceiptRead:
@@ -111,27 +121,8 @@ async def update_receipt(
 ):
     receipt = await get_owned_receipt(receipt_id, current_user, db, write=True)
 
-    _RECEIPT_WRITABLE_FIELDS = {
-        "vendor",
-        "invoice_number",
-        "billing_date",
-        "charged_amount",
-        "currency",
-        "description",
-        "expense_type",
-    }
-
     update_data = body.model_dump(exclude_unset=True)
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
-
-    for field, value in update_data.items():
-        if field not in _RECEIPT_WRITABLE_FIELDS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Field '{field}' is not updatable",
-            )
-        setattr(receipt, field, value)
+    apply_patch_fields(receipt, update_data, _RECEIPT_WRITABLE_FIELDS)
 
     await db.commit()
     await db.refresh(receipt, attribute_names=["document"])

@@ -1,6 +1,6 @@
 from typing import Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload, selectinload
@@ -25,12 +25,22 @@ from app.schemas.document import FileUrlResponse
 from app.services.aws_services import AWSService, generate_file_url, get_aws_service
 from app.utils.access import (
     apply_document_access_filter,
+    apply_patch_fields,
     get_owned_statement,
     get_owned_statement_line,
 )
 from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/statements", tags=["statements"])
+
+_LINE_WRITABLE_FIELDS = {
+    "description",
+    "vendor",
+    "charge",
+    "transaction_date",
+    "posting_date",
+    "mcc",
+}
 
 
 def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
@@ -180,26 +190,8 @@ async def update_statement_line(
         statement_id, line_id, current_user, db, write=True
     )
 
-    _LINE_WRITABLE_FIELDS = {
-        "description",
-        "vendor",
-        "charge",
-        "transaction_date",
-        "posting_date",
-        "mcc",
-    }
-
     update_data = body.model_dump(exclude_unset=True)
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
-
-    for field, value in update_data.items():
-        if field not in _LINE_WRITABLE_FIELDS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Field '{field}' is not updatable",
-            )
-        setattr(line, field, value)
+    apply_patch_fields(line, update_data, _LINE_WRITABLE_FIELDS)
 
     await db.commit()
     await db.refresh(line)

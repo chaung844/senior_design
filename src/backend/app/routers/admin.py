@@ -9,11 +9,13 @@ from app.database import get_db
 from app.enums import UserRole
 from app.models.user import User
 from app.schemas.user import UserCreate, UserListResponse, UserRead, UserUpdate
-from app.utils.access import require_developer
+from app.utils.access import apply_patch_fields, require_developer
 from app.utils.auth import verify_csrf_token
 from app.utils.security import hash_password
 
 router = APIRouter(prefix="/admin/users", tags=["admin"])
+
+_USER_WRITABLE_FIELDS = {"name", "email", "role", "is_active"}
 
 
 @router.get("", response_model=UserListResponse)
@@ -79,7 +81,7 @@ async def create_user(
 
     user = User(
         name=body.name,
-        email=body.email,
+        email=body.email.lower().strip(),
         password_hash=password_hash,
         role=body.role,
     )
@@ -125,9 +127,10 @@ async def update_user(
         user.password_hash = await run_in_threadpool(hash_password, raw_password)
 
     if "email" in update_data:
+        normalized_email = update_data["email"].lower().strip()
         dup = await db.execute(
             select(User).where(
-                User.email == update_data["email"].lower().strip(),
+                User.email == normalized_email,
                 User.user_id != user_id,
             )
         )
@@ -136,16 +139,13 @@ async def update_user(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="A user with this email already exists",
             )
+        update_data["email"] = normalized_email
 
-    _USER_WRITABLE_FIELDS = {"name", "email", "role", "is_active"}
-
-    for field, value in update_data.items():
-        if field not in _USER_WRITABLE_FIELDS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Field '{field}' is not updatable",
-            )
-        setattr(user, field, value)
+    # After popping `new_password`, update_data may be empty if that was the
+    # only field in the request; skip apply_patch_fields in that case so we
+    # don't incorrectly raise "No fields to update".
+    if update_data:
+        apply_patch_fields(user, update_data, _USER_WRITABLE_FIELDS)
 
     await db.commit()
     await db.refresh(user)

@@ -43,7 +43,6 @@ from app.services.reconciliation_matching import (
     apply_perfect_matches,
     apply_receipts_to_line,
     apply_lines_to_receipt,
-    _print_match_summary,
 )
 
 router = APIRouter(prefix="/reconciliation", tags=["reconciliation"])
@@ -153,12 +152,6 @@ async def _run_matching(
             db=db,
             current_user=current_user,
         )
-
-        # For debugging only
-        # await db.flush()
-        # for line in lines:
-        #     await db.refresh(line, ["matches"])
-        # _print_match_summary(lines, receipts)
 
         job.status = JobStatus.completed
     except Exception:

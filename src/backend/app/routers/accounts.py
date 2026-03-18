@@ -19,6 +19,7 @@ from app.schemas.account_book import (
 )
 from app.schemas.user import UserRead
 from app.utils.access import (
+    apply_patch_fields,
     get_accessible_account_ids,
     require_account_access,
     require_admin_or_dev,
@@ -27,6 +28,14 @@ from app.utils.access import (
 from app.utils.auth import verify_csrf_token
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
+
+_ACCOUNT_WRITABLE_FIELDS = {
+    "bank_name",
+    "account_name",
+    "account_type",
+    "currency",
+    "account_number_last4",
+}
 
 
 # ── User lookup (for member management) ─────────────────────────────
@@ -165,25 +174,8 @@ async def update_account_book(
 ):
     account = await require_account_access(account_id, current_user, db, write=True)
 
-    _ACCOUNT_WRITABLE_FIELDS = {
-        "bank_name",
-        "account_name",
-        "account_type",
-        "currency",
-        "account_number_last4",
-    }
-
     update_data = body.model_dump(exclude_unset=True)
-    if not update_data:
-        raise HTTPException(status_code=400, detail="No fields to update")
-
-    for field, value in update_data.items():
-        if field not in _ACCOUNT_WRITABLE_FIELDS:
-            raise HTTPException(
-                status_code=422,
-                detail=f"Field '{field}' is not updatable",
-            )
-        setattr(account, field, value)
+    apply_patch_fields(account, update_data, _ACCOUNT_WRITABLE_FIELDS)
 
     await db.commit()
     await db.refresh(account)
