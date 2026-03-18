@@ -771,16 +771,7 @@ function CandidateRow({
     currency: string;
 }) {
     return (
-        <div className="flex items-center gap-3 px-2 py-1.5 bg-background border border-border/40 rounded-none text-[11px]">
-            <div className="flex-1 min-w-0">
-                <span className="font-medium">{candidate.vendor}</span>
-                <span className="text-muted-foreground ml-2">
-                    {candidate.billing_date}
-                </span>
-            </div>
-            <div className="font-mono tabular-nums shrink-0">
-                {formatCurrency(Number(candidate.charged_amount), currency)}
-            </div>
+        <div className="flex items-center gap-2 px-2 py-1.5 bg-background border border-border/40 rounded-none text-[11px]">
             <Badge
                 variant={
                     candidate.confidence >= 60 ? "secondary" : "outline"
@@ -789,8 +780,16 @@ function CandidateRow({
             >
                 {candidate.confidence}%
             </Badge>
+            <span className="font-medium shrink-0">{candidate.vendor}</span>
+            <span className="font-mono tabular-nums shrink-0">
+                {formatCurrency(Number(candidate.charged_amount), currency)}
+            </span>
+            <span className="text-muted-foreground shrink-0">
+                {candidate.billing_date}
+            </span>
             {candidate.rejection_reasons.length > 0 && (
-                <span className="text-[10px] text-muted-foreground truncate max-w-48">
+                <span className="text-muted-foreground truncate min-w-0">
+                    {" - "}
                     {candidate.rejection_reasons[0]}
                 </span>
             )}
