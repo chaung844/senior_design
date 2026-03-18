@@ -358,9 +358,17 @@ export interface DeleteMatchResponse {
     deleted: number;
 }
 
+export interface ReconciliationConfig {
+    max_date_window: number;
+    confidence_threshold: number;
+    bundle_vendor_threshold: number;
+    max_bundle_size: number;
+}
+
 export interface ReconciliationStartRequest {
     account_id: number;
     statement_id: number;
+    config?: ReconciliationConfig;
 }
 
 export interface ReconciliationSummary {

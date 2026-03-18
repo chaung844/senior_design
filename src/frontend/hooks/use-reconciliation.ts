@@ -8,7 +8,10 @@ import { accountKeys } from "@/hooks/use-accounts";
 import { statementKeys } from "@/hooks/use-statements";
 import { receiptKeys } from "@/hooks/use-receipts";
 import { documentKeys } from "@/hooks/use-documents";
-import type { ReconciliationStartResponse } from "@/lib/types";
+import type {
+    ReconciliationConfig,
+    ReconciliationStartResponse,
+} from "@/lib/types";
 import { createManualMatch, deleteMatch, listMatchesByLine } from "@/lib/api";
 import type { ManualMatchCreate } from "@/lib/types";
 
@@ -36,12 +39,13 @@ export function useStartReconciliation() {
     const mutation = useMutation<
         ReconciliationStartResponse,
         Error,
-        { accountId: number; statementId: number; label?: string }
+        { accountId: number; statementId: number; label?: string; config?: ReconciliationConfig }
     >({
-        mutationFn: ({ accountId, statementId }) =>
+        mutationFn: ({ accountId, statementId, config }) =>
             startReconciliation({
                 account_id: accountId,
                 statement_id: statementId,
+                config,
             }),
         onSuccess: (data, vars) => {
             // Register the job with the floating status widget so it is
@@ -64,8 +68,12 @@ export function useStartReconciliation() {
     });
 
     const run = useCallback(
-        (params: { accountId: number; statementId: number; label?: string }) =>
-            mutation.mutateAsync(params),
+        (params: {
+            accountId: number;
+            statementId: number;
+            label?: string;
+            config?: ReconciliationConfig;
+        }) => mutation.mutateAsync(params),
         [mutation],
     );
 

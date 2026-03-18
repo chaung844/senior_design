@@ -2,7 +2,7 @@
 Reconciliation API (Tier 4).
 
 - POST /reconciliation/start: create a job + run reconciliation in one call (preferred).
-      Body: { account_id: int, statement_id: int }
+      Body: { account_id: int, statement_id: int, config?: ReconciliationConfig }
       Returns: job_id, status, summary.
 - POST /reconciliation/jobs/{job_id}/run: re-trigger run on an existing job (legacy).
 - GET /reconciliation/jobs/{job_id}/results: summary + matches (no separate GET matches/unmatched).
@@ -29,6 +29,7 @@ from app.schemas.reconciliation import (
     ManualMatchUpdate,
     MatchLineSummary,
     MatchReceiptSummary,
+    ReconciliationConfig,
     ReconciliationMatchDetail,
     ReconciliationMatchListResponse,
     ReconciliationMatchRead,
@@ -40,6 +41,7 @@ from app.schemas.reconciliation import (
     ReconciliationSummary,
 )
 from app.services.reconciliation_matching import (
+    MatchConfig,
     _print_match_summary,
     apply_lines_to_receipt,
     apply_perfect_matches,
@@ -85,9 +87,22 @@ async def _run_matching(
     statement_id: int | None,
     db: AsyncSession,
     current_user: User,
+    config: ReconciliationConfig | None = None,
 ) -> None:
     """Load lines & receipts scoped by account (and optionally statement), run
     exact-match, persist results, and mark the job completed/failed."""
+
+    # Convert the API schema config to the service-layer dataclass.
+    match_config = (
+        MatchConfig(
+            max_date_window=config.max_date_window,
+            confidence_threshold=config.confidence_threshold,
+            bundle_vendor_threshold=config.bundle_vendor_threshold,
+            max_bundle_size=config.max_bundle_size,
+        )
+        if config is not None
+        else MatchConfig()
+    )
 
     try:
         job.status = JobStatus.reconciling
@@ -138,6 +153,7 @@ async def _run_matching(
             receipts=receipts,
             db=db,
             current_user=current_user,
+            config=match_config,
         )
 
         await apply_lines_to_receipt(
@@ -146,6 +162,7 @@ async def _run_matching(
             receipts=receipts,
             db=db,
             current_user=current_user,
+            config=match_config,
         )
 
         await apply_receipts_to_line(
@@ -154,6 +171,7 @@ async def _run_matching(
             receipts=receipts,
             db=db,
             current_user=current_user,
+            config=match_config,
         )
 
         # For debugging only
@@ -252,7 +270,9 @@ async def start_reconciliation(
     """
     Create a reconciliation job **and** run the matching algorithm in a single
     call.  The frontend only needs to supply ``account_id`` and, optionally,
-    ``statement_id`` to scope the run to a single statement.
+    ``statement_id`` to scope the run to a single statement.  Pass a
+    ``config`` object to override the default matching thresholds; omit it
+    (or set it to ``null``) to use the built-in defaults.
 
     Returns the created job id, its status, and a short summary of results.
     """
@@ -290,7 +310,7 @@ async def start_reconciliation(
     await db.flush()  # assigns job.job_id
 
     # Run matching
-    await _run_matching(job, account_id, statement_id, db, current_user)
+    await _run_matching(job, account_id, statement_id, db, current_user, body.config)
     await db.commit()
     await db.refresh(job)
 
