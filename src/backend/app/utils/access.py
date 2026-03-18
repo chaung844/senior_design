@@ -188,6 +188,23 @@ def can_view_job(job: Job, user: User) -> bool:
     return job.created_by == user.user_id
 
 
+def apply_patch_fields(entity, update_data: dict, writable_fields: set) -> None:
+    """Validate and apply a partial-update dict to an ORM entity.
+
+    Raises 400 if *update_data* is empty and 422 if a key is not in
+    *writable_fields*, then sets each validated attribute on *entity*.
+    """
+    if not update_data:
+        raise HTTPException(status_code=400, detail="No fields to update")
+    for field, value in update_data.items():
+        if field not in writable_fields:
+            raise HTTPException(
+                status_code=422,
+                detail=f"Field '{field}' is not updatable",
+            )
+        setattr(entity, field, value)
+
+
 # ---------------------------------------------------------------------------
 # Resource-level helpers (document / receipt / statement)
 # ---------------------------------------------------------------------------
