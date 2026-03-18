@@ -88,7 +88,6 @@ def gather_unmatched_analysis_data(
     info and its top candidate receipts with scoring breakdowns.
     """
     cfg = config if config is not None else MatchConfig()
-    all_receipts = [r for r in receipts]
     result: list[dict[str, Any]] = []
 
     for line in lines:
@@ -96,7 +95,7 @@ def gather_unmatched_analysis_data(
             continue
 
         candidates = []
-        for receipt in all_receipts:
+        for receipt in receipts:
             confidence = calculate_confidence(line, receipt, cfg)
             vendor_sim = _vendor_similarity(
                 _clean_vendor(line.vendor or ""),

@@ -36,7 +36,7 @@ def encode_image_file(image_path):
             or img.height > settings.max_image_dimension
         ):
             img.thumbnail((settings.max_image_dimension, settings.max_image_dimension))
-            logger.info(f"Resized image to {img.width}x{img.height}")
+            logger.info("Resized image to %dx%d", img.width, img.height)
         if img.mode in ("RGBA", "P"):
             img = img.convert("RGB")
         buffered = io.BytesIO()
@@ -83,12 +83,12 @@ def process_pdf(pdf_path, max_pages=6, resize=True):
     if not os.path.exists(pdf_path):
         raise FileNotFoundError(f"PDF file not found: {pdf_path}")
 
-    logger.info(f"Processing PDF: {pdf_path} (Max {max_pages} pages)...")
+    logger.info("Processing PDF: %s (Max %d pages)...", pdf_path, max_pages)
     try:
         images = convert_from_path(
             pdf_path, dpi=settings.pdf_dpi, first_page=1, last_page=max_pages
         )
-        logger.info(f"Extracted {len(images)} pages.")
+        logger.info("Extracted %d pages.", len(images))
 
         def _process_image_helper(img):
             if resize and (

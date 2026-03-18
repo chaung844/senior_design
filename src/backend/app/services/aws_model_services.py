@@ -184,16 +184,16 @@ def model_categorize_transaction(transaction_content) -> Dict[str, Any]:
         Dict[str, Any]: Categorized transaction type.
     """
     try:
-        reponse = call_model(
-            settings.vlm_model_id,
+        response = call_model(
+            settings.llm_model_id,
             settings.categorizing_instruction_path,
             prompt=str(transaction_content),
         )
     except Exception as e:
         raise ValueError(f"(!) Error invoking model API for categorization: {e}") from e
 
-    if reponse:
-        sanitized_content = sanitize_llm_output(reponse)
+    if response:
+        sanitized_content = sanitize_llm_output(response)
         parsed_content = parse_yaml(sanitized_content)
         return parsed_content
     else:
@@ -211,7 +211,7 @@ def model_parse_bank_statement_metadata(file_path: str) -> Dict[str, Any]:
         Dict[str, Any]: Parsed metadata from the bank statement.
     """
     try:
-        reponse = call_model(
+        response = call_model(
             settings.vlm_model_id,
             settings.bankstatement_metadata_parsing_instruction_path,
             data_path=file_path,
@@ -221,8 +221,8 @@ def model_parse_bank_statement_metadata(file_path: str) -> Dict[str, Any]:
             f"(!) Error invoking model API for parsing bank statement: {e}"
         ) from e
 
-    if reponse:
-        sanitized_content = sanitize_llm_output(reponse)
+    if response:
+        sanitized_content = sanitize_llm_output(response)
         parsed_content = parse_yaml(sanitized_content)
         return parsed_content
     else:

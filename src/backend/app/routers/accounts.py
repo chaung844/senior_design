@@ -32,6 +32,14 @@ from app.services.document_cleanup import schedule_s3_deletes
 
 router = APIRouter(prefix="/accounts", tags=["accounts"])
 
+_ACCOUNT_WRITABLE_FIELDS = {
+    "bank_name",
+    "account_name",
+    "account_type",
+    "currency",
+    "account_number_last4",
+}
+
 
 # ── User lookup (for member management) ─────────────────────────────
 
@@ -168,14 +176,6 @@ async def update_account_book(
     current_user: User = Depends(require_admin_or_dev),
 ):
     account = await require_account_access(account_id, current_user, db, write=True)
-
-    _ACCOUNT_WRITABLE_FIELDS = {
-        "bank_name",
-        "account_name",
-        "account_type",
-        "currency",
-        "account_number_last4",
-    }
 
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:

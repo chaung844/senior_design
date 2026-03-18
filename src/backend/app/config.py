@@ -109,6 +109,7 @@ class Settings(BaseSettings):
         """Fully-qualified Bedrock OpenAI-compatible endpoint."""
         return f"https://bedrock-runtime.{self.aws_region}.amazonaws.com/openai/v1"
 
+    @property
     def bedrock_health_check_url(self) -> str:
         """Bedrock health check endpoint."""
         return f"https://bedrock.{self.aws_region}.amazonaws.com/foundation-models"

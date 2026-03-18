@@ -133,7 +133,7 @@ async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSSer
             raise ValueError(f"Document {document_id} not found")
         doc.receipt_id = receipt.receipt_id
 
-        logger.info(f"Created Receipt {receipt.receipt_id} for document {document_id}")
+        logger.info("Created Receipt %d for document %d", receipt.receipt_id, document_id)
     finally:
         os.unlink(tmp_path)
 
@@ -233,4 +233,4 @@ async def handle_reconciliation(
     match_config = MatchConfig(**config_data) if config_data else None
 
     await run_reconciliation(job, account_id, statement_id, session, user, match_config)
-    logger.info(f"Reconciliation job {job_id} completed")
+    logger.info("Reconciliation job %d completed", job_id)

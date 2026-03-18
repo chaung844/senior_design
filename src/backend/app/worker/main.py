@@ -72,7 +72,7 @@ class SQSWorker:
             signal.signal(sig, self._handle_signal)
 
     def _handle_signal(self, signum, frame):
-        logger.info(f"Received signal {signum}, shutting down gracefully...")
+        logger.info("Received signal %s, shutting down gracefully...", signum)
         self._shutdown = True
 
     def _start_heartbeat(self, receipt_handle: str) -> asyncio.Event:
@@ -122,7 +122,7 @@ class SQSWorker:
             if job_id is not None:
                 job = await session.get(Job, job_id)
                 if job is None:
-                    logger.error(f"Job {job_id} not found for document {document_id}")
+                    logger.error("Job %d not found for document %d", job_id, document_id)
                 else:
                     if job.job_type == JobType.parsing:
                         job.status = JobStatus.processing
@@ -236,7 +236,7 @@ class SQSWorker:
 
             handler = HANDLER_REGISTRY.get(msg_type)
             if handler is None:
-                logger.error(f"Unknown message type: {msg_type}")
+                logger.error("Unknown message type: %s", msg_type)
                 await self.aws.async_delete_message(receipt_handle)
                 return
 
@@ -252,7 +252,7 @@ class SQSWorker:
                 )
 
         except Exception as e:
-            logger.exception(f"Failed to process SQS message: {e}")
+            logger.exception("Failed to process SQS message: %s", e)
         finally:
             stop_heartbeat.set()
 
@@ -269,31 +269,31 @@ class SQSWorker:
         )
 
         if result == "discard":
-            logger.error(f"Document {document_id} not found, discarding")
+            logger.error("Document %d not found, discarding", document_id)
             await self.aws.async_delete_message(receipt_handle)
             return
 
         if result == "skip":
             logger.info(
-                f"Document {document_id} already processing/parsed, skipping"
+                "Document %d already processing/parsed, skipping", document_id
             )
             await self.aws.async_delete_message(receipt_handle)
             return
 
-        logger.info(f"Processing document {document_id} with handler '{msg_type}'")
+        logger.info("Processing document %d with handler '%s'", document_id, msg_type)
 
         try:
             await self._with_retry(
                 f"handler({msg_type}, doc={document_id})",
                 lambda: self._run_handler(handler, payload, document_id, job_id),
             )
-            logger.info(f"Document {document_id} parsed successfully")
+            logger.info("Document %d parsed successfully", document_id)
             await self.aws.async_delete_message(receipt_handle)
 
         except Exception as e:
             handler_error = e
             logger.exception(
-                f"Handler failed for document {document_id}: {handler_error}"
+                "Handler failed for document %d: %s", document_id, handler_error
             )
             try:
                 await self._with_retry(
@@ -304,7 +304,7 @@ class SQSWorker:
                 )
             except Exception as mark_err:
                 logger.error(
-                    f"Could not mark document {document_id} as failed: {mark_err}"
+                    "Could not mark document %d as failed: %s", document_id, mark_err
                 )
 
     async def _process_job_message(
@@ -319,19 +319,19 @@ class SQSWorker:
                 lambda: self._mark_job_status(job_id, JobStatus.processing),
             )
 
-        logger.info(f"Processing job {job_id} with handler '{msg_type}'")
+        logger.info("Processing job %s with handler '%s'", job_id, msg_type)
 
         try:
             await self._with_retry(
                 f"handler({msg_type}, job={job_id})",
                 lambda: self._run_job_handler(handler, payload, job_id),
             )
-            logger.info(f"Job {job_id} completed via handler '{msg_type}'")
+            logger.info("Job %s completed via handler '%s'", job_id, msg_type)
             await self.aws.async_delete_message(receipt_handle)
 
         except Exception as e:
             handler_error = e
-            logger.exception(f"Handler failed for job {job_id}: {handler_error}")
+            logger.exception("Handler failed for job %s: %s", job_id, handler_error)
             if job_id is not None:
                 try:
                     await self._with_retry(
@@ -340,7 +340,7 @@ class SQSWorker:
                     )
                 except Exception as mark_err:
                     logger.error(
-                        f"Could not mark job {job_id} as failed: {mark_err}"
+                        "Could not mark job %s as failed: %s", job_id, mark_err
                     )
 
     async def run(self):
