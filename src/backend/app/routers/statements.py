@@ -33,14 +33,32 @@ from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/statements", tags=["statements"])
 
+_STATEMENT_WRITABLE_FIELDS = {
+    "month",
+    "year",
+    "account_number_last4",
+    "currency",
+    "total_amount",
+}
 
-def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
+_LINE_WRITABLE_FIELDS = {
+    "description",
+    "vendor",
+    "charge",
+    "transaction_date",
+    "posting_date",
+    "mcc",
+}
+
+
+def _statement_common_fields(stmt: BankStatement) -> dict:
+    """Extract fields shared by both BankStatementRead and BankStatementDetailRead."""
     doc = stmt.document
     lines = stmt.lines or []
     matched_count = sum(
         1 for line in lines if line.match_status != MatchStatus.unmatched
     )
-    return BankStatementRead(
+    return dict(
         statement_id=stmt.statement_id,
         account_id=stmt.account_id,
         month=stmt.month,
@@ -55,31 +73,19 @@ def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
         matched_count=matched_count,
         unmatched_count=len(lines) - matched_count,
     )
+
+
+def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
+    return BankStatementRead(**_statement_common_fields(stmt))
 
 
 def _statement_to_detail(stmt: BankStatement) -> BankStatementDetailRead:
-    doc = stmt.document
     lines = stmt.lines or []
-    matched_count = sum(
-        1 for line in lines if line.match_status != MatchStatus.unmatched
-    )
     return BankStatementDetailRead(
-        statement_id=stmt.statement_id,
-        account_id=stmt.account_id,
-        month=stmt.month,
-        year=stmt.year,
-        account_number_last4=stmt.account_number_last4,
-        total_amount=stmt.total_amount,
-        currency=stmt.currency,
-        created_at=stmt.created_at,
-        document_id=doc.document_id if doc else None,
-        file_name=doc.file_name if doc else None,
-        line_count=len(lines),
-        matched_count=matched_count,
-        unmatched_count=len(lines) - matched_count,
+        **_statement_common_fields(stmt),
         lines=[
             BankStatementLineRead.model_validate(line)
-            for line in sorted(lines, key=lambda l: l.line_number)
+            for line in sorted(lines, key=lambda line: line.line_number)
         ],
     )
 
@@ -141,14 +147,6 @@ async def update_statement(
     current_user: User = Depends(get_current_user),
 ):
     statement = await get_owned_statement(statement_id, current_user, db, write=True)
-
-    _STATEMENT_WRITABLE_FIELDS = {
-        "month",
-        "year",
-        "account_number_last4",
-        "currency",
-        "total_amount",
-    }
 
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:
@@ -231,15 +229,6 @@ async def update_statement_line(
     line = await get_owned_statement_line(
         statement_id, line_id, current_user, db, write=True
     )
-
-    _LINE_WRITABLE_FIELDS = {
-        "description",
-        "vendor",
-        "charge",
-        "transaction_date",
-        "posting_date",
-        "mcc",
-    }
 
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:

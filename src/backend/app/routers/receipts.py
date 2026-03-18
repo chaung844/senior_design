@@ -19,6 +19,16 @@ from app.utils.auth import get_current_user, verify_csrf_token
 
 router = APIRouter(prefix="/receipts", tags=["receipts"])
 
+_RECEIPT_WRITABLE_FIELDS = {
+    "vendor",
+    "invoice_number",
+    "billing_date",
+    "charged_amount",
+    "currency",
+    "description",
+    "expense_type",
+}
+
 
 def _receipt_to_read(receipt: Receipt) -> ReceiptRead:
     doc = receipt.document
@@ -110,16 +120,6 @@ async def update_receipt(
     current_user: User = Depends(get_current_user),
 ):
     receipt = await get_owned_receipt(receipt_id, current_user, db, write=True)
-
-    _RECEIPT_WRITABLE_FIELDS = {
-        "vendor",
-        "invoice_number",
-        "billing_date",
-        "charged_amount",
-        "currency",
-        "description",
-        "expense_type",
-    }
 
     update_data = body.model_dump(exclude_unset=True)
     if not update_data:

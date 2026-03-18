@@ -9,6 +9,7 @@ from fastapi.concurrency import run_in_threadpool
 
 from app.config import get_settings
 
+logger = logging.getLogger(__name__)
 settings = get_settings()
 
 
@@ -44,7 +45,7 @@ class AWSService:
                 ExpiresIn=settings.s3_presigned_url_expire_time,
             )
         except ClientError as e:
-            logging.error(f"Error generating presigned URL: {e}")
+            logger.error("Error generating presigned URL: %s", e)
             return None
 
     def verify_s3_upload(self, s3_key: str) -> bool:
@@ -54,7 +55,7 @@ class AWSService:
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
                 return False
-            logging.error(f"Error verifying S3 upload: {e}")
+            logger.error("Error verifying S3 upload: %s", e)
             return False
 
     def download_file(self, s3_key: str, local_path: str) -> bool:
@@ -62,7 +63,7 @@ class AWSService:
             self.s3_client.download_file(self.bucket_name, s3_key, local_path)
             return True
         except ClientError as e:
-            logging.error(f"Error downloading file from S3: {e}")
+            logger.error("Error downloading file from S3: %s", e)
             return False
 
     def enqueue_message(self, message_type: str, payload: dict):
@@ -72,7 +73,7 @@ class AWSService:
                 MessageBody=json.dumps({"type": message_type, "payload": payload}),
             )
         except ClientError as e:
-            logging.error(f"SQS error: {e}")
+            logger.error("SQS error: %s", e)
             return None
 
     # Backward-compatible alias
@@ -88,7 +89,7 @@ class AWSService:
             )
             return response.get("Messages", [])
         except ClientError as e:
-            logging.error(f"SQS receive error: {e}")
+            logger.error("SQS receive error: %s", e)
             return []
 
     def delete_message(self, receipt_handle: str):
@@ -98,7 +99,7 @@ class AWSService:
                 ReceiptHandle=receipt_handle,
             )
         except ClientError as e:
-            logging.error(f"SQS delete error: {e}")
+            logger.error("SQS delete error: %s", e)
 
     def generate_presigned_get_url(
         self, s3_key: str, expires_in: int = settings.s3_presigned_url_expire_time
@@ -110,7 +111,7 @@ class AWSService:
                 ExpiresIn=expires_in,
             )
         except ClientError as e:
-            logging.error(f"Error generating presigned GET URL: {e}")
+            logger.error("Error generating presigned GET URL: %s", e)
             return None
 
     def delete_s3_object(self, s3_key: str) -> bool:
@@ -118,7 +119,7 @@ class AWSService:
             self.s3_client.delete_object(Bucket=self.bucket_name, Key=s3_key)
             return True
         except ClientError as e:
-            logging.error(f"Error deleting S3 object: {e}")
+            logger.error("Error deleting S3 object: %s", e)
             return False
 
     def extend_visibility_timeout(self, receipt_handle: str, timeout: int = 120):
@@ -129,7 +130,7 @@ class AWSService:
                 VisibilityTimeout=timeout,
             )
         except ClientError as e:
-            logging.error(f"SQS visibility timeout extension error: {e}")
+            logger.error("SQS visibility timeout extension error: %s", e)
 
     # ------------------------------------------------------------------
     # Async wrappers: use these from async route handlers / workers

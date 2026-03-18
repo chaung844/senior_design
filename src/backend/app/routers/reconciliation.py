@@ -32,7 +32,6 @@ from app.schemas.reconciliation import (
     MatchLineSummary,
     MatchReceiptSummary,
     ReconciliationAISummaryResponse,
-    ReconciliationConfig,
     ReconciliationLineSummaryRead,
     ReconciliationMatchDetail,
     ReconciliationMatchListResponse,
