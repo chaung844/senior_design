@@ -518,9 +518,7 @@ function makeReceiptColumns(
     ];
 }
 
-function makeVendorColumns(
-    currency: string,
-): ColumnDef<VendorRow, unknown>[] {
+function makeVendorColumns(currency: string): ColumnDef<VendorRow, unknown>[] {
     return [
         {
             accessorKey: "vendor",
@@ -633,7 +631,10 @@ function ReconciliationSummaryTab({
         return (
             <div className="flex flex-col gap-4">
                 {Array.from({ length: 3 }).map((_, i) => (
-                    <div key={i} className="border border-border rounded-none p-4 space-y-3">
+                    <div
+                        key={i}
+                        className="border border-border rounded-none p-4 space-y-3"
+                    >
                         <Skeleton className="h-4 w-2/3" />
                         <Skeleton className="h-3 w-1/2" />
                         <Skeleton className="h-16 w-full" />
@@ -708,10 +709,10 @@ function SummaryCard({
             {/* Line header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
+                    <div className="flex items-center gap-2 mb-1 mt-1">
                         <Badge
                             variant="outline"
-                            className="text-[9px] h-5 px-1.5 text-muted-foreground shrink-0"
+                            className="text-[10px] h-5 px-1.5 text-muted-foreground shrink-0"
                         >
                             <HugeiconsIcon
                                 icon={Alert02Icon}
@@ -721,11 +722,11 @@ function SummaryCard({
                             Unmatched
                         </Badge>
                         <span className="text-xs font-medium truncate">
-                            {item.line_vendor}
+                            {item.line_description}
                         </span>
                     </div>
                     <p className="text-[11px] text-muted-foreground truncate">
-                        {item.line_description}
+                        -------------
                     </p>
                 </div>
                 <div className="text-right shrink-0">
@@ -795,9 +796,7 @@ function CandidateRow({
             }}
         >
             <Badge
-                variant={
-                    candidate.confidence >= 60 ? "secondary" : "outline"
-                }
+                variant={candidate.confidence >= 60 ? "secondary" : "outline"}
                 className="text-[9px] h-4 px-1 tabular-nums shrink-0"
             >
                 {candidate.confidence}%
@@ -927,10 +926,8 @@ export function DashboardMonth({
     const { data: statementDetail } = useStatement(statementId ?? null);
 
     // AI reconciliation summary for unmatched lines
-    const {
-        data: aiSummaryData,
-        isLoading: aiSummaryLoading,
-    } = useReconciliationAISummary(statementId ?? null);
+    const { data: aiSummaryData, isLoading: aiSummaryLoading } =
+        useReconciliationAISummary(statementId ?? null);
 
     const filteredTransactions = React.useMemo(() => {
         let txns = monthData.transactions;
@@ -1345,9 +1342,7 @@ export function DashboardMonth({
                                     variant="outline"
                                     size="sm"
                                     disabled={isReconciling}
-                                    onClick={() =>
-                                        setReconcileDialogOpen(true)
-                                    }
+                                    onClick={() => setReconcileDialogOpen(true)}
                                 >
                                     {isReconciling ? (
                                         <span
