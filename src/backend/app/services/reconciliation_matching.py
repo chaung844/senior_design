@@ -409,7 +409,7 @@ def _print_match_summary(
         console.print(
             f"[Line {line.line_id}] status={line.match_status.value}, "
             f"amount={_money(line.charge)}, date={line.transaction_date}, "
-            f"vendor='{line.vendor or ''}' (normalized='{line_vendor}') "
+            f"vendor='{line.description[:10] or ''}...' (normalized='{line_vendor}') "
             f"{status_badge}",
             style=header_style,
         )
