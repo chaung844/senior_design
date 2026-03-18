@@ -214,16 +214,36 @@ export function useJobStatusProvider(): JobStatusContextValue {
                 activeIds.map((id) => getJobStatus(id)),
             );
 
-            let anyNewlyCompleted = false;
+            const resultByJobId = new Map<number, PromiseSettledResult<JobStatusResponse>>();
+            for (let i = 0; i < activeIds.length; i += 1) {
+                resultByJobId.set(activeIds[i], results[i]);
+            }
+
+            const polledStatuses: Array<{
+                jobId: number;
+                status: JobStatus | "poll_failed";
+            }> = results.map((result, index) => {
+                if (result.status === "rejected") {
+                    return { jobId: activeIds[index], status: "poll_failed" };
+                }
+                return {
+                    jobId: result.value.job_id,
+                    status: result.value.status,
+                };
+            });
+
+            const anyNewlyCompleted = results.some(
+                (result) =>
+                    result.status === "fulfilled" &&
+                    isTerminal(result.value.status),
+            );
 
             setJobs((prev) =>
                 prev.map((job) => {
                     if (isTerminal(job.status)) return job;
 
-                    const idx = activeIds.indexOf(job.jobId);
-                    if (idx === -1) return job;
-
-                    const result = results[idx];
+                    const result = resultByJobId.get(job.jobId);
+                    if (!result) return job;
                     if (result.status === "rejected") {
                         // Polling failed (e.g. 404 — job no longer exists).
                         // Mark as failed rather than leaving it in-progress forever.
@@ -231,11 +251,6 @@ export function useJobStatusProvider(): JobStatusContextValue {
                     }
 
                     const response = result.value;
-                    const nowTerminal = isTerminal(response.status);
-
-                    if (nowTerminal) {
-                        anyNewlyCompleted = true;
-                    }
 
                     return {
                         ...job,
