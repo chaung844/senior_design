@@ -49,6 +49,7 @@ import type {
     ReconciliationStartRequest,
     ReconciliationStartResponse,
     ReconciliationMatchListResponse,
+    ReconciliationAISummaryResponse,
     ManualMatchCreate,
     ManualMatchCreateResponse,
     DeleteMatchResponse,
@@ -460,6 +461,20 @@ export async function deleteMatch(
     });
 }
 
+/**
+ * Fetch AI-generated analysis for unmatched statement lines from the most
+ * recent reconciliation run (or a specific job when jobId is provided).
+ */
+export async function getReconciliationAISummary(
+    statementId: number,
+    jobId?: number,
+): Promise<ReconciliationAISummaryResponse> {
+    const query = qs({ statement_id: statementId, job_id: jobId });
+    return request<ReconciliationAISummaryResponse>(
+        `/reconciliation/ai-summary${query}`,
+    );
+}
+
 // ── Account Members (Tier 5) ────────────────────────────────────────
 
 export async function lookupUserByEmail(email: string): Promise<UserRead> {
@@ -586,6 +601,7 @@ export const apiClient = {
     listMatchesByLine,
     createManualMatch,
     deleteMatch,
+    getReconciliationAISummary,
     // Admin users
     listAdminUsers,
     createAdminUser,

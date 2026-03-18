@@ -24,12 +24,16 @@ from app.models.receipt import Receipt
 from app.models.reconciliation import ReconciliationMatch
 from app.models.statement import BankStatement, BankStatementLine
 from app.models.user import User
+from app.models.reconciliation_summary import ReconciliationLineSummary
 from app.schemas.reconciliation import (
+    CandidateReceiptDetail,
     ManualMatchCreate,
     ManualMatchUpdate,
     MatchLineSummary,
     MatchReceiptSummary,
+    ReconciliationAISummaryResponse,
     ReconciliationConfig,
+    ReconciliationLineSummaryRead,
     ReconciliationMatchDetail,
     ReconciliationMatchListResponse,
     ReconciliationMatchRead,
@@ -40,6 +44,7 @@ from app.schemas.reconciliation import (
     ReconciliationStartResponse,
     ReconciliationSummary,
 )
+from app.services.reconciliation_analysis import analyze_and_store
 from app.services.reconciliation_matching import (
     MatchConfig,
     _print_match_summary,
@@ -179,6 +184,15 @@ async def _run_matching(
         for line in lines:
             await db.refresh(line, ["matches"])
         _print_match_summary(lines, receipts, config=match_config)
+
+        await analyze_and_store(
+            job=job,
+            lines=lines,
+            receipts=receipts,
+            db=db,
+            config=match_config,
+            statement_id=statement_id,
+        )
 
         job.status = JobStatus.completed
     except Exception:
@@ -708,3 +722,97 @@ async def update_match(
 
     await db.commit()
     return {"updated": match_id}
+
+
+# ---------------------------------------------------------------------------
+# GET /reconciliation/ai-summary  –  AI analysis of unmatched lines
+# ---------------------------------------------------------------------------
+
+
+@router.get("/ai-summary", response_model=ReconciliationAISummaryResponse)
+async def get_ai_summary(
+    statement_id: int = Query(..., description="Statement to fetch AI summaries for"),
+    job_id: Optional[int] = Query(
+        default=None, description="Specific job ID; omit to use the latest"
+    ),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    Return AI-generated analysis for unmatched statement lines.
+
+    When ``job_id`` is omitted, the most recent reconciliation job that
+    produced summaries for this statement is used automatically.
+    """
+    stmt_obj = await db.get(BankStatement, statement_id)
+    if stmt_obj is None:
+        raise HTTPException(status_code=404, detail="Statement not found")
+    await require_account_access(stmt_obj.account_id, current_user, db)
+
+    if job_id is None:
+        latest_job_q = (
+            select(ReconciliationLineSummary.job_id)
+            .where(ReconciliationLineSummary.statement_id == statement_id)
+            .order_by(ReconciliationLineSummary.created_at.desc())
+            .limit(1)
+        )
+        result = await db.execute(latest_job_q)
+        row = result.scalar_one_or_none()
+        if row is None:
+            return ReconciliationAISummaryResponse(
+                job_id=0,
+                statement_id=statement_id,
+                summaries=[],
+                total=0,
+            )
+        job_id = row
+
+    summaries_q = (
+        select(ReconciliationLineSummary)
+        .where(
+            ReconciliationLineSummary.job_id == job_id,
+            ReconciliationLineSummary.statement_id == statement_id,
+        )
+        .options(joinedload(ReconciliationLineSummary.line))
+        .order_by(ReconciliationLineSummary.id)
+    )
+    result = await db.execute(summaries_q)
+    rows = list(result.unique().scalars().all())
+
+    summaries_out: list[ReconciliationLineSummaryRead] = []
+    for row in rows:
+        line = row.line
+        top_candidates_raw = row.top_candidates or []
+        candidates = [
+            CandidateReceiptDetail(
+                receipt_id=c.get("receipt_id", 0),
+                vendor=c.get("vendor", ""),
+                charged_amount=c.get("charged_amount", "0"),
+                billing_date=c.get("billing_date", "1970-01-01"),
+                confidence=c.get("confidence", 0),
+                rejection_reasons=c.get("rejection_reasons", []),
+            )
+            for c in top_candidates_raw
+        ]
+        summaries_out.append(
+            ReconciliationLineSummaryRead(
+                id=row.id,
+                job_id=row.job_id,
+                line_id=row.line_id,
+                statement_id=row.statement_id,
+                line_vendor=line.vendor if line else "",
+                line_charge=line.charge if line else 0,
+                line_date=line.transaction_date if line else "1970-01-01",
+                line_description=line.description if line else "",
+                top_candidates=candidates,
+                ai_analysis=row.ai_analysis or "Analysis unavailable.",
+                created_at=row.created_at,
+            )
+        )
+
+    return ReconciliationAISummaryResponse(
+        job_id=job_id,
+        statement_id=statement_id,
+        summaries=summaries_out,
+        total=len(summaries_out),
+    )

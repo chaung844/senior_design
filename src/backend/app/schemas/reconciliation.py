@@ -172,3 +172,40 @@ class ManualMatchUpdate(BaseModel):
     """Switch which receipt(s) are linked (e.g. single match: one receipt_id)."""
 
     receipt_id: int
+
+
+# --- AI-generated reconciliation summary (per-line analysis) ---
+
+
+class CandidateReceiptDetail(BaseModel):
+    receipt_id: int
+    vendor: str
+    charged_amount: Decimal
+    billing_date: date
+    confidence: int
+    rejection_reasons: list[str]
+
+
+class ReconciliationLineSummaryRead(BaseModel):
+    """One unmatched line with AI analysis and top candidate receipts."""
+
+    id: int
+    job_id: int
+    line_id: int
+    statement_id: int
+    line_vendor: str
+    line_charge: Decimal
+    line_date: date
+    line_description: str
+    top_candidates: list[CandidateReceiptDetail]
+    ai_analysis: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class ReconciliationAISummaryResponse(BaseModel):
+    job_id: int
+    statement_id: int
+    summaries: list[ReconciliationLineSummaryRead]
+    total: int

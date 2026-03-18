@@ -383,3 +383,35 @@ export interface ReconciliationStartResponse {
     status: string;
     summary: ReconciliationSummary;
 }
+
+// ── Reconciliation AI Summary ────────────────────────────────────────
+
+export interface CandidateReceiptDetail {
+    receipt_id: number;
+    vendor: string;
+    charged_amount: string;
+    billing_date: string;
+    confidence: number;
+    rejection_reasons: string[];
+}
+
+export interface ReconciliationLineSummaryRead {
+    id: number;
+    job_id: number;
+    line_id: number;
+    statement_id: number;
+    line_vendor: string;
+    line_charge: string;
+    line_date: string;
+    line_description: string;
+    top_candidates: CandidateReceiptDetail[];
+    ai_analysis: string;
+    created_at: string;
+}
+
+export interface ReconciliationAISummaryResponse {
+    job_id: number;
+    statement_id: number;
+    summaries: ReconciliationLineSummaryRead[];
+    total: number;
+}

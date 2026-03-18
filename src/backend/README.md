@@ -343,6 +343,12 @@ Reconciliation is responsible for triggering the run and for manual match CRUD. 
     - Body: `{ account_id: int, statement_id: int }` — both fields required. `statement_id` scopes the run to a single bank statement; all lines and receipts belonging to the account are used otherwise.
     - Logic: Creates a `Job` record (type `reconciliation`), runs exact-match algorithm (amount + date), writes `ReconciliationMatch` rows, updates `Job.status` (`pending → reconciling → completed/failed`), and stamps `match_status` on matched lines and receipts as `perfect_matched`.
     - Returns: `201` with `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched } }`.
+- [x] `GET /reconciliation/ai-summary` — *(Authenticated)* AI-generated reconciliation summary for unmatched statement lines.
+    - Query params:
+        - `statement_id` (required) — bank statement in scope.
+        - `job_id` (optional) — specific reconciliation job; when omitted, the latest job that produced AI summaries for the statement is used.
+    - Logic: Reads `ReconciliationLineSummary` rows produced after reconciliation (one per unmatched line) and returns line metadata, top candidate receipts with scoring details, and a concise Bedrock-generated explanation of **why** each line could not be auto-matched.
+    - Returns: `{ job_id, statement_id, summaries: [...], total }` where each `summaries[i]` includes `{ line_id, vendor, charge, transaction_date, description, top_candidates, ai_analysis }`.
 - [x] `POST /reconciliation/jobs/{job_id}/run` — *(Authenticated, CSRF)* **Legacy / re-run.** Re-trigger the matching algorithm on an existing reconciliation job. Prefer `/reconciliation/start` for new runs.
     - Body: `{ account_id?: int, statement_id?: int }` — both optional. When `account_id` is omitted the job is simply advanced to `reconciling` status without running the algorithm.
     - Returns: `202` with `{ job_id, status }` (no summary). Poll **`GET /jobs/{job_id}/status`** for current status.
@@ -467,6 +473,17 @@ Data layer models implemented so far:
 | `created_by` | `int` FK → users | |
 | `document_id` | `int` FK → documents | nullable, parsing jobs only |
 
+#### `ReconciliationLineSummary` model
+| Column | Type | Notes |
+|--------|------|-------|
+| `id` | `int` PK | Auto-increment |
+| `job_id` | `int` FK → jobs | Reconciliation job that produced this summary |
+| `line_id` | `int` FK → bank_statement_lines | Unmatched statement line in scope |
+| `statement_id` | `int` | Denormalized for fast filtering per statement |
+| `top_candidates` | `JSON` | Array of top candidate receipts with scoring metadata (amount/date/vendor, confidence, rejection reasons) |
+| `ai_analysis` | `str` | Short Bedrock-generated explanation of why the line could not be auto-matched |
+| `created_at` | `datetime` | When the summary was generated |
+
 #### Enums
 - `DocumentStatus`: `pending_upload`, `pending_processing`, `processing`, `parsed`, `failed`
 - `DocumentType`: `receipt`, `bank_statement`
@@ -476,7 +493,6 @@ Data layer models implemented so far:
 - `MatchStatus`: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`
 - `JobType`: `parsing`, `reconciliation`
 - `JobStatus`: `pending`, `processing`, `reconciling`, `completed`, `failed`
-
 ---
 
 ### SQS Message Types (Worker Handlers)

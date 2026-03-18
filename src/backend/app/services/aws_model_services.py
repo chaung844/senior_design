@@ -85,7 +85,11 @@ def _build_message(system_instruction_path, data_path=None, prompt=None):
 
 # ========= services =========
 def call_model(
-    model_id, system_instruction_path, data_path=None, prompt=None, usage_summary=None
+    model_id,
+    system_instruction_path,
+    data_path=None,
+    prompt=None,
+    usage_summary=None,
 ):
     """
     Call the model API with the given parameters.

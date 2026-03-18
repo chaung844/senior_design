@@ -98,6 +98,10 @@ class Settings(BaseSettings):
         default="safe/prompts/bankstatement_metadata_parsing_instructions.md",
         description="Relative path (under base_path) to system instruction file for parsing bank statement metadata",
     )
+    reconciliation_summary_instruction_path: str = Field(
+        default="safe/prompts/reconciliation_summary_instructions.md",
+        description="Relative path (under base_path) to system instruction file for summarizing reconciliation results",
+    )
 
     # ── Convenience helpers ───────────────────────────────────────────
     @property

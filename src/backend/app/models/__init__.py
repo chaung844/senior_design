@@ -7,6 +7,7 @@ from .account_book import AccountBook
 from .account_book_member import AccountBookMember
 from .job import Job
 from .reconciliation import ReconciliationMatch
+from .reconciliation_summary import ReconciliationLineSummary
 
 __all__ = [
     "Base",
@@ -20,4 +21,5 @@ __all__ = [
     "AccountBookMember",
     "Job",
     "ReconciliationMatch",
+    "ReconciliationLineSummary",
 ]

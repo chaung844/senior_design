@@ -64,6 +64,7 @@ export function useStartReconciliation() {
             qc.invalidateQueries({ queryKey: statementKeys.all });
             qc.invalidateQueries({ queryKey: receiptKeys.all });
             qc.invalidateQueries({ queryKey: documentKeys.all });
+            qc.invalidateQueries({ queryKey: reconciliationKeys.all });
         },
     });
 

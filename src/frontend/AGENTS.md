@@ -92,7 +92,7 @@ src/frontend/
 │   ├── app-sidebar.tsx        # Main sidebar navigation with account/year/month tree
 │   ├── dashboard-account.tsx  # Account-level dashboard view
 │   ├── dashboard-year.tsx     # Year-level dashboard view
-│   ├── dashboard-month.tsx    # Month-level dashboard with transaction table
+│   ├── dashboard-month.tsx    # Month-level dashboard with transaction table + AI reconciliation summary tab
 │   ├── data-table.tsx         # Generic data table (sorting, filtering, pagination; TanStack Table)
 │   ├── upload-dialog.tsx      # File upload dialog (drag-and-drop); statement/ledger uploads
 │   ├── job-status-float.tsx   # Floating bottom-right widget showing active parsing/reconciliation job progress
@@ -108,7 +108,8 @@ src/frontend/
 │   ├── use-tracked-document-upload.ts # Wrapper around use-document-upload that auto-registers parsing jobs with the job status tracker
 │   ├── use-job-status.ts      # Job status polling hook and context (TrackedJob state, trackJob/dismissJob API)
 │   ├── use-admin-users.ts     # React Query hooks for admin user management
-│   └── use-account-members.ts # React Query hooks for account book members
+│   ├── use-account-members.ts # React Query hooks for account book members
+│   └── use-reconciliation-summary.ts # React Query hook for AI reconciliation summary
 ├── lib/
 │   ├── utils.ts            # `cn()` class merging utility
 │   ├── api.ts              # API client — all backend endpoint functions (auth, documents, receipts, statements, accounts, admin)
@@ -225,7 +226,7 @@ import { ArrowLeft01Icon } from "@hugeicons/core-free-icons";
 - Target: `ES2017`.
 - All files must be `.ts` or `.tsx`.
 - Prefer explicit types for component props (use `interface` for props).
-- **API response types** (snake_case, matching backend Pydantic schemas) are in `lib/types.ts`: `AccountBookRead`, `BankStatementRead`, `BankStatementLineRead`, `ReceiptRead`, `DocumentRead`, `JobStatusResponse`, `JobStatusDocument`, plus enums like `MatchStatus`, `DocumentStatus`, `JobStatus`, `JobType`. The `Token` type has been removed — login no longer returns a token body.
+- **API response types** (snake_case, matching backend Pydantic schemas) are in `lib/types.ts`: `AccountBookRead`, `BankStatementRead`, `BankStatementLineRead`, `ReceiptRead`, `DocumentRead`, `JobStatusResponse`, `JobStatusDocument`, `ReconciliationAISummaryResponse`, `ReconciliationLineSummaryRead`, `CandidateReceiptDetail`, plus enums like `MatchStatus`, `DocumentStatus`, `JobStatus`, `JobType`. The `Token` type has been removed — login no longer returns a token body.
 - **Frontend view types** (camelCase, used by dashboard components) are in `lib/domain-types.ts`: `Transaction`, `MonthData`, `YearData`, `AccountBook`, `Selection`, `SelectionLevel`.
 - **Transforms** in `lib/transforms.ts` convert API types → view types. Dashboard components consume view types only.
 
@@ -292,7 +293,7 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 | **Tier 1** — Upload | `POST /documents/upload-url`, `POST /documents/{id}/confirm-upload` | `useDocumentUpload()`, `useTrackedDocumentUpload()` |
 | **Tier 2** — Documents | `GET /documents`, `GET /documents/{id}`, `DELETE /documents/{id}` | `useDocuments()`, `useDocument()`, `useDeleteDocument()` |
 | **Tier 2** — Jobs | `GET /jobs/{id}/status` | `useJobStatus()` (polling via `getJobStatus()` in `lib/api.ts`) |
-| **Tier 4** — Reconciliation | `POST /reconciliation/start` | `useStartReconciliation()` (`hooks/use-reconciliation.ts`) |
+| **Tier 4** — Reconciliation | `POST /reconciliation/start`, `GET /reconciliation/ai-summary` | `useStartReconciliation()` (`hooks/use-reconciliation.ts`), `useReconciliationAISummary()` (`hooks/use-reconciliation-summary.ts`) |
 | **Tier 3** — Receipts | `GET /receipts`, `GET /receipts/{id}`, `PATCH /receipts/{id}`, `GET /receipts/{id}/file-url` | `useReceipts()`, `useReceipt()`, `useUpdateReceipt()`, `useReceiptFileUrl()` |
 | **Tier 3** — Statements | `GET /statements`, `GET /statements/{id}`, `GET /statements/{id}/lines`, `PATCH /statements/{id}/lines/{lineId}`, `GET /statements/{id}/file-url` | `useStatements()`, `useStatement()`, `useStatementLines()`, `useUpdateStatementLine()`, `useStatementFileUrl()` |
 | **Tier 5** — Accounts | `POST /accounts`, `GET /accounts`, `GET /accounts/{id}`, `PATCH /accounts/{id}`, `DELETE /accounts/{id}` | `useAccounts()`, `useAccount()`, `useAccountBook()`, `useAccountBooks()`, `useCreateAccount()`, `useUpdateAccount()`, `useDeleteAccount()` |
@@ -316,6 +317,7 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 | **Match Status**     | Enum: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`. Present on both statement lines and receipts. |
 | **Reconciliation**   | Process of matching bank statement transactions to receipts/internal records. |
 | **Selection**        | Navigation state tracking current account, year, month, and drill level. |
+| **Reconciliation AI Summary** | AI-generated analysis of unmatched statement lines from the latest reconciliation run. Backend: `ReconciliationAISummaryResponse` / `ReconciliationLineSummaryRead`. |
 
 ---
 

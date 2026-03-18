@@ -59,7 +59,14 @@ import { useDeleteDocument } from "@/hooks/use-documents";
 import { useStatement } from "@/hooks/use-statements";
 import { StatementLineDialog } from "@/components/statement-line-dialog";
 import { ReconciliationRunDialog } from "@/components/reconciliation-run-dialog";
-import type { BankStatementLineRead, ReconciliationConfig } from "@/lib/types";
+import { useReconciliationAISummary } from "@/hooks/use-reconciliation-summary";
+import { Skeleton } from "@/components/ui/skeleton";
+import type {
+    BankStatementLineRead,
+    ReconciliationConfig,
+    ReconciliationLineSummaryRead,
+    CandidateReceiptDetail,
+} from "@/lib/types";
 
 interface DashboardMonthProps {
     account: AccountBook;
@@ -603,6 +610,194 @@ function makeVendorColumns(
     ];
 }
 
+// ---------------------------------------------------------------------------
+// Reconciliation Summary sub-component
+// ---------------------------------------------------------------------------
+
+interface ReconciliationSummaryTabProps {
+    summaries: ReconciliationLineSummaryRead[];
+    loading: boolean;
+    currency: string;
+}
+
+function ReconciliationSummaryTab({
+    summaries,
+    loading,
+    currency,
+}: ReconciliationSummaryTabProps) {
+    if (loading) {
+        return (
+            <div className="flex flex-col gap-4">
+                {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="border border-border rounded-none p-4 space-y-3">
+                        <Skeleton className="h-4 w-2/3" />
+                        <Skeleton className="h-3 w-1/2" />
+                        <Skeleton className="h-16 w-full" />
+                    </div>
+                ))}
+            </div>
+        );
+    }
+
+    if (summaries.length === 0) {
+        return (
+            <div className="flex flex-col items-center justify-center h-40 text-center gap-2">
+                <HugeiconsIcon
+                    icon={Analytics02Icon}
+                    strokeWidth={1.5}
+                    className="size-8 text-muted-foreground/50"
+                />
+                <p className="text-sm text-muted-foreground">
+                    No reconciliation summary available.
+                </p>
+                <p className="text-xs text-muted-foreground/70">
+                    Run reconciliation to generate AI analysis of unmatched
+                    transactions.
+                </p>
+            </div>
+        );
+    }
+
+    return (
+        <div className="flex flex-col gap-3">
+            <div>
+                <h3 className="text-sm font-medium">
+                    AI Analysis of Unmatched Transactions
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                    {formatNumber(summaries.length)} unmatched{" "}
+                    {summaries.length === 1 ? "line" : "lines"} analyzed
+                </p>
+            </div>
+
+            <div className="flex flex-col gap-3">
+                {summaries.map((item) => (
+                    <SummaryCard
+                        key={item.id}
+                        item={item}
+                        currency={currency}
+                    />
+                ))}
+            </div>
+        </div>
+    );
+}
+
+function SummaryCard({
+    item,
+    currency,
+}: {
+    item: ReconciliationLineSummaryRead;
+    currency: string;
+}) {
+    return (
+        <div className="border border-border rounded-none p-4 space-y-3">
+            {/* Line header */}
+            <div className="flex items-start justify-between gap-4">
+                <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                        <Badge
+                            variant="outline"
+                            className="text-[9px] h-5 px-1.5 text-muted-foreground shrink-0"
+                        >
+                            <HugeiconsIcon
+                                icon={Alert02Icon}
+                                strokeWidth={2}
+                                className="size-2.5 mr-0.5 mb-0.5"
+                            />
+                            Unmatched
+                        </Badge>
+                        <span className="text-xs font-medium truncate">
+                            {item.line_vendor}
+                        </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground truncate">
+                        {item.line_description}
+                    </p>
+                </div>
+                <div className="text-right shrink-0">
+                    <div className="text-sm font-mono tabular-nums font-medium">
+                        {formatCurrency(Number(item.line_charge), currency)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground font-mono tabular-nums">
+                        {item.line_date}
+                    </div>
+                </div>
+            </div>
+
+            {/* AI analysis */}
+            <div className="bg-muted/50 border border-border/50 rounded-none px-3 py-2.5">
+                <div className="flex items-center gap-1.5 mb-1.5">
+                    <HugeiconsIcon
+                        icon={Analytics02Icon}
+                        strokeWidth={2}
+                        className="size-3 text-primary"
+                    />
+                    <span className="text-[10px] font-medium text-primary uppercase tracking-wider">
+                        AI Analysis
+                    </span>
+                </div>
+                <p className="text-xs leading-relaxed text-foreground/90">
+                    {item.ai_analysis}
+                </p>
+            </div>
+
+            {/* Top candidates */}
+            {item.top_candidates.length > 0 && (
+                <div>
+                    <p className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-2">
+                        Top Candidate Receipts
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                        {item.top_candidates.map((c) => (
+                            <CandidateRow
+                                key={c.receipt_id}
+                                candidate={c}
+                                currency={currency}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+        </div>
+    );
+}
+
+function CandidateRow({
+    candidate,
+    currency,
+}: {
+    candidate: CandidateReceiptDetail;
+    currency: string;
+}) {
+    return (
+        <div className="flex items-center gap-3 px-2 py-1.5 bg-background border border-border/40 rounded-none text-[11px]">
+            <div className="flex-1 min-w-0">
+                <span className="font-medium">{candidate.vendor}</span>
+                <span className="text-muted-foreground ml-2">
+                    {candidate.billing_date}
+                </span>
+            </div>
+            <div className="font-mono tabular-nums shrink-0">
+                {formatCurrency(Number(candidate.charged_amount), currency)}
+            </div>
+            <Badge
+                variant={
+                    candidate.confidence >= 60 ? "secondary" : "outline"
+                }
+                className="text-[9px] h-4 px-1 tabular-nums shrink-0"
+            >
+                {candidate.confidence}%
+            </Badge>
+            {candidate.rejection_reasons.length > 0 && (
+                <span className="text-[10px] text-muted-foreground truncate max-w-48">
+                    {candidate.rejection_reasons[0]}
+                </span>
+            )}
+        </div>
+    );
+}
+
 export function DashboardMonth({
     account,
     yearValue,
@@ -691,6 +886,12 @@ export function DashboardMonth({
 
     // Fetch the raw statement record so the edit dialog has document_id, etc.
     const { data: statementDetail } = useStatement(statementId ?? null);
+
+    // AI reconciliation summary for unmatched lines
+    const {
+        data: aiSummaryData,
+        isLoading: aiSummaryLoading,
+    } = useReconciliationAISummary(statementId ?? null);
 
     const filteredTransactions = React.useMemo(() => {
         let txns = monthData.transactions;
@@ -1271,6 +1472,14 @@ export function DashboardMonth({
                             </span>
                         )}
                     </TabsTrigger>
+                    <TabsTrigger value="ai-summary">
+                        Reconciliation Summary
+                        {(aiSummaryData?.total ?? 0) > 0 && (
+                            <span className="ml-1">
+                                ({formatNumber(aiSummaryData!.total)})
+                            </span>
+                        )}
+                    </TabsTrigger>
                 </TabsList>
 
                 <TabsContent
@@ -1323,6 +1532,14 @@ export function DashboardMonth({
                             }}
                         />
                     )}
+                </TabsContent>
+
+                <TabsContent value="ai-summary" className="flex flex-col mt-3">
+                    <ReconciliationSummaryTab
+                        summaries={aiSummaryData?.summaries ?? []}
+                        loading={aiSummaryLoading}
+                        currency={account.currency}
+                    />
                 </TabsContent>
             </Tabs>
 
