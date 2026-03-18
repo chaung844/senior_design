@@ -29,10 +29,15 @@ See matching_flow.md for full details.
 import re
 from dataclasses import dataclass, field
 from itertools import combinations
+from typing import SupportsFloat
 
 from rapidfuzz import fuzz
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import get_settings
 from app.enums import MatchStatus
 from app.models.job import Job
 from app.models.receipt import Receipt
@@ -41,11 +46,10 @@ from app.models.statement import BankStatementLine
 from app.models.user import User
 
 # ---------------------------------------------------------------------------
-# Default thresholds (used as MatchConfig defaults — do not reference directly
+# Default thresholds from config.py (used as MatchConfig defaults — do not reference directly
 # inside the algorithm; use the config object instead).
 # ---------------------------------------------------------------------------
-CONFIDENCE_THRESHOLD = 80
-BUNDLE_VENDOR_THRESHOLD = 60
+settings = get_settings()
 
 
 @dataclass
@@ -73,10 +77,14 @@ class MatchConfig:
         grows as O(n^k), so values above 5 can be slow on large datasets.
     """
 
-    max_date_window: int = field(default=14)
-    confidence_threshold: int = field(default=CONFIDENCE_THRESHOLD)
-    bundle_vendor_threshold: int = field(default=BUNDLE_VENDOR_THRESHOLD)
-    max_bundle_size: int = field(default=4)
+    max_date_window: int = field(default=settings.reconciliation_max_date_window)
+    confidence_threshold: int = field(
+        default=settings.reconciliation_confidence_threshold
+    )
+    bundle_vendor_threshold: int = field(
+        default=settings.reconciliation_bundle_vendor_threshold
+    )
+    max_bundle_size: int = field(default=settings.reconciliation_max_bundle_size)
 
     def __post_init__(self) -> None:
         if not (1 <= self.max_date_window <= 90):
@@ -96,6 +104,10 @@ VENDOR_ALIASES = {
 
 
 def _clean_vendor(v: str) -> str:
+    """
+    Clean a vendor name by stripping whitespace, converting to lowercase,
+    removing domain suffixes, and applying vendor aliases.
+    """
     v = v.strip().lower()
     v = re.sub(r"\.(com|net|org|io|co).*$", "", v)
     v = VENDOR_ALIASES.get(v, v)
@@ -103,12 +115,20 @@ def _clean_vendor(v: str) -> str:
 
 
 def _vendor_similarity(lv: str, rv: str) -> float:
+    """
+    Calculate the similarity between two vendor names using fuzzy matching.
+    Returns a float between 0 and 100.
+    """
     if not lv or not rv:
         return 0.0
     return max(fuzz.WRatio(lv, rv), fuzz.partial_ratio(lv, rv))
 
 
 def _vendor_score(line: BankStatementLine, receipt: Receipt) -> int:
+    """
+    Calculate a vendor score based on the similarity of the cleaned vendor names.
+    Returns an integer between 0 and 30.
+    """
     lv = _clean_vendor(
         line.vendor or ""
     )  # compare with line desciption for more context
@@ -121,6 +141,10 @@ def _date_score(
     receipt: Receipt,
     config: MatchConfig | None = None,
 ) -> int:
+    """
+    Calculate a date score based on the absolute difference between transaction date and billing date.
+    Returns an integer between 0 and 30.
+    """
     max_window = config.max_date_window if config is not None else 14
     days_diff = abs((line.transaction_date - receipt.billing_date).days)
     if days_diff == 0:
@@ -140,6 +164,10 @@ def calculate_confidence(
     receipt: Receipt,
     config: MatchConfig | None = None,
 ) -> int:
+    """
+    Calculate a confidence score for a potential match between a bank statement line and a receipt.
+    Returns an integer between 0 and 100.
+    """
     if line.charge != receipt.charged_amount:
         return 0
     return 40 + _vendor_score(line, receipt) + _date_score(line, receipt, config)
@@ -343,40 +371,238 @@ def _print_match_summary(
     lines: list[BankStatementLine],
     receipts: list[Receipt],
 ) -> None:
+    console = Console()
+    cfg = MatchConfig()
     receipt_map = {r.receipt_id: r for r in receipts}
+    unmatched_receipts = [
+        r for r in receipts if r.match_status == MatchStatus.unmatched
+    ]
 
-    print("\n" + "=" * 100)
-    print(f"{'RECONCILIATION MATCH SUMMARY':^100}")
-    print("=" * 100)
-    print(
-        f"{'LINE ID':<8} {'STATUS':<18} {'AMOUNT':>10} {'DATE':<12} {'VENDOR':<30} {'MATCHED RECEIPTS'}"
+    def _money(value: SupportsFloat) -> str:
+        return f"{float(value):.2f}"
+
+    def _date_days_diff(line: BankStatementLine, receipt: Receipt) -> int:
+        return abs((line.transaction_date - receipt.billing_date).days)
+
+    console.print()
+    console.rule("[bold cyan]RECONCILIATION MATCH DECISION TRACE[/bold cyan]")
+    console.print(
+        "Config:"
+        f" max_date_window={cfg.max_date_window},"
+        f" confidence_threshold={cfg.confidence_threshold},"
+        f" bundle_vendor_threshold={cfg.bundle_vendor_threshold},"
+        f" max_bundle_size={cfg.max_bundle_size}",
+        style="dim",
     )
-    print("-" * 100)
+    console.rule(style="dim")
 
     for line in lines:
-        status = line.match_status.value
-        print(
-            f"{line.line_id:<8} {status:<18} {float(line.charge):>10.2f} "
-            f"{str(line.transaction_date):<12} {(line.vendor or '')[:28]:<30}"
+        line_vendor = _clean_vendor(line.vendor or "")
+        is_matched = line.match_status != MatchStatus.unmatched
+        header_style = "green" if is_matched else "red"
+        status_badge = (
+            "[bold green]MATCHED[/bold green]"
+            if is_matched
+            else "[bold red]UNMATCHED[/bold red]"
+        )
+        console.print(
+            f"[Line {line.line_id}] status={line.match_status.value}, "
+            f"amount={_money(line.charge)}, date={line.transaction_date}, "
+            f"vendor='{line.vendor or ''}' (normalized='{line_vendor}') "
+            f"{status_badge}",
+            style=header_style,
         )
 
-        # find matched receipts via the matches relationship
-        for match in line.matches or []:
-            receipt = receipt_map.get(match.receipt_id)
-            if not receipt:
-                continue
-            confidence = calculate_confidence(line, receipt)
-            print(
-                f"{'':8} {'-> receipt ' + str(receipt.receipt_id):<18} "
-                f"{float(receipt.charged_amount):>10.2f} "
-                f"{str(receipt.billing_date):<12} "
-                f"{(receipt.vendor or '')[:28]:<30} "
-                f"confidence={confidence}"
+        matched = line.matches or []
+        if matched:
+            console.print(
+                f"  -> MATCHED via {len(matched)} link(s):", style="bold green"
             )
+            for match in matched:
+                receipt = receipt_map.get(match.receipt_id)
+                if not receipt:
+                    console.print(
+                        f"     - receipt_id={match.receipt_id}: missing from loaded receipt list",
+                        style="yellow",
+                    )
+                    continue
 
-    print("=" * 100)
+                amount_exact = line.charge == receipt.charged_amount
+                vendor_similarity = _vendor_similarity(
+                    _clean_vendor(line.vendor or ""),
+                    _clean_vendor(receipt.vendor or ""),
+                )
+                vendor_score = _vendor_score(line, receipt)
+                days_diff = _date_days_diff(line, receipt)
+                date_score = _date_score(line, receipt, cfg)
+                confidence = calculate_confidence(line, receipt, cfg)
+                amount_score = 40 if amount_exact else 0
+
+                if match.match_type == MatchStatus.bundle_matched:
+                    reasoning = (
+                        "bundle rule accepted this relation "
+                        "(exact sum across grouped items + vendor threshold checks)"
+                    )
+                elif (
+                    amount_exact
+                    and line.transaction_date == receipt.billing_date
+                    and match.match_type == MatchStatus.perfect_matched
+                ):
+                    reasoning = "pass 1a accepted (exact amount + exact date)"
+                else:
+                    reasoning = (
+                        "pass 1b accepted "
+                        f"(confidence={confidence} >= {cfg.confidence_threshold})"
+                    )
+
+                detail = Table(show_header=False, box=None, pad_edge=False)
+                detail.add_column("k", style="cyan", width=14)
+                detail.add_column("v")
+                detail.add_row(
+                    "receipt",
+                    f"{receipt.receipt_id} ({match.match_type.value}) "
+                    f"amount={_money(receipt.charged_amount)} date={receipt.billing_date}",
+                )
+                detail.add_row("vendor", f"{receipt.vendor or ''}")
+                detail.add_row("reason", reasoning)
+                detail.add_row(
+                    "components",
+                    f"amount_exact={amount_exact} (score={amount_score}), "
+                    f"vendor_similarity={vendor_similarity:.1f} (score={vendor_score}), "
+                    f"date_diff_days={days_diff} (score={date_score}), "
+                    f"total_confidence={confidence}",
+                )
+                console.print(Panel(detail, border_style="green"))
+        else:
+            console.print(
+                "  -> UNMATCHED: no persisted match relation for this line.",
+                style="bold red",
+            )
+            same_amount_candidates = [
+                r for r in unmatched_receipts if r.charged_amount == line.charge
+            ]
+            if not same_amount_candidates:
+                console.print(
+                    "     rejection: no currently-unmatched receipt has the exact same amount "
+                    f"({_money(line.charge)}).",
+                    style="red",
+                )
+            else:
+                console.print(
+                    f"     amount gate: found {len(same_amount_candidates)} "
+                    "currently-unmatched receipt(s) with same amount.",
+                    style="yellow",
+                )
+
+            # Show top candidate receipts with explicit rejection reasons.
+            candidate_rows = []
+            for receipt in unmatched_receipts:
+                vendor_similarity = _vendor_similarity(
+                    _clean_vendor(line.vendor or ""),
+                    _clean_vendor(receipt.vendor or ""),
+                )
+                vendor_score = _vendor_score(line, receipt)
+                days_diff = _date_days_diff(line, receipt)
+                date_score = _date_score(line, receipt, cfg)
+                amount_exact = line.charge == receipt.charged_amount
+                amount_score = 40 if amount_exact else 0
+                confidence = calculate_confidence(line, receipt, cfg)
+                candidate_rows.append(
+                    (
+                        confidence,
+                        amount_exact,
+                        vendor_similarity,
+                        days_diff,
+                        receipt,
+                        amount_score,
+                        vendor_score,
+                        date_score,
+                    )
+                )
+
+            candidate_rows.sort(
+                key=lambda row: (row[0], row[2], -row[3]),
+                reverse=True,
+            )
+            top_candidates = candidate_rows[:3]
+
+            if not top_candidates:
+                console.print(
+                    "     rejection: no unmatched receipts left to evaluate.",
+                    style="red",
+                )
+            else:
+                console.print("     top candidate rejections:", style="bold red")
+                for (
+                    confidence,
+                    amount_exact,
+                    vendor_similarity,
+                    days_diff,
+                    receipt,
+                    amount_score,
+                    vendor_score,
+                    date_score,
+                ) in top_candidates:
+                    rejection_reasons = []
+                    if not amount_exact:
+                        rejection_reasons.append("amount mismatch (fails pass 1)")
+                    if days_diff > cfg.max_date_window:
+                        rejection_reasons.append(
+                            f"date outside max_date_window ({days_diff} > {cfg.max_date_window})"
+                        )
+                    if confidence < cfg.confidence_threshold:
+                        rejection_reasons.append(
+                            f"confidence below threshold ({confidence} < {cfg.confidence_threshold})"
+                        )
+                    if (
+                        amount_exact
+                        and days_diff <= cfg.max_date_window
+                        and confidence < cfg.confidence_threshold
+                        and vendor_similarity < cfg.bundle_vendor_threshold
+                    ):
+                        rejection_reasons.append(
+                            "weak vendor similarity; unlikely to satisfy bundle vendor checks"
+                        )
+                    if not rejection_reasons:
+                        rejection_reasons.append(
+                            "candidate not chosen by global ordering / already consumed by another relation"
+                        )
+
+                    detail = Table(show_header=False, box=None, pad_edge=False)
+                    detail.add_column("k", style="magenta", width=14)
+                    detail.add_column("v")
+                    detail.add_row(
+                        "receipt",
+                        f"{receipt.receipt_id} amount={_money(receipt.charged_amount)} "
+                        f"date={receipt.billing_date}",
+                    )
+                    detail.add_row("vendor", f"{receipt.vendor or ''}")
+                    detail.add_row(
+                        "components",
+                        f"amount_exact={amount_exact} (score={amount_score}), "
+                        f"vendor_similarity={vendor_similarity:.1f} (score={vendor_score}), "
+                        f"date_diff_days={days_diff} (score={date_score}), "
+                        f"total_confidence={confidence}",
+                    )
+                    detail.add_row("rejection", ", ".join(rejection_reasons))
+                    console.print(Panel(detail, border_style="red"))
+
+        console.rule(style="dim")
+
     unmatched_lines = sum(1 for ln in lines if ln.match_status == MatchStatus.unmatched)
-    print(
-        f"  Lines: {len(lines)} total | {len(lines) - unmatched_lines} matched | {unmatched_lines} unmatched"
+    matched_lines = len(lines) - unmatched_lines
+    unmatched_receipts_count = sum(
+        1 for r in receipts if r.match_status == MatchStatus.unmatched
     )
-    print("=" * 100 + "\n")
+    matched_receipts_count = len(receipts) - unmatched_receipts_count
+    totals_style = (
+        "bold yellow" if unmatched_lines or unmatched_receipts_count else "bold green"
+    )
+    console.print(
+        "Totals:"
+        f" lines={len(lines)} (matched={matched_lines}, unmatched={unmatched_lines}) |"
+        f" receipts={len(receipts)} (matched={matched_receipts_count}, unmatched={unmatched_receipts_count})",
+        style=totals_style,
+    )
+    console.rule(style="cyan")
+    console.print()

@@ -126,6 +126,24 @@ class Settings(BaseSettings):
         "Set COOKIE_SECURE=false explicitly for local HTTP development.",
     )
 
+    # ── Reconciliation matching configuration ──────────────────────────────────────────────
+    reconciliation_max_date_window: int = Field(
+        default=14,
+        description="Maximum number of days between a bank statement line and a receipt for a match",
+    )
+    reconciliation_confidence_threshold: int = Field(
+        default=80,
+        description="Confidence threshold for a 1:1 match",
+    )
+    reconciliation_bundle_vendor_threshold: int = Field(
+        default=60,
+        description="Confidence threshold for a bundle match",
+    )
+    reconciliation_max_bundle_size: int = Field(
+        default=4,
+        description="Maximum number of items in a bundle match",
+    )
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

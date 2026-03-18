@@ -28,6 +28,7 @@ dependencies = [
     "uvicorn>=0.40.0",
     "uvloop>=0.22.1",
     "rapidfuzz>=3.14.3",
+    "rich>=14.3.3",
 ]
 
 [tool.ruff.lint.per-file-ignores]
