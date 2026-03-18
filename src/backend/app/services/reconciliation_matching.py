@@ -130,7 +130,7 @@ def _vendor_score(line: BankStatementLine, receipt: Receipt) -> int:
     Returns an integer between 0 and 30.
     """
     lv = _clean_vendor(
-        line.vendor or ""
+        line.description or ""
     )  # compare with line desciption for more context
     rv = _clean_vendor(receipt.vendor or "")
     return round((_vendor_similarity(lv, rv) / 100) * 30)
