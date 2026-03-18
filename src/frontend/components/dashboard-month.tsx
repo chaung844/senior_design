@@ -616,6 +616,7 @@ interface ReconciliationSummaryTabProps {
     summaries: ReconciliationLineSummaryRead[];
     loading: boolean;
     currency: string;
+    rawLines: BankStatementLineRead[];
     onLineClick: (lineId: number) => void;
     onReceiptClick: (receiptId: number) => void;
 }
@@ -624,6 +625,7 @@ function ReconciliationSummaryTab({
     summaries,
     loading,
     currency,
+    rawLines,
     onLineClick,
     onReceiptClick,
 }: ReconciliationSummaryTabProps) {
@@ -663,6 +665,29 @@ function ReconciliationSummaryTab({
         );
     }
 
+    const sortedItems = React.useMemo(() => {
+        const liveStatusByLineId = new Map<number, BankStatementLineRead["match_status"]>();
+        for (const l of rawLines) {
+            liveStatusByLineId.set(l.line_id, l.match_status);
+        }
+
+        return summaries
+            .map((summary, idx) => {
+                const status = liveStatusByLineId.get(summary.line_id);
+                const isMatched = status ? status !== "unmatched" : false;
+                return { summary, isMatched, idx };
+            })
+            .sort((a, b) => {
+                if (a.isMatched !== b.isMatched) return Number(a.isMatched) - Number(b.isMatched);
+                return a.idx - b.idx;
+            });
+    }, [summaries, rawLines]);
+
+    const stillUnmatched = React.useMemo(
+        () => sortedItems.filter((i) => !i.isMatched).length,
+        [sortedItems],
+    );
+
     return (
         <div className="flex flex-col gap-3">
             <div>
@@ -670,16 +695,21 @@ function ReconciliationSummaryTab({
                     AI Analysis of Unmatched Transactions
                 </h3>
                 <p className="text-xs text-muted-foreground">
-                    {formatNumber(summaries.length)} unmatched{" "}
-                    {summaries.length === 1 ? "line" : "lines"} analyzed
+                    {formatNumber(summaries.length)}{" "}
+                    {summaries.length === 1 ? "line" : "lines"} analyzed{" "}
+                    {" · "}
+                    <span className={stillUnmatched > 0 ? "text-destructive" : "text-primary"}>
+                        {formatNumber(stillUnmatched)} still unmatched
+                    </span>
                 </p>
             </div>
 
             <div className="flex flex-col gap-3">
-                {summaries.map((item) => (
+                {sortedItems.map(({ summary, isMatched }) => (
                     <SummaryCard
-                        key={item.id}
-                        item={item}
+                        key={summary.id}
+                        item={summary}
+                        isMatched={isMatched}
                         currency={currency}
                         onLineClick={onLineClick}
                         onReceiptClick={onReceiptClick}
@@ -692,35 +722,54 @@ function ReconciliationSummaryTab({
 
 function SummaryCard({
     item,
+    isMatched,
     currency,
     onLineClick,
     onReceiptClick,
 }: {
     item: ReconciliationLineSummaryRead;
+    isMatched: boolean;
     currency: string;
     onLineClick: (lineId: number) => void;
     onReceiptClick: (receiptId: number) => void;
 }) {
     return (
         <div
-            className="border border-border rounded-none p-4 space-y-3 cursor-pointer hover:bg-muted/30 transition-colors"
+            className={
+                "border border-border rounded-none p-4 space-y-3 cursor-pointer hover:bg-muted/30 transition-colors " +
+                (isMatched ? "opacity-60" : "")
+            }
             onClick={() => onLineClick(item.line_id)}
         >
             {/* Line header */}
             <div className="flex items-start justify-between gap-4">
                 <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 mt-1">
-                        <Badge
-                            variant="outline"
-                            className="text-[10px] h-5 px-1.5 text-muted-foreground shrink-0"
-                        >
-                            <HugeiconsIcon
-                                icon={Alert02Icon}
-                                strokeWidth={2}
-                                className="size-2.5 mr-0.5 mb-0.5"
-                            />
-                            Unmatched
-                        </Badge>
+                        {isMatched ? (
+                            <Badge
+                                variant="default"
+                                className="text-[10px] h-5 px-1.5 shrink-0"
+                            >
+                                <HugeiconsIcon
+                                    icon={Tick02Icon}
+                                    strokeWidth={2.5}
+                                    className="size-2.5 mr-0.5"
+                                />
+                                Matched
+                            </Badge>
+                        ) : (
+                            <Badge
+                                variant="outline"
+                                className="text-[10px] h-5 px-1.5 text-muted-foreground shrink-0"
+                            >
+                                <HugeiconsIcon
+                                    icon={Alert02Icon}
+                                    strokeWidth={2}
+                                    className="size-2.5 mr-0.5 mb-0.5"
+                                />
+                                Unmatched
+                            </Badge>
+                        )}
                         <span className="text-xs font-medium truncate">
                             {item.line_description}
                         </span>
@@ -1573,6 +1622,7 @@ export function DashboardMonth({
                         summaries={aiSummaryData?.summaries ?? []}
                         loading={aiSummaryLoading}
                         currency={account.currency}
+                        rawLines={rawLines}
                         onLineClick={handleSummaryCardClick}
                         onReceiptClick={handleCandidateReceiptClick}
                     />
