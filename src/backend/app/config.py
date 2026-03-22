@@ -147,6 +147,13 @@ class Settings(BaseSettings):
         default=4,
         description="Maximum number of items in a bundle match",
     )
+    reconciliation_min_vendor_similarity_pass1b: int = Field(
+        default=0,
+        ge=0,
+        le=100,
+        description="Minimum raw vendor similarity (0–100) for a 1:1 fuzzy match; "
+        "0 disables. Use with confidence_threshold to reduce false positives.",
+    )
 
 
 @lru_cache(maxsize=1)

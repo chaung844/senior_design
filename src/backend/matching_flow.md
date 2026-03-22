@@ -2,7 +2,7 @@
 
 ## Signals
 - amount - hard gate, must match exactly
-- vendor - fuzzy (RapidFuzz max(WRatio, partial_ratio), domain-suffix stripped, alias normalized), contributes to confidence
+- vendor - fuzzy (RapidFuzz max(WRatio, partial_ratio), domain-suffix stripped, alias normalized), contributes to confidence. For each **statement line**, similarity is the **best** score against the receipt vendor using **both** the line’s normalized `vendor` field and full `description` (same rule for Pass 1 and bundle passes).
 - date - proximity window, contributes to confidence
 
 ## Confidence
@@ -17,26 +17,24 @@
     + 4–9 days -> +10
     + 10–14 days -> +5
     + >14 days -> +0
-- propose match if >= 80
+- propose match if >= configured `confidence_threshold` (default 80), and optionally `min_vendor_similarity_pass1b` (default 0 = off)
 
 ## Steps
 - **Pass 1: 1-to-1**
     - Pass 1a: exact amount + exact date
-        1. for every (line, receipt) pair, check amount and date match exactly
-        2. if match found, assign immediately -> perfect_matched
+        1. build the bipartite graph of eligible (line, receipt) pairs
+        2. assign a **maximum-cardinality** matching (scipy `linear_sum_assignment`) -> `perfect_matched`
     - Pass 1b: exact amount + fuzzy vendor + date proximity
         1. for remaining unmatched pairs, compute confidence score
-        2. sort all pairs by score descending
-        3. greedy assign if score >= 80 -> perfect_matched
+        2. on pairs with score >= threshold (and vendor floor if set), assign a **maximum total confidence** one-to-one matching via the same assignment solver -> `perfect_matched`
 - **Pass 2: many lines -> 1 receipt**
     1. take remaining unmatched lines and receipts
     2. for each unmatched receipt:
-        + find combinations of 2-4 lines where charge sum equals receipt amount exactly
-        + all lines in combination must have max(WRatio, partial_ratio) >= 60 against receipt vendor
-        + if found, create matches -> bundle_matched, mark all as used
+        + among combinations of 2–`max_bundle_size` lines whose charges sum to the receipt amount exactly, require each line’s unified vendor similarity to the receipt to be >= `bundle_vendor_threshold`
+        + if several subsets qualify, pick the one with **highest average** fuzzy similarity, then **highest minimum** similarity, then lexicographically smallest sorted line ids (deterministic)
+        + create matches -> `bundle_matched`, mark all as used
 - **Pass 3: many receipts -> 1 line**
     1. take remaining unmatched lines and receipts
     2. for each unmatched line:
-        + find combinations of 2-4 receipts where charge sum equals line charge exactly
-        + all receipts in combination must have max(WRatio, partial_ratio) >= 60 against line vendor
-        + if found, create matches -> bundle_matched, mark all as used
+        + same as Pass 2, but receipts are combined to match the line amount; similarity is unified line-vs-each-receipt vendor; tie-break uses receipt ids
+        + if found, create matches -> `bundle_matched`, mark all as used
