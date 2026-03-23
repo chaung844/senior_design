@@ -40,6 +40,9 @@ testpaths = ["tests"]
 # Ignore "F401" (unused imports) in all files inside the alembic folder
 "alembic/env.py" = ["F401"]
 "alembic/versions/*" = ["F401"]
+# Logging must be configured before remaining imports (Rich replaces root handlers).
+"app/main.py" = ["E402"]
+"app/worker/main.py" = ["E402"]
 
 [dependency-groups]
 dev = [

@@ -2,13 +2,21 @@ import logging
 import time
 from contextlib import asynccontextmanager
 
+from app.config import get_settings
+from app.logging_setup import configure_rich_logging
+
+_settings = get_settings()
+configure_rich_logging(
+    level=logging.DEBUG if _settings.debug else logging.INFO,
+    debug=_settings.debug,
+)
+
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from sqlalchemy import text
 
-from app.config import get_settings
 from app.database import engine
 from app.routers import (
     accounts,
@@ -24,7 +32,7 @@ from app.utils.limiter import limiter as _limiter
 
 logger = logging.getLogger("matcha.access")
 
-settings = get_settings()
+settings = _settings
 
 
 # ---------------------------------------------------------------------------
@@ -61,15 +69,7 @@ async def log_requests(request: Request, call_next) -> Response:
     start = time.perf_counter()
     response: Response = await call_next(request)
     duration_ms = (time.perf_counter() - start) * 1000
-
-    logger.info(
-        "%s %s -> %d (%.1f ms)",
-        request.method,
-        request.url.path,
-        response.status_code,
-        duration_ms,
-    )
-    # Expose timing in a header so it is visible in browser dev-tools too.
+    # Access lines come from uvicorn.access (Rich via root); avoid duplicating here.
     response.headers["X-Response-Time-Ms"] = f"{duration_ms:.1f}"
     return response
 

@@ -22,6 +22,7 @@ src/backend/
 ├── app/                        # Main application source code
 │   ├── __init__.py
 │   ├── main.py                 # App entry point (FastAPI instance)
+│   ├── logging_setup.py        # Shared Rich console logging (API + worker)
 │   ├── config.py               # Server configuration file by Pydantic
 │   ├── models/                 # Database models
 │   │   └── __init__.py
@@ -88,6 +89,22 @@ uv run uvicorn app.main:app --reload --loop uvloop --http httptools
 ```bash
  uv run python -m app.worker.main
 ```
+
+---
+
+## Logging
+
+The API process and the SQS worker both use **[Rich](https://rich.readthedocs.io/)** for colorized, readable console logs. Shared setup lives in `app/logging_setup.py` (`configure_rich_logging`).
+
+**Behavior**
+
+- **Log level:** `INFO` by default. Set **`DEBUG=true`** in `.env` (see `app/config.py`) for `DEBUG` logging, richer exception tracebacks (locals), and `sqlalchemy.engine` at `DEBUG` (alongside SQLAlchemy `echo` when debugging).
+- **Uvicorn:** On startup, Uvicorn attaches its own plain-text handlers to the `uvicorn`, `uvicorn.error`, and `uvicorn.access` loggers with `propagate=False`. After installing a single Rich handler on the root logger, those handlers are cleared and propagation is re-enabled so you do not get duplicate plain + Rich lines.
+- **HTTP requests:** Per-request lines come from **`uvicorn.access`** (Rich). The HTTP middleware still adds an **`X-Response-Time-Ms`** response header; it does not log a second access line for the same request.
+- **Containers / non-TTY:** Rich disables color when there is no TTY. To force color in Docker or log collectors, set **`FORCE_COLOR=1`**. **`NO_COLOR`** is respected when you want plain output.
+
+The **`seed.py`** script uses standard `logging` configuration, not `configure_rich_logging`. Alembic continues to use `alembic.ini` for migration logging.
+
 ---
 
 ## Notes

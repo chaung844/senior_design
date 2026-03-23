@@ -4,6 +4,15 @@ import logging
 import signal
 from typing import Any, Dict
 
+from app.config import get_settings
+from app.logging_setup import configure_rich_logging
+
+_settings = get_settings()
+configure_rich_logging(
+    level=logging.DEBUG if _settings.debug else logging.INFO,
+    debug=_settings.debug,
+)
+
 from sqlalchemy.exc import DBAPIError, OperationalError
 
 from app.database import AsyncSessionLocal, engine
@@ -17,10 +26,6 @@ from app.worker.handlers import (
     handle_reconciliation,
 )
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-)
 logger = logging.getLogger("sqs_worker")
 
 HANDLER_REGISTRY: Dict[str, Any] = {
