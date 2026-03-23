@@ -32,6 +32,7 @@ class UserLogin(BaseModel):
 class UserRead(UserBase):
     user_id: int
     is_active: bool
+    created_by_user_id: int | None = None
     created_at: datetime
     updated_at: datetime
     model_config = ConfigDict(from_attributes=True)

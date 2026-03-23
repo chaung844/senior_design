@@ -20,6 +20,10 @@ router = APIRouter(prefix="/admin/users", tags=["admin"])
 async def list_users(
     role: Optional[UserRole] = Query(default=None),
     is_active: Optional[bool] = Query(default=None),
+    provisioned_by_me: bool = Query(
+        default=False,
+        description="When true, only users created by the current developer (created_by_user_id).",
+    ),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
     db: AsyncSession = Depends(get_db),
@@ -30,6 +34,8 @@ async def list_users(
         filters.append(User.role == role)
     if is_active is not None:
         filters.append(User.is_active == is_active)
+    if provisioned_by_me:
+        filters.append(User.created_by_user_id == current_user.user_id)
 
     total = (
         (
@@ -82,11 +88,12 @@ async def create_user(
         email=body.email,
         password_hash=password_hash,
         role=body.role,
+        created_by_user_id=current_user.user_id,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
-    return user
+    return UserRead.model_validate(user)
 
 
 @router.get("/{user_id}", response_model=UserRead)

@@ -60,28 +60,25 @@ USERS_TO_SEED = [
         "role": UserRole.developer,
     },
     {
-        "name": "Dev Two",
-        "email": "dev2@example.com",
-        "password": "passworddev2!",
-        "role": UserRole.developer,
-    },
-    {
         "name": "Admin One",
         "email": "admin1@example.com",
         "password": "passwordadmin1!",
         "role": UserRole.admin,
+        "created_by_email": "dev1@example.com",
     },
     {
         "name": "Admin Two",
         "email": "admin2@example.com",
         "password": "passwordadmin2!",
         "role": UserRole.admin,
+        "created_by_email": "dev1@example.com",
     },
     {
         "name": "Viewer One",
         "email": "viewer1@example.com",
         "password": "passwordviewer1!",
         "role": UserRole.viewer,
+        "created_by_email": "dev1@example.com",
     },
 ]
 
@@ -99,18 +96,37 @@ async def seed_users(session) -> dict[str, User]:
             user_map[data["email"]] = existing
             continue
 
+        created_by_email = data.get("created_by_email")
+        created_by_id = None
+        if created_by_email:
+            creator = user_map.get(created_by_email)
+            if not creator:
+                result_c = await session.execute(
+                    select(User).where(User.email == created_by_email)
+                )
+                creator = result_c.scalar_one_or_none()
+            if creator:
+                created_by_id = creator.user_id
+            else:
+                logger.warning(
+                    "Creator %s not found for %s; created_by_user_id left unset.",
+                    created_by_email,
+                    data["email"],
+                )
+
         user = User(
             name=data["name"],
             email=data["email"],
             password_hash=hash_password(data["password"]),
             role=data["role"],
+            created_by_user_id=created_by_id,
         )
         session.add(user)
         new_count += 1
         user_map[data["email"]] = user
+        await session.flush()
 
     if new_count:
-        await session.flush()
         logger.info("Added %d new users.", new_count)
     else:
         logger.info("No new users to add.")

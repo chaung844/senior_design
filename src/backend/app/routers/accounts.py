@@ -106,18 +106,41 @@ async def create_account_book(
 async def list_account_books(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    provisioned_tenant_only: bool = Query(
+        default=False,
+        description=(
+            "Developer only: when true, only account books owned by this developer "
+            "or by users they provisioned (created_by_user_id)."
+        ),
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
 ):
+    if provisioned_tenant_only:
+        if current_user.role != UserRole.developer:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="provisioned_tenant_only is restricted to developer users",
+            )
+
     accessible_ids = await get_accessible_account_ids(current_user, db)
 
     if not accessible_ids:
         return AccountBookListResponse(accounts=[], total=0, offset=offset, limit=limit)
 
-    base_filter = (
+    base_filter: list = [
         AccountBook.account_id.in_(accessible_ids),
         AccountBook.deleted_at.is_(None),
-    )
+    ]
+
+    if provisioned_tenant_only:
+        prov = await db.execute(
+            select(User.user_id).where(
+                User.created_by_user_id == current_user.user_id
+            )
+        )
+        tenant_owner_ids = set(prov.scalars().all()) | {current_user.user_id}
+        base_filter.append(AccountBook.user_id.in_(tenant_owner_ids))
 
     total = (
         await db.execute(
