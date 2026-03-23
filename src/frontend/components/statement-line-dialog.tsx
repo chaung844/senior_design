@@ -66,6 +66,8 @@ interface StatementLineDialogProps {
     currency: string;
     /** Which receipts filter pill should be active on open. */
     initialReceiptFilter?: "all" | "unmatched" | "matched";
+    /** When true, line edits and manual matching are disabled (viewer). */
+    readOnly?: boolean;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
@@ -162,6 +164,7 @@ interface LineEditPaneProps {
     statementId: number;
     currency: string;
     onSaved: () => void;
+    readOnly?: boolean;
 }
 
 function LineEditPane({
@@ -169,6 +172,7 @@ function LineEditPane({
     statementId,
     currency,
     onSaved,
+    readOnly = false,
 }: LineEditPaneProps) {
     const updateMutation = useUpdateStatementLine();
 
@@ -211,6 +215,7 @@ function LineEditPane({
     }
 
     function handleSave() {
+        if (readOnly) return;
         setError(null);
         const body: BankStatementLineUpdate = {};
         if (vendor !== line.vendor) body.vendor = vendor;
@@ -247,7 +252,7 @@ function LineEditPane({
         );
     }
 
-    const isBusy = updateMutation.isPending;
+    const isBusy = updateMutation.isPending || readOnly;
     const isDebit = line.charge > 0;
 
     return (
@@ -487,28 +492,38 @@ function LineEditPane({
             <Separator />
 
             <div className="px-4 py-3 flex items-center justify-end gap-2">
-                <DialogClose asChild>
-                    <Button variant="outline" size="sm" disabled={isBusy}>
-                        Cancel
-                    </Button>
-                </DialogClose>
-                <Button
-                    size="sm"
-                    onClick={handleSave}
-                    disabled={!isDirty || isBusy}
-                >
-                    {isBusy ? (
-                        <>
-                            <span
-                                className="size-3 border-2 border-current border-t-transparent rounded-full animate-spin"
-                                aria-hidden
-                            />
-                            Saving…
-                        </>
-                    ) : (
-                        "Save Changes"
-                    )}
-                </Button>
+                {readOnly ? (
+                    <DialogClose asChild>
+                        <Button variant="outline" size="sm">
+                            Close
+                        </Button>
+                    </DialogClose>
+                ) : (
+                    <>
+                        <DialogClose asChild>
+                            <Button variant="outline" size="sm" disabled={isBusy}>
+                                Cancel
+                            </Button>
+                        </DialogClose>
+                        <Button
+                            size="sm"
+                            onClick={handleSave}
+                            disabled={!isDirty || isBusy}
+                        >
+                            {updateMutation.isPending ? (
+                                <>
+                                    <span
+                                        className="size-3 border-2 border-current border-t-transparent rounded-full animate-spin"
+                                        aria-hidden
+                                    />
+                                    Saving…
+                                </>
+                            ) : (
+                                "Save Changes"
+                            )}
+                        </Button>
+                    </>
+                )}
             </div>
         </div>
     );
@@ -526,6 +541,7 @@ interface ReceiptCardProps {
     currency: string;
     onLink: (receiptId: number) => void;
     onUnlink: (matchId: number) => void;
+    readOnly?: boolean;
 }
 
 function ReceiptCard({
@@ -537,6 +553,7 @@ function ReceiptCard({
     currency,
     onLink,
     onUnlink,
+    readOnly = false,
 }: ReceiptCardProps) {
     const isLinkedToThisLine = matchForThisLine !== undefined;
     const isLinkedElsewhere =
@@ -626,72 +643,74 @@ function ReceiptCard({
             )}
 
             {/* Action button */}
-            <div className="pt-0.5 flex flex-col gap-1">
-                {isLinkedToThisLine ? (
-                    <Button
-                        variant="outline"
-                        size="xs"
-                        className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
-                        disabled={isUnlinking}
-                        onClick={() => onUnlink(matchForThisLine.match_id)}
-                    >
-                        {isUnlinking ? (
-                            <span
-                                className="size-3 border-[1.5px] border-current border-t-transparent rounded-full animate-spin"
-                                aria-hidden
-                            />
-                        ) : (
-                            <HugeiconsIcon
-                                icon={Delete02Icon}
-                                strokeWidth={2}
-                                className="size-3"
-                            />
-                        )}
-                        Remove Match
-                    </Button>
-                ) : (
-                    <Button
-                        variant="outline"
-                        size="xs"
-                        className={cn(
-                            "gap-1",
-                            canBundleLink &&
-                                "border-amber-400/60 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30",
-                        )}
-                        disabled={
-                            isLinking || (isLinkedElsewhere && !canBundleLink)
-                        }
-                        title={
-                            canBundleLink
-                                ? "Add to bundle — this receipt is already matched to another line"
-                                : isLinkedElsewhere
-                                  ? "Already matched to another line (line is not unmatched)"
-                                  : "Manually link this receipt to the transaction"
-                        }
-                        onClick={() => onLink(receipt.receipt_id)}
-                    >
-                        {isLinking ? (
-                            <span
-                                className="size-3 border-[1.5px] border-current border-t-transparent rounded-full animate-spin"
-                                aria-hidden
-                            />
-                        ) : (
-                            <HugeiconsIcon
-                                icon={ArrowDataTransferHorizontalIcon}
-                                strokeWidth={2}
-                                className="size-3"
-                            />
-                        )}
-                        {canBundleLink ? "Add to Bundle" : "Link Receipt"}
-                    </Button>
-                )}
-                {canBundleLink && (
-                    <p className="text-[10px] text-amber-600 dark:text-amber-400 leading-relaxed">
-                        Already matched elsewhere. Linking will create a bundle
-                        match.
-                    </p>
-                )}
-            </div>
+            {!readOnly && (
+                <div className="pt-0.5 flex flex-col gap-1">
+                    {isLinkedToThisLine ? (
+                        <Button
+                            variant="outline"
+                            size="xs"
+                            className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                            disabled={isUnlinking}
+                            onClick={() => onUnlink(matchForThisLine.match_id)}
+                        >
+                            {isUnlinking ? (
+                                <span
+                                    className="size-3 border-[1.5px] border-current border-t-transparent rounded-full animate-spin"
+                                    aria-hidden
+                                />
+                            ) : (
+                                <HugeiconsIcon
+                                    icon={Delete02Icon}
+                                    strokeWidth={2}
+                                    className="size-3"
+                                />
+                            )}
+                            Remove Match
+                        </Button>
+                    ) : (
+                        <Button
+                            variant="outline"
+                            size="xs"
+                            className={cn(
+                                "gap-1",
+                                canBundleLink &&
+                                    "border-amber-400/60 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30",
+                            )}
+                            disabled={
+                                isLinking || (isLinkedElsewhere && !canBundleLink)
+                            }
+                            title={
+                                canBundleLink
+                                    ? "Add to bundle — this receipt is already matched to another line"
+                                    : isLinkedElsewhere
+                                      ? "Already matched to another line (line is not unmatched)"
+                                      : "Manually link this receipt to the transaction"
+                            }
+                            onClick={() => onLink(receipt.receipt_id)}
+                        >
+                            {isLinking ? (
+                                <span
+                                    className="size-3 border-[1.5px] border-current border-t-transparent rounded-full animate-spin"
+                                    aria-hidden
+                                />
+                            ) : (
+                                <HugeiconsIcon
+                                    icon={ArrowDataTransferHorizontalIcon}
+                                    strokeWidth={2}
+                                    className="size-3"
+                                />
+                            )}
+                            {canBundleLink ? "Add to Bundle" : "Link Receipt"}
+                        </Button>
+                    )}
+                    {canBundleLink && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 leading-relaxed">
+                            Already matched elsewhere. Linking will create a
+                            bundle match.
+                        </p>
+                    )}
+                </div>
+            )}
         </div>
     );
 }
@@ -705,6 +724,7 @@ interface ReceiptMatchPaneProps {
     statementId: number;
     currency: string;
     initialReceiptFilter?: "all" | "unmatched" | "matched";
+    readOnly?: boolean;
 }
 
 function ReceiptMatchPane({
@@ -714,6 +734,7 @@ function ReceiptMatchPane({
     statementId,
     currency,
     initialReceiptFilter,
+    readOnly = false,
 }: ReceiptMatchPaneProps) {
     const [search, setSearch] = React.useState("");
     const [filterMode, setFilterMode] = React.useState<
@@ -745,6 +766,7 @@ function ReceiptMatchPane({
     >(null);
 
     async function handleLink(receiptId: number) {
+        if (readOnly) return;
         setLinkingReceiptId(receiptId);
         try {
             await createMatch.mutateAsync({
@@ -758,6 +780,7 @@ function ReceiptMatchPane({
     }
 
     async function handleUnlink(matchId: number) {
+        if (readOnly) return;
         setUnlinkingMatchId(matchId);
         try {
             await removeMatch.mutateAsync(matchId);
@@ -932,6 +955,7 @@ function ReceiptMatchPane({
                                 currency={currency}
                                 onLink={handleLink}
                                 onUnlink={handleUnlink}
+                                readOnly={readOnly}
                             />
                         ))
                     )}
@@ -950,6 +974,7 @@ export function StatementLineDialog({
     statementId,
     currency,
     initialReceiptFilter,
+    readOnly = false,
     open,
     onOpenChange,
 }: StatementLineDialogProps) {
@@ -978,7 +1003,9 @@ export function StatementLineDialog({
                         Statement Line — {line.vendor || line.description}
                     </DialogTitle>
                     <DialogDescription>
-                        Edit statement line details and manually match receipts.
+                        {readOnly
+                            ? "View statement line and related receipts."
+                            : "Edit statement line details and manually match receipts."}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -995,6 +1022,7 @@ export function StatementLineDialog({
                             line={line}
                             statementId={statementId}
                             currency={currency}
+                            readOnly={readOnly}
                             onSaved={() => onOpenChange(false)}
                         />
                     </div>
@@ -1004,7 +1032,7 @@ export function StatementLineDialog({
                         {/* Pane title */}
                         <div className="px-4 pt-3 pb-0 shrink-0">
                             <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                                Manual Matching
+                                {readOnly ? "Receipts" : "Manual Matching"}
                             </p>
                         </div>
                         <ReceiptMatchPane
@@ -1014,6 +1042,7 @@ export function StatementLineDialog({
                             statementId={statementId}
                             currency={currency}
                             initialReceiptFilter={initialReceiptFilter}
+                            readOnly={readOnly}
                         />
                     </div>
                 </div>

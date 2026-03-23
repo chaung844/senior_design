@@ -18,6 +18,8 @@ import { useAuth } from "@/lib/auth";
 import { pathToSelection, selectionToPath } from "@/lib/dashboard-routes";
 import { useAccountBooks } from "@/hooks/use-accounts";
 import { MONTH_LABELS } from "@/lib/constants";
+import { canCreateAccountBook, isViewerRole } from "@/lib/permissions";
+import { ViewerModeBanner } from "@/components/viewer-mode-banner";
 
 export default function DashboardLayout({
     children,
@@ -155,16 +157,20 @@ export default function DashboardLayout({
                         accountBooks={accountBooks ?? []}
                         selection={selection}
                         onSelectionChange={handleSelectionChange}
+                        canCreateAccount={canCreateAccountBook(user)}
                     />
                     <SidebarInset className="h-dvh overflow-y-auto">
-                        <header className="flex h-10 shrink-0 items-center gap-2 border-b px-4 sticky top-0 z-20 bg-background">
-                            <SidebarTrigger className="-ml-1" />
-                            <Separator
-                                orientation="vertical"
-                                className="mr-1 data-vertical:h-4 data-vertical:self-center"
-                            />
-                            {renderBreadcrumb()}
-                        </header>
+                        <div className="sticky top-0 z-20 shrink-0 bg-background">
+                            {isViewerRole(user) && <ViewerModeBanner />}
+                            <header className="flex h-10 items-center gap-2 border-b px-4">
+                                <SidebarTrigger className="-ml-1" />
+                                <Separator
+                                    orientation="vertical"
+                                    className="mr-1 data-vertical:h-4 data-vertical:self-center"
+                                />
+                                {renderBreadcrumb()}
+                            </header>
+                        </div>
                         <main className="p-6">
                             <ErrorBoundary>{children}</ErrorBoundary>
                         </main>

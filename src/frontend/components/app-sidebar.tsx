@@ -63,12 +63,15 @@ interface AppSidebarProps {
     accountBooks: AccountBook[];
     selection: Selection;
     onSelectionChange: (selection: Selection) => void;
+    /** When false, hide create-account (viewers). Prefer passing from layout. */
+    canCreateAccount: boolean;
 }
 
 export function AppSidebar({
     accountBooks,
     selection,
     onSelectionChange,
+    canCreateAccount,
 }: AppSidebarProps) {
     const router = useRouter();
     const { logout, user } = useAuth();
@@ -148,20 +151,22 @@ export function AppSidebar({
                         <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground block">
                             Account Book
                         </label>
-                        <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-xs"
-                            className="text-muted-foreground"
-                            onClick={() => setAddAccountOpen(true)}
-                            aria-label="Add account book"
-                        >
-                            <HugeiconsIcon
-                                icon={Add01Icon}
-                                strokeWidth={2}
-                                className="size-3"
-                            />
-                        </Button>
+                        {canCreateAccount && (
+                            <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                className="text-muted-foreground"
+                                onClick={() => setAddAccountOpen(true)}
+                                aria-label="Add account book"
+                            >
+                                <HugeiconsIcon
+                                    icon={Add01Icon}
+                                    strokeWidth={2}
+                                    className="size-3"
+                                />
+                            </Button>
+                        )}
                     </div>
                     <Select
                         value={selection.accountId}
@@ -192,18 +197,20 @@ export function AppSidebar({
                         </div>
                     )}
 
-                    <AddAccountDialog
-                        open={addAccountOpen}
-                        onOpenChange={setAddAccountOpen}
-                        onCreated={(accountId) => {
-                            onSelectionChange({
-                                accountId: String(accountId),
-                                year: null,
-                                month: null,
-                                level: "account",
-                            });
-                        }}
-                    />
+                    {canCreateAccount && (
+                        <AddAccountDialog
+                            open={addAccountOpen}
+                            onOpenChange={setAddAccountOpen}
+                            onCreated={(accountId) => {
+                                onSelectionChange({
+                                    accountId: String(accountId),
+                                    year: null,
+                                    month: null,
+                                    level: "account",
+                                });
+                            }}
+                        />
+                    )}
                 </div>
             </SidebarHeader>
 

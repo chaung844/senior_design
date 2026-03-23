@@ -96,6 +96,7 @@ src/frontend/
 │   ├── data-table.tsx         # Generic data table (sorting, filtering, pagination; TanStack Table)
 │   ├── upload-dialog.tsx      # File upload dialog (drag-and-drop); statement/ledger uploads
 │   ├── job-status-float.tsx   # Floating bottom-right widget showing active parsing/reconciliation job progress
+│   ├── viewer-mode-banner.tsx # Amber strip when user.role is viewer (read-only mode reminder)
 │   ├── component-example.tsx  # shadcn component showcase
 │   └── example.tsx            # Example wrapper utilities
 ├── hooks/
@@ -119,6 +120,7 @@ src/frontend/
 │   ├── query-client.tsx    # React Query QueryClientProvider wrapper
 │   ├── dashboard-routes.ts # Dashboard URL helpers (selectionToPath, parseDashboardPath)
 │   ├── constants.ts        # Shared constants (MONTH_LABELS, chart config, match rate badge variant)
+│   ├── permissions.ts      # Role helpers: isViewerRole, canMutateData, canCreateAccountBook
 │   ├── domain-types.ts     # Frontend domain types (AccountBook, YearData, MonthData, Transaction) and formatting utilities
 │   └── job-status-provider.tsx # JobStatusProvider context wrapper (wraps dashboard layout)
 ├── public/                 # Static assets (SVGs)
@@ -184,6 +186,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 - **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, receipts) with drag-and-drop and configurable accept types. Connected to the backend via `useTrackedDocumentUpload` hook (presigned S3 URLs + automatic job tracking). Automatically associates uploaded documents with the current `account_id`.
 - **AppSidebar** — Main sidebar navigation. Receives `accountBooks` (fetched via API) as a prop from the dashboard layout; renders an account selector and collapsible year/month tree. The logout button calls `await logout()` (async) before redirecting.
 - **JobStatusFloat** — Floating widget fixed to the bottom-right corner of the dashboard. Shows active parsing and reconciliation jobs with real-time progress polling (every 3 s via `GET /jobs/{id}/status`). Displays parsed-document count for parsing jobs and matching status for reconciliation jobs. Collapsible header with expand/collapse toggle; completed jobs auto-dismiss after 15 s. Rendered in `app/dashboard/layout.tsx` inside `JobStatusProvider`.
+- **ViewerModeBanner** — When `user.role === "viewer"`, an amber **View-only** strip appears at the top of the main dashboard column (above the breadcrumb bar) on every `/dashboard/*` route, reminding the user that uploads, edits, reconciliation, and manual matching are disabled; export and browsing remain available. Gated by `isViewerRole()` in `lib/permissions.ts`.
 
 ### Adding New shadcn/ui Components
 
@@ -272,6 +275,8 @@ const { user, loading, login, logout } = useAuth();
 | `loading` | `boolean` | `true` during the initial `/auth/me` session-check on mount. |
 | `login(email, password)` | `() => Promise<void>` | Calls the login endpoint and populates `user`. Throws on failure. |
 | `logout()` | `() => Promise<void>` | Calls the logout endpoint, clears `user`. Always `await` before navigating. |
+
+**Viewer role (`user.role === "viewer"`):** Application-level read-only users only see account books they are a member of (backend-enforced). The dashboard shows **ViewerModeBanner** and hides mutating actions (see `lib/permissions.ts`: `isViewerRole`, `canMutateData`); only browsing and export are offered in the UI.
 
 > **Note:** `ensureToken()` still exists in `lib/auth.tsx` as a deprecated no-op shim that returns `""`. It exists only to prevent compile errors during any ongoing migration. **Do not use it in new code.** Remove existing calls as you encounter them.
 

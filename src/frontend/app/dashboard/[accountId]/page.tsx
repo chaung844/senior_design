@@ -6,11 +6,13 @@ import { useAccountBook, useAccount } from "@/hooks/use-accounts";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { EmptyState } from "@/components/empty-state";
 import { useAuth } from "@/lib/auth";
+import { canMutateData } from "@/lib/permissions";
 
 export default function DashboardAccountPage() {
     const params = useParams();
     const router = useRouter();
     const { user } = useAuth();
+    const canMutate = canMutateData(user);
     const accountId = Number(params.accountId);
 
     const isValidId = !Number.isNaN(accountId);
@@ -32,6 +34,7 @@ export default function DashboardAccountPage() {
             account={account}
             rawAccount={rawAccount}
             userRole={user?.role}
+            canMutate={canMutate}
             onYearClick={(year) =>
                 router.push(`/dashboard/${accountId}/${year}`)
             }

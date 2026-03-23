@@ -7,11 +7,15 @@ import { useStatements, useStatement } from "@/hooks/use-statements";
 import { statementToMonthData } from "@/lib/transforms";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/lib/auth";
+import { canMutateData } from "@/lib/permissions";
 import * as React from "react";
 
 export default function DashboardMonthPage() {
     const params = useParams();
     const router = useRouter();
+    const { user } = useAuth();
+    const canMutate = canMutateData(user);
     const accountId = Number(params.accountId);
     const year = parseInt(params.year as string, 10);
     const month = parseInt(params.month as string, 10);
@@ -53,6 +57,7 @@ export default function DashboardMonthPage() {
             monthData={monthData}
             statementId={statement!.statement_id}
             rawLines={statementDetail!.lines}
+            canMutate={canMutate}
             onBack={() => router.push(`/dashboard/${accountId}/${year}`)}
         />
     );

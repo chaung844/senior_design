@@ -5,10 +5,14 @@ import { DashboardYear } from "@/components/dashboard-year";
 import { useAccountBook } from "@/hooks/use-accounts";
 import { DashboardSkeleton } from "@/components/dashboard-skeleton";
 import { EmptyState } from "@/components/empty-state";
+import { useAuth } from "@/lib/auth";
+import { canMutateData } from "@/lib/permissions";
 
 export default function DashboardYearPage() {
     const params = useParams();
     const router = useRouter();
+    const { user } = useAuth();
+    const canMutate = canMutateData(user);
     const accountId = Number(params.accountId);
     const year = parseInt(params.year as string, 10);
     const { data: account, isLoading } = useAccountBook(
@@ -26,6 +30,7 @@ export default function DashboardYearPage() {
         <DashboardYear
             account={account}
             yearData={yearData}
+            canMutate={canMutate}
             onMonthClick={(month) =>
                 router.push(`/dashboard/${accountId}/${year}/${month}`)
             }
