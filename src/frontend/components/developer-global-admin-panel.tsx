@@ -24,6 +24,7 @@ import {
     AlertDialogDescription,
     AlertDialogFooter,
     AlertDialogHeader,
+    AlertDialogMedia,
     AlertDialogTitle,
     AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
@@ -48,6 +49,7 @@ import {
     Tick02Icon,
     Alert02Icon,
     Delete02Icon,
+    UserRemove01Icon,
     Analytics02Icon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -93,12 +95,23 @@ function makeTenantColumns(): ColumnDef<UserRead, unknown>[] {
             cell: ({ row }) =>
                 row.original.is_active ? (
                     <Badge variant="default" className="text-[9px] h-5 px-1.5">
-                        <HugeiconsIcon icon={Tick02Icon} strokeWidth={2.5} className="size-2.5 mr-0.5" />
+                        <HugeiconsIcon
+                            icon={Tick02Icon}
+                            strokeWidth={2.5}
+                            className="size-2.5 mr-0.5"
+                        />
                         Active
                     </Badge>
                 ) : (
-                    <Badge variant="outline" className="text-[9px] h-5 px-1.5 text-muted-foreground">
-                        <HugeiconsIcon icon={Alert02Icon} strokeWidth={2} className="size-2.5 mr-0.5" />
+                    <Badge
+                        variant="outline"
+                        className="text-[9px] h-5 px-1.5 text-muted-foreground"
+                    >
+                        <HugeiconsIcon
+                            icon={Alert02Icon}
+                            strokeWidth={2}
+                            className="size-2.5 mr-0.5"
+                        />
                         Inactive
                     </Badge>
                 ),
@@ -109,7 +122,9 @@ function makeTenantColumns(): ColumnDef<UserRead, unknown>[] {
             size: 160,
             enableHiding: false,
             cell: ({ row }) => (
-                <span className="text-xs font-medium truncate block">{row.original.name}</span>
+                <span className="text-xs font-medium truncate block">
+                    {row.original.name}
+                </span>
             ),
         },
         {
@@ -129,7 +144,9 @@ function makeTenantColumns(): ColumnDef<UserRead, unknown>[] {
             enableSorting: false,
             cell: ({ row }) => (
                 <Badge
-                    variant={row.original.role === "admin" ? "secondary" : "outline"}
+                    variant={
+                        row.original.role === "admin" ? "secondary" : "outline"
+                    }
                     className="text-[9px] h-5 px-1.5 capitalize"
                 >
                     {row.original.role}
@@ -157,7 +174,9 @@ function makeAccountBookColumns(): ColumnDef<AccountBookRead, unknown>[] {
             size: 160,
             enableHiding: false,
             cell: ({ row }) => (
-                <span className="text-xs font-medium truncate block">{row.original.account_name}</span>
+                <span className="text-xs font-medium truncate block">
+                    {row.original.account_name}
+                </span>
             ),
         },
         {
@@ -165,7 +184,9 @@ function makeAccountBookColumns(): ColumnDef<AccountBookRead, unknown>[] {
             header: "Bank",
             size: 120,
             cell: ({ row }) => (
-                <span className="text-xs truncate block">{row.original.bank_name}</span>
+                <span className="text-xs truncate block">
+                    {row.original.bank_name}
+                </span>
             ),
         },
         {
@@ -184,7 +205,10 @@ function makeAccountBookColumns(): ColumnDef<AccountBookRead, unknown>[] {
             header: "Currency",
             size: 70,
             cell: ({ row }) => (
-                <Badge variant="outline" className="text-[9px] h-4 px-1 font-mono">
+                <Badge
+                    variant="outline"
+                    className="text-[9px] h-4 px-1 font-mono"
+                >
                     {row.original.currency}
                 </Badge>
             ),
@@ -194,8 +218,13 @@ function makeAccountBookColumns(): ColumnDef<AccountBookRead, unknown>[] {
             header: "Type",
             size: 100,
             cell: ({ row }) => (
-                <Badge variant="secondary" className="text-[9px] h-5 px-1.5 capitalize">
-                    {row.original.account_type === "credit_card" ? "Credit Card" : "Checking"}
+                <Badge
+                    variant="secondary"
+                    className="text-[9px] h-5 px-1.5 capitalize"
+                >
+                    {row.original.account_type === "credit_card"
+                        ? "Credit Card"
+                        : "Checking"}
                 </Badge>
             ),
         },
@@ -277,7 +306,9 @@ function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
             });
             onOpenChange(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to create user");
+            setError(
+                err instanceof Error ? err.message : "Failed to create user",
+            );
         }
     }
 
@@ -343,7 +374,9 @@ function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
                         </Select>
                     </div>
                     {error && (
-                        <div className="text-xs text-destructive" role="alert">{error}</div>
+                        <div className="text-xs text-destructive" role="alert">
+                            {error}
+                        </div>
                     )}
                     <DialogFooter>
                         <Button
@@ -354,7 +387,10 @@ function AddUserDialog({ open, onOpenChange }: AddUserDialogProps) {
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={!canSubmit || createUser.isPending}>
+                        <Button
+                            type="submit"
+                            disabled={!canSubmit || createUser.isPending}
+                        >
                             {createUser.isPending && <Spinner />}
                             Create User
                         </Button>
@@ -401,7 +437,8 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
         role !== user.role ||
         newPassword.length > 0;
 
-    const canSubmit = hasChanges && name.trim().length > 0 && email.trim().length > 0;
+    const canSubmit =
+        hasChanges && name.trim().length > 0 && email.trim().length > 0;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -421,7 +458,9 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
             });
             onOpenChange(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to update user");
+            setError(
+                err instanceof Error ? err.message : "Failed to update user",
+            );
         }
     }
 
@@ -431,7 +470,11 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
             await deactivateUser.mutateAsync(user.user_id);
             onOpenChange(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to deactivate user");
+            setError(
+                err instanceof Error
+                    ? err.message
+                    : "Failed to deactivate user",
+            );
         }
     }
 
@@ -442,7 +485,10 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
                     <DialogTitle>Edit user</DialogTitle>
                     <DialogDescription>
                         Update account details for{" "}
-                        <span className="font-medium text-foreground">{user.name}</span>.
+                        <span className="font-medium text-foreground">
+                            {user.name}
+                        </span>
+                        .
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -482,7 +528,9 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
                         </Select>
                     </div>
                     <div className="grid gap-2">
-                        <Label htmlFor="edit-password">New password (optional)</Label>
+                        <Label htmlFor="edit-password">
+                            New password (optional)
+                        </Label>
                         <Input
                             id="edit-password"
                             type="password"
@@ -494,49 +542,100 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
                         />
                     </div>
 
-                    <div className="flex items-center justify-between pt-1">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            <span>
-                                Status:{" "}
-                                <span className={cn("font-medium", user.is_active ? "text-primary" : "text-destructive")}>
-                                    {user.is_active ? "Active" : "Inactive"}
-                                </span>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground pt-1">
+                        <span>
+                            Status:{" "}
+                            <span
+                                className={cn(
+                                    "font-medium",
+                                    user.is_active
+                                        ? "text-primary"
+                                        : "text-destructive",
+                                )}
+                            >
+                                {user.is_active ? "Active" : "Inactive"}
                             </span>
-                        </div>
-                        {user.is_active && (
-                            <AlertDialog>
-                                <AlertDialogTrigger asChild>
-                                    <Button
-                                        type="button"
-                                        variant="outline"
-                                        size="sm"
-                                        className="text-destructive border-destructive/40 hover:bg-destructive/10 gap-1"
-                                    >
-                                        <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="size-3" />
-                                        Deactivate
-                                    </Button>
-                                </AlertDialogTrigger>
-                                <AlertDialogContent>
-                                    <AlertDialogHeader>
-                                        <AlertDialogTitle>Deactivate {user.name}?</AlertDialogTitle>
-                                        <AlertDialogDescription>
-                                            This will disable the user&apos;s access to the platform.
-                                            They will no longer be able to log in.
-                                        </AlertDialogDescription>
-                                    </AlertDialogHeader>
-                                    <AlertDialogFooter>
-                                        <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                        <AlertDialogAction variant="destructive" onClick={handleDeactivate}>
-                                            Deactivate
-                                        </AlertDialogAction>
-                                    </AlertDialogFooter>
-                                </AlertDialogContent>
-                            </AlertDialog>
-                        )}
+                        </span>
                     </div>
 
+                    {user.is_active && (
+                        <>
+                            <Separator />
+                            <section className="flex flex-col gap-3">
+                                <h3 className="text-xs font-medium text-destructive uppercase tracking-wide">
+                                    Danger Zone
+                                </h3>
+                                <div className="flex items-center justify-between rounded-none border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+                                    <div>
+                                        <p className="text-xs font-medium">
+                                            Deactivate user
+                                        </p>
+                                        <p className="text-[11px] text-muted-foreground mt-0.5">
+                                            This action disables their access to
+                                            the platform.
+                                        </p>
+                                    </div>
+                                    <AlertDialog>
+                                        <AlertDialogTrigger asChild>
+                                            <Button
+                                                type="button"
+                                                variant="destructive"
+                                                size="sm"
+                                                disabled={
+                                                    updateUser.isPending ||
+                                                    deactivateUser.isPending
+                                                }
+                                            >
+                                                <HugeiconsIcon
+                                                    icon={Delete02Icon}
+                                                    strokeWidth={2}
+                                                    className="size-3.5"
+                                                />
+                                                Deactivate
+                                            </Button>
+                                        </AlertDialogTrigger>
+                                        <AlertDialogContent size="sm">
+                                            <AlertDialogHeader>
+                                                <AlertDialogMedia className="bg-destructive/10 text-destructive">
+                                                    <HugeiconsIcon
+                                                        icon={Delete02Icon}
+                                                        strokeWidth={1.5}
+                                                    />
+                                                </AlertDialogMedia>
+                                                <AlertDialogTitle>
+                                                    Deactivate user?
+                                                </AlertDialogTitle>
+                                                <AlertDialogDescription>
+                                                    <strong>{user.name}</strong>{" "}
+                                                    will lose access to the
+                                                    platform. They will no
+                                                    longer be able to log in.
+                                                </AlertDialogDescription>
+                                            </AlertDialogHeader>
+                                            <AlertDialogFooter>
+                                                <AlertDialogCancel>
+                                                    Cancel
+                                                </AlertDialogCancel>
+                                                <AlertDialogAction
+                                                    variant="destructive"
+                                                    onClick={handleDeactivate}
+                                                >
+                                                    {deactivateUser.isPending
+                                                        ? "Deactivating…"
+                                                        : "Deactivate"}
+                                                </AlertDialogAction>
+                                            </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                    </AlertDialog>
+                                </div>
+                            </section>
+                        </>
+                    )}
+
                     {error && (
-                        <div className="text-xs text-destructive" role="alert">{error}</div>
+                        <div className="text-xs text-destructive" role="alert">
+                            {error}
+                        </div>
                     )}
                     <DialogFooter>
                         <Button
@@ -547,7 +646,10 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={!canSubmit || updateUser.isPending}>
+                        <Button
+                            type="submit"
+                            disabled={!canSubmit || updateUser.isPending}
+                        >
                             {updateUser.isPending && <Spinner />}
                             Save Changes
                         </Button>
@@ -555,6 +657,82 @@ function EditUserDialog({ user, open, onOpenChange }: EditUserDialogProps) {
                 </form>
             </DialogContent>
         </Dialog>
+    );
+}
+
+// ── Member badge (primary owner = AccountBook.user_id) ────────────────
+
+function MemberKindBadge({ isPrimary }: { isPrimary: boolean }) {
+    return (
+        <Badge
+            variant={isPrimary ? "default" : "outline"}
+            className="text-[10px] h-4 px-1.5"
+        >
+            {isPrimary ? "Owner" : "Member"}
+        </Badge>
+    );
+}
+
+// ── Remove member confirm ─────────────────────────────────────────────
+
+function RemoveMemberButton({
+    member,
+    accountId,
+    disabled,
+}: {
+    member: MemberRead;
+    accountId: number;
+    disabled?: boolean;
+}) {
+    const { mutate: removeMember, isPending } = useRemoveAccountMember();
+
+    return (
+        <AlertDialog>
+            <AlertDialogTrigger asChild>
+                <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    disabled={disabled || isPending}
+                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                >
+                    <HugeiconsIcon
+                        icon={UserRemove01Icon}
+                        strokeWidth={2}
+                        className="size-3.5"
+                    />
+                    <span className="sr-only">Remove {member.user_name}</span>
+                </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent size="sm">
+                <AlertDialogHeader>
+                    <AlertDialogMedia>
+                        <HugeiconsIcon
+                            icon={UserRemove01Icon}
+                            strokeWidth={1.5}
+                        />
+                    </AlertDialogMedia>
+                    <AlertDialogTitle>Remove member?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        <strong>{member.user_name}</strong> ({member.user_email}
+                        ) will lose access to this account book.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        variant="destructive"
+                        onClick={() =>
+                            removeMember({
+                                accountId,
+                                userId: member.user_id,
+                            })
+                        }
+                    >
+                        Remove
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     );
 }
 
@@ -566,11 +744,14 @@ interface EditAccountDialogProps {
     onOpenChange: (open: boolean) => void;
 }
 
-function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogProps) {
+function EditAccountDialog({
+    account,
+    open,
+    onOpenChange,
+}: EditAccountDialogProps) {
     const updateAccount = useUpdateAccount();
     const deleteAccount = useDeleteAccount();
     const addMember = useAddAccountMember();
-    const removeMember = useRemoveAccountMember();
     const { data: membersData, isLoading: membersLoading } = useAccountMembers(
         open && account ? account.account_id : null,
     );
@@ -579,7 +760,8 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
     const [bankName, setBankName] = React.useState("");
     const [currency, setCurrency] = React.useState("");
     const [accountNumber, setAccountNumber] = React.useState("");
-    const [accountType, setAccountType] = React.useState<AccountType>("credit_card");
+    const [accountType, setAccountType] =
+        React.useState<AccountType>("credit_card");
     const [memberEmail, setMemberEmail] = React.useState("");
     const [memberError, setMemberError] = React.useState<string | null>(null);
     const [error, setError] = React.useState<string | null>(null);
@@ -621,11 +803,16 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
         setError(null);
         try {
             const body: Record<string, string> = {};
-            if (accountName.trim() !== account.account_name) body.account_name = accountName.trim();
-            if (bankName.trim() !== account.bank_name) body.bank_name = bankName.trim();
-            if (currency.trim().toUpperCase() !== account.currency) body.currency = currency.trim().toUpperCase();
-            if (accountNumber.trim() !== account.account_number_last4) body.account_number_last4 = accountNumber.trim();
-            if (accountType !== account.account_type) body.account_type = accountType;
+            if (accountName.trim() !== account.account_name)
+                body.account_name = accountName.trim();
+            if (bankName.trim() !== account.bank_name)
+                body.bank_name = bankName.trim();
+            if (currency.trim().toUpperCase() !== account.currency)
+                body.currency = currency.trim().toUpperCase();
+            if (accountNumber.trim() !== account.account_number_last4)
+                body.account_number_last4 = accountNumber.trim();
+            if (accountType !== account.account_type)
+                body.account_type = accountType;
 
             await updateAccount.mutateAsync({
                 accountId: account.account_id,
@@ -633,7 +820,9 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
             });
             onOpenChange(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to update account");
+            setError(
+                err instanceof Error ? err.message : "Failed to update account",
+            );
         }
     }
 
@@ -641,26 +830,18 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
         if (!account || !memberEmail.trim()) return;
         setMemberError(null);
         try {
-            const found = await lookupUserByEmail(memberEmail.trim().toLowerCase());
+            const found = await lookupUserByEmail(
+                memberEmail.trim().toLowerCase(),
+            );
             await addMember.mutateAsync({
                 accountId: account.account_id,
                 body: { user_id: found.user_id },
             });
             setMemberEmail("");
         } catch (err) {
-            setMemberError(err instanceof Error ? err.message : "Failed to add member");
-        }
-    }
-
-    async function handleRemoveMember(userId: number) {
-        if (!account) return;
-        try {
-            await removeMember.mutateAsync({
-                accountId: account.account_id,
-                userId,
-            });
-        } catch (err) {
-            setMemberError(err instanceof Error ? err.message : "Failed to remove member");
+            setMemberError(
+                err instanceof Error ? err.message : "Failed to add member",
+            );
         }
     }
 
@@ -670,7 +851,9 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
             await deleteAccount.mutateAsync(account.account_id);
             onOpenChange(false);
         } catch (err) {
-            setError(err instanceof Error ? err.message : "Failed to delete account");
+            setError(
+                err instanceof Error ? err.message : "Failed to delete account",
+            );
         }
     }
 
@@ -681,7 +864,10 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
                     <DialogTitle>Edit account book</DialogTitle>
                     <DialogDescription>
                         Update details and manage membership for{" "}
-                        <span className="font-medium text-foreground">{account.account_name}</span>.
+                        <span className="font-medium text-foreground">
+                            {account.account_name}
+                        </span>
+                        .
                     </DialogDescription>
                 </DialogHeader>
 
@@ -721,7 +907,13 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
                                 inputMode="numeric"
                                 maxLength={4}
                                 value={accountNumber}
-                                onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                                onChange={(e) =>
+                                    setAccountNumber(
+                                        e.target.value
+                                            .replace(/\D/g, "")
+                                            .slice(0, 4),
+                                    )
+                                }
                                 disabled={updateAccount.isPending}
                             />
                         </div>
@@ -730,21 +922,29 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
                         <Label>Account type</Label>
                         <Select
                             value={accountType}
-                            onValueChange={(v) => setAccountType(v as AccountType)}
+                            onValueChange={(v) =>
+                                setAccountType(v as AccountType)
+                            }
                             disabled={updateAccount.isPending}
                         >
                             <SelectTrigger className="w-full">
                                 <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                                <SelectItem value="credit_card">Credit Card</SelectItem>
-                                <SelectItem value="checking">Checking</SelectItem>
+                                <SelectItem value="credit_card">
+                                    Credit Card
+                                </SelectItem>
+                                <SelectItem value="checking">
+                                    Checking
+                                </SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
                     {error && (
-                        <div className="text-xs text-destructive" role="alert">{error}</div>
+                        <div className="text-xs text-destructive" role="alert">
+                            {error}
+                        </div>
                     )}
 
                     <DialogFooter>
@@ -756,7 +956,10 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
                         >
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={!canSubmit || updateAccount.isPending}>
+                        <Button
+                            type="submit"
+                            disabled={!canSubmit || updateAccount.isPending}
+                        >
                             {updateAccount.isPending && <Spinner />}
                             Save Changes
                         </Button>
@@ -766,13 +969,10 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
                 <Separator />
 
                 {/* Members section */}
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-medium">Members</h4>
-                        <span className="text-[11px] text-muted-foreground tabular-nums">
-                            {members.length} member{members.length !== 1 ? "s" : ""}
-                        </span>
-                    </div>
+                <section className="flex flex-col gap-3">
+                    <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        Members
+                    </h3>
 
                     <div className="flex items-center gap-2">
                         <Input
@@ -790,88 +990,150 @@ function EditAccountDialog({ account, open, onOpenChange }: EditAccountDialogPro
                         <Button
                             type="button"
                             size="sm"
-                            disabled={!memberEmail.trim() || addMember.isPending}
+                            disabled={
+                                !memberEmail.trim() || addMember.isPending
+                            }
                             onClick={handleAddMember}
                         >
-                            {addMember.isPending ? <Spinner /> : <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="size-3.5" />}
+                            {addMember.isPending ? (
+                                <Spinner />
+                            ) : (
+                                <HugeiconsIcon
+                                    icon={Add01Icon}
+                                    strokeWidth={2}
+                                    className="size-3.5"
+                                />
+                            )}
                             Add
                         </Button>
                     </div>
 
                     {memberError && (
-                        <div className="text-xs text-destructive" role="alert">{memberError}</div>
+                        <div className="text-xs text-destructive" role="alert">
+                            {memberError}
+                        </div>
                     )}
 
                     {membersLoading ? (
-                        <div className="space-y-2">
-                            {Array.from({ length: 2 }).map((_, i) => (
-                                <Skeleton key={i} className="h-8 w-full" />
+                        <div className="flex flex-col gap-1.5">
+                            {[1, 2].map((i) => (
+                                <div
+                                    key={i}
+                                    className="h-9 rounded-none bg-muted animate-pulse"
+                                />
                             ))}
                         </div>
                     ) : members.length === 0 ? (
-                        <p className="text-xs text-muted-foreground py-2">No members yet.</p>
+                        <p className="text-xs text-muted-foreground">
+                            No members yet.
+                        </p>
                     ) : (
-                        <div className="space-y-1">
-                            {members.map((m) => (
-                                <div
-                                    key={m.id}
-                                    className="flex items-center justify-between gap-2 px-2 py-1.5 border border-border rounded-none text-xs"
-                                >
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <HugeiconsIcon icon={UserIcon} strokeWidth={2} className="size-3 text-muted-foreground shrink-0" />
-                                        <span className="font-medium truncate">{m.user_name}</span>
-                                        <span className="text-muted-foreground font-mono truncate">{m.user_email}</span>
-                                    </div>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon-xs"
-                                        className="text-muted-foreground hover:text-destructive shrink-0"
-                                        onClick={() => handleRemoveMember(m.user_id)}
-                                        disabled={removeMember.isPending}
+                        <div className="flex flex-col divide-y divide-border border border-border">
+                            {members.map((m) => {
+                                const isPrimaryOwner =
+                                    m.user_id === account.user_id;
+                                return (
+                                    <div
+                                        key={m.id}
+                                        className="flex items-center gap-2 px-2.5 py-2"
                                     >
-                                        <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="size-3" />
-                                    </Button>
-                                </div>
-                            ))}
+                                        <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                            <HugeiconsIcon
+                                                icon={UserIcon}
+                                                strokeWidth={2}
+                                                className="size-3"
+                                            />
+                                        </div>
+                                        <div className="flex flex-1 min-w-0 flex-col">
+                                            <span className="truncate text-xs font-medium leading-none">
+                                                {m.user_name}
+                                            </span>
+                                            <span className="truncate text-[10px] text-muted-foreground mt-0.5">
+                                                {m.user_email}
+                                            </span>
+                                        </div>
+                                        <MemberKindBadge
+                                            isPrimary={isPrimaryOwner}
+                                        />
+                                        {!isPrimaryOwner && (
+                                            <RemoveMemberButton
+                                                member={m}
+                                                accountId={account.account_id}
+                                            />
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     )}
-                </div>
+                </section>
 
                 <Separator />
 
-                {/* Danger zone */}
-                <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-destructive">Danger Zone</h4>
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                className="text-destructive border-destructive/40 hover:bg-destructive/10 gap-1"
-                            >
-                                <HugeiconsIcon icon={Delete02Icon} strokeWidth={2} className="size-3" />
-                                Delete Account Book
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>Delete {account.account_name}?</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will permanently delete the account book, all associated
-                                    statements, and documents. This action cannot be undone.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction variant="destructive" onClick={handleDelete}>
+                {/* Danger zone — mirrors edit-account-dialog */}
+                <section className="flex flex-col gap-3">
+                    <h3 className="text-xs font-medium text-destructive uppercase tracking-wide">
+                        Danger Zone
+                    </h3>
+                    <div className="flex items-center justify-between rounded-none border border-destructive/30 bg-destructive/5 px-3 py-2.5">
+                        <div>
+                            <p className="text-xs font-medium">
+                                Delete account book
+                            </p>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">
+                                This action is permanent and cannot be undone.
+                            </p>
+                        </div>
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    type="button"
+                                    variant="destructive"
+                                    size="sm"
+                                    disabled={deleteAccount.isPending}
+                                >
+                                    <HugeiconsIcon
+                                        icon={Delete02Icon}
+                                        strokeWidth={2}
+                                        className="size-3.5"
+                                    />
                                     Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                </div>
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent size="sm">
+                                <AlertDialogHeader>
+                                    <AlertDialogMedia className="bg-destructive/10 text-destructive">
+                                        <HugeiconsIcon
+                                            icon={Delete02Icon}
+                                            strokeWidth={1.5}
+                                        />
+                                    </AlertDialogMedia>
+                                    <AlertDialogTitle>
+                                        Delete account book?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        <strong>{account.account_name}</strong>{" "}
+                                        and all its data will be permanently
+                                        deleted. This cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>
+                                        Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                        variant="destructive"
+                                        onClick={handleDelete}
+                                    >
+                                        {deleteAccount.isPending
+                                            ? "Deleting…"
+                                            : "Delete"}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    </div>
+                </section>
             </DialogContent>
         </Dialog>
     );
@@ -884,7 +1146,8 @@ export function DeveloperGlobalAdminPanel() {
         provisioned_by_me: true,
         limit: 100,
     });
-    const { data: accountsData, isLoading: accountsLoading } = useProvisionedTenantAccounts();
+    const { data: accountsData, isLoading: accountsLoading } =
+        useProvisionedTenantAccounts();
 
     const [activeTab, setActiveTab] = React.useState("tenants");
     const [roleFilter, setRoleFilter] = React.useState<RoleFilter>("all");
@@ -894,7 +1157,8 @@ export function DeveloperGlobalAdminPanel() {
     const [addUserOpen, setAddUserOpen] = React.useState(false);
     const [editUser, setEditUser] = React.useState<UserRead | null>(null);
     const [editUserOpen, setEditUserOpen] = React.useState(false);
-    const [editAccount, setEditAccount] = React.useState<AccountBookRead | null>(null);
+    const [editAccount, setEditAccount] =
+        React.useState<AccountBookRead | null>(null);
     const [editAccountOpen, setEditAccountOpen] = React.useState(false);
 
     const allUsers = usersData?.users ?? [];
@@ -907,8 +1171,14 @@ export function DeveloperGlobalAdminPanel() {
         const inactive = allUsers.length - active;
         const admins = allUsers.filter((u) => u.role === "admin").length;
         const viewers = allUsers.filter((u) => u.role === "viewer").length;
-        const totalMembers = allAccounts.reduce((sum, a) => sum + a.member_count, 0);
-        const activeRate = allUsers.length > 0 ? Math.round((active / allUsers.length) * 100) : 0;
+        const totalMembers = allAccounts.reduce(
+            (sum, a) => sum + a.member_count,
+            0,
+        );
+        const activeRate =
+            allUsers.length > 0
+                ? Math.round((active / allUsers.length) * 100)
+                : 0;
         return { active, inactive, admins, viewers, totalMembers, activeRate };
     }, [allUsers, allAccounts]);
 
@@ -990,17 +1260,27 @@ export function DeveloperGlobalAdminPanel() {
                         onClick={() => setRoleFilter("admin")}
                         className="rounded-none border-0"
                     >
-                        <HugeiconsIcon icon={ShieldUserIcon} strokeWidth={2} className="size-3 mr-0.5" />
+                        <HugeiconsIcon
+                            icon={ShieldUserIcon}
+                            strokeWidth={2}
+                            className="size-3 mr-0.5"
+                        />
                         Admin
                     </Button>
                     <Separator orientation="vertical" className="h-4" />
                     <Button
-                        variant={roleFilter === "viewer" ? "secondary" : "ghost"}
+                        variant={
+                            roleFilter === "viewer" ? "secondary" : "ghost"
+                        }
                         size="xs"
                         onClick={() => setRoleFilter("viewer")}
                         className="rounded-none border-0"
                     >
-                        <HugeiconsIcon icon={UserIcon} strokeWidth={2} className="size-3 mr-0.5" />
+                        <HugeiconsIcon
+                            icon={UserIcon}
+                            strokeWidth={2}
+                            className="size-3 mr-0.5"
+                        />
                         Viewer
                     </Button>
                 </div>
@@ -1071,8 +1351,16 @@ export function DeveloperGlobalAdminPanel() {
                         Manage provisioned users and their account books
                     </p>
                 </div>
-                <Button size="sm" onClick={() => setAddUserOpen(true)} className="gap-1.5">
-                    <HugeiconsIcon icon={Add01Icon} strokeWidth={2} className="size-3.5" />
+                <Button
+                    size="sm"
+                    onClick={() => setAddUserOpen(true)}
+                    className="gap-1.5"
+                >
+                    <HugeiconsIcon
+                        icon={Add01Icon}
+                        strokeWidth={2}
+                        className="size-3.5"
+                    />
                     Add User
                 </Button>
             </div>
@@ -1089,7 +1377,13 @@ export function DeveloperGlobalAdminPanel() {
                             {formatNumber(stats.active)} active
                         </span>
                         <span>·</span>
-                        <span className={stats.inactive > 0 ? "text-destructive" : undefined}>
+                        <span
+                            className={
+                                stats.inactive > 0
+                                    ? "text-destructive"
+                                    : undefined
+                            }
+                        >
                             {formatNumber(stats.inactive)} inactive
                         </span>
                     </div>
@@ -1137,7 +1431,11 @@ export function DeveloperGlobalAdminPanel() {
             </div>
 
             {/* Tabbed tables */}
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col">
+            <Tabs
+                value={activeTab}
+                onValueChange={setActiveTab}
+                className="flex flex-col"
+            >
                 <TabsList variant="line" className="shrink-0">
                     <TabsTrigger value="tenants">
                         Tenants ({formatNumber(allUsers.length)})
