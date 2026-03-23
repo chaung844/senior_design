@@ -53,6 +53,8 @@ interface ReceiptEditDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     currency: string;
+    /** When true, fields are read-only and save/delete are hidden (viewer). */
+    readOnly?: boolean;
 }
 
 export function ReceiptEditDialog({
@@ -60,6 +62,7 @@ export function ReceiptEditDialog({
     open,
     onOpenChange,
     currency,
+    readOnly = false,
 }: ReceiptEditDialogProps) {
     const updateMutation = useUpdateReceipt();
     const deleteMutation = useDeleteDocument();
@@ -112,7 +115,7 @@ export function ReceiptEditDialog({
         expenseType !== (receipt.expense_type ?? "");
 
     function handleSave() {
-        if (!receipt) return;
+        if (!receipt || readOnly) return;
         setError(null);
 
         const body: ReceiptUpdate = {};
@@ -158,7 +161,7 @@ export function ReceiptEditDialog({
     }
 
     function handleDelete() {
-        if (!receipt || !receipt.document_id) return;
+        if (!receipt || !receipt.document_id || readOnly) return;
         setError(null);
 
         deleteMutation.mutate(receipt.document_id, {
@@ -227,7 +230,8 @@ export function ReceiptEditDialog({
         }
     })();
 
-    const isBusy = updateMutation.isPending || deleteMutation.isPending;
+    const isBusy =
+        updateMutation.isPending || deleteMutation.isPending || readOnly;
 
     const billingDateObj = billingDate
         ? new Date(billingDate + "T00:00:00")
@@ -238,11 +242,13 @@ export function ReceiptEditDialog({
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        Edit Receipt
+                        {readOnly ? "Receipt" : "Edit Receipt"}
                         {matchStatusLabel}
                     </DialogTitle>
                     <DialogDescription>
-                        Modify the parsed receipt data below.
+                        {readOnly
+                            ? "Parsed receipt data for this month."
+                            : "Modify the parsed receipt data below."}
                         {receipt.file_name && (
                             <>
                                 {" "}
@@ -444,68 +450,82 @@ export function ReceiptEditDialog({
                 <Separator />
 
                 <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
-                                disabled={isBusy || !canDelete}
-                            >
-                                <HugeiconsIcon
-                                    icon={Delete02Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Delete Receipt
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                    Delete Receipt
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    Are you sure you want to delete this
-                                    receipt? This will remove the receipt and
-                                    its associated document. This action cannot
-                                    be undone.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel size="sm">
-                                    Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                    variant="destructive"
+                    {!readOnly && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="outline"
                                     size="sm"
-                                    onClick={handleDelete}
+                                    className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                                    disabled={isBusy || !canDelete}
                                 >
-                                    Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                                    <HugeiconsIcon
+                                        icon={Delete02Icon}
+                                        strokeWidth={2}
+                                        className="size-3.5"
+                                    />
+                                    Delete Receipt
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Delete Receipt
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        Are you sure you want to delete this
+                                        receipt? This will remove the receipt and
+                                        its associated document. This action
+                                        cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel size="sm">
+                                        Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={handleDelete}
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
 
-                    <div className="flex items-center gap-2">
+                    <div
+                        className={cn(
+                            "flex items-center gap-2",
+                            readOnly && "w-full justify-end",
+                        )}
+                    >
                         <DialogClose asChild>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                disabled={isBusy}
+                                disabled={
+                                    readOnly
+                                        ? false
+                                        : updateMutation.isPending ||
+                                          deleteMutation.isPending
+                                }
                             >
-                                Cancel
+                                {readOnly ? "Close" : "Cancel"}
                             </Button>
                         </DialogClose>
-                        <Button
-                            size="sm"
-                            onClick={handleSave}
-                            disabled={!isDirty || isBusy}
-                        >
-                            {updateMutation.isPending
-                                ? "Saving…"
-                                : "Save Changes"}
-                        </Button>
+                        {!readOnly && (
+                            <Button
+                                size="sm"
+                                onClick={handleSave}
+                                disabled={!isDirty || isBusy}
+                            >
+                                {updateMutation.isPending
+                                    ? "Saving…"
+                                    : "Save Changes"}
+                            </Button>
+                        )}
                     </div>
                 </DialogFooter>
             </DialogContent>

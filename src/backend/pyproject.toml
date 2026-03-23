@@ -29,14 +29,24 @@ dependencies = [
     "uvloop>=0.22.1",
     "rapidfuzz>=3.14.3",
     "rich>=14.3.3",
+    "scipy>=1.15.0",
 ]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
 
 [tool.ruff.lint.per-file-ignores]
 # Ignore "F401" (unused imports) in all files inside the alembic folder
 "alembic/env.py" = ["F401"]
 "alembic/versions/*" = ["F401"]
+# Logging must be configured before remaining imports (Rich replaces root handlers).
+"app/main.py" = ["E402"]
+"app/worker/main.py" = ["E402"]
 
 [dependency-groups]
 dev = [
     "ruff>=0.15.2",
+    "pytest>=8.0.0",
+    "ty>=0.0.24",
 ]

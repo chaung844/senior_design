@@ -31,7 +31,9 @@ from dataclasses import dataclass, field
 from itertools import combinations
 from typing import SupportsFloat
 
+import numpy as np
 from rapidfuzz import fuzz
+from scipy.optimize import linear_sum_assignment
 from rich.console import Console
 from rich.panel import Panel
 from rich.table import Table
@@ -75,6 +77,10 @@ class MatchConfig:
     max_bundle_size:
         Larger value allows matching larger split payments. Combinatorial cost
         grows as O(n^k), so values above 5 can be slow on large datasets.
+    min_vendor_similarity_pass1b:
+        Minimum raw fuzzy vendor score (0–100) required for Pass 1b. ``0`` keeps
+        legacy behaviour (date + composite score only). Raise to reduce false
+        positives when amounts collide for different merchants.
     """
 
     max_date_window: int = field(default=settings.reconciliation_max_date_window)
@@ -85,6 +91,9 @@ class MatchConfig:
         default=settings.reconciliation_bundle_vendor_threshold
     )
     max_bundle_size: int = field(default=settings.reconciliation_max_bundle_size)
+    min_vendor_similarity_pass1b: int = field(
+        default=settings.reconciliation_min_vendor_similarity_pass1b
+    )
 
     def __post_init__(self) -> None:
         if not (1 <= self.max_date_window <= 90):
@@ -95,7 +104,17 @@ class MatchConfig:
             raise ValueError("bundle_vendor_threshold must be between 0 and 100")
         if not (2 <= self.max_bundle_size <= 6):
             raise ValueError("max_bundle_size must be between 2 and 6")
+        if not (0 <= self.min_vendor_similarity_pass1b <= 100):
+            raise ValueError("min_vendor_similarity_pass1b must be between 0 and 100")
 
+
+# Scoring weights for Pass 1b (amount gate + soft pair = 100 max).
+AMOUNT_SCORE = 40
+VENDOR_SOFT_MAX = 30
+DATE_SOFT_MAX = 30
+
+# Cost sentinel for assignment problems (must exceed any real confidence cost).
+_INVALID_ASSIGNMENT_COST = 1_000_000_000.0
 
 # vendor aliases for known bank abbreviations
 VENDOR_ALIASES = {
@@ -124,16 +143,35 @@ def _vendor_similarity(lv: str, rv: str) -> float:
     return max(fuzz.WRatio(lv, rv), fuzz.partial_ratio(lv, rv))
 
 
+def _line_vendor_similarity(line: BankStatementLine, receipt_vendor: str) -> float:
+    """Best fuzzy match of receipt vendor against the line's normalized vendor and description."""
+    rv = _clean_vendor(receipt_vendor)
+    if not rv:
+        return 0.0
+    lv = _clean_vendor(line.vendor or "")
+    ld = _clean_vendor(line.description or "")
+    a = _vendor_similarity(lv, rv) if lv else 0.0
+    b = _vendor_similarity(ld, rv) if ld else 0.0
+    return max(a, b)
+
+
+def line_vendor_similarity(line: BankStatementLine, receipt: Receipt) -> float:
+    """Public wrapper: similarity used for Pass 1 scoring and bundles (vendor + description)."""
+    return _line_vendor_similarity(line, receipt.vendor or "")
+
+
+def _vendor_score_from_similarity(sim: float) -> int:
+    return round((sim / 100.0) * VENDOR_SOFT_MAX)
+
+
 def _vendor_score(line: BankStatementLine, receipt: Receipt) -> int:
     """
-    Calculate a vendor score based on the similarity of the cleaned vendor names.
-    Returns an integer between 0 and 30.
+    Vendor soft score from unified line–receipt vendor similarity.
+    Returns an integer between 0 and VENDOR_SOFT_MAX.
     """
-    lv = _clean_vendor(
-        line.description or ""
-    )  # compare with line desciption for more context
-    rv = _clean_vendor(receipt.vendor or "")
-    return round((_vendor_similarity(lv, rv) / 100) * 30)
+    return _vendor_score_from_similarity(
+        _line_vendor_similarity(line, receipt.vendor or "")
+    )
 
 
 def _date_score(
@@ -143,20 +181,37 @@ def _date_score(
 ) -> int:
     """
     Calculate a date score based on the absolute difference between transaction date and billing date.
-    Returns an integer between 0 and 30.
+    Returns an integer between 0 and DATE_SOFT_MAX.
+    Buckets: 0 days -> +30; 1–3 -> +20; 4–9 -> +10; 10–max_date_window -> +5; else 0.
     """
     max_window = config.max_date_window if config is not None else 14
     days_diff = abs((line.transaction_date - receipt.billing_date).days)
     if days_diff == 0:
-        return 30
-    elif days_diff <= 3:
+        return DATE_SOFT_MAX
+    if 1 <= days_diff <= 3:
         return 20
-    elif days_diff <= 9:
+    if 4 <= days_diff <= 9:
         return 10
-    elif days_diff <= max_window:
+    if 10 <= days_diff <= max_window:
         return 5
-    else:
+    return 0
+
+
+def calculate_soft_pair_score(
+    line: BankStatementLine,
+    receipt: Receipt,
+    config: MatchConfig | None = None,
+) -> int:
+    """Vendor + date only (0..60) when amount matches and vendor floor passes; else 0."""
+    cfg = config if config is not None else MatchConfig()
+    if line.charge != receipt.charged_amount:
         return 0
+    if (
+        _line_vendor_similarity(line, receipt.vendor or "")
+        < cfg.min_vendor_similarity_pass1b
+    ):
+        return 0
+    return _vendor_score(line, receipt) + _date_score(line, receipt, cfg)
 
 
 def calculate_confidence(
@@ -165,12 +220,102 @@ def calculate_confidence(
     config: MatchConfig | None = None,
 ) -> int:
     """
-    Calculate a confidence score for a potential match between a bank statement line and a receipt.
-    Returns an integer between 0 and 100.
+    Full confidence: amount gate + soft pair (vendor + date). Returns 0–100 (or 0 if ineligible).
     """
+    cfg = config if config is not None else MatchConfig()
     if line.charge != receipt.charged_amount:
         return 0
-    return 40 + _vendor_score(line, receipt) + _date_score(line, receipt, config)
+    if (
+        _line_vendor_similarity(line, receipt.vendor or "")
+        < cfg.min_vendor_similarity_pass1b
+    ):
+        return 0
+    return AMOUNT_SCORE + _vendor_score(line, receipt) + _date_score(line, receipt, cfg)
+
+
+def _days_diff(line: BankStatementLine, receipt: Receipt) -> int:
+    return abs((line.transaction_date - receipt.billing_date).days)
+
+
+def candidate_pair_sort_key(
+    line: BankStatementLine,
+    receipt: Receipt,
+    confidence: int,
+    config: MatchConfig,
+) -> tuple:
+    """Deterministic ordering: confidence desc, days asc, vendor similarity desc, ids asc."""
+    days = _days_diff(line, receipt)
+    sim = _line_vendor_similarity(line, receipt.vendor or "")
+    return (-confidence, days, -sim, line.line_id, receipt.receipt_id)
+
+
+def _pass1a_assignment_pairs(
+    lines: list[BankStatementLine],
+    receipts: list[Receipt],
+) -> list[tuple[BankStatementLine, Receipt]]:
+    """Maximum-cardinality matching for exact amount + exact date (unmatched items only)."""
+    ul = sorted(
+        (ln for ln in lines if ln.match_status == MatchStatus.unmatched),
+        key=lambda x: x.line_id,
+    )
+    ur = sorted(
+        (r for r in receipts if r.match_status == MatchStatus.unmatched),
+        key=lambda x: x.receipt_id,
+    )
+    if not ul or not ur:
+        return []
+    n, m = len(ul), len(ur)
+    cost = np.full((n, m), _INVALID_ASSIGNMENT_COST, dtype=np.float64)
+    for i, line in enumerate(ul):
+        for j, receipt in enumerate(ur):
+            if (
+                line.charge == receipt.charged_amount
+                and line.transaction_date == receipt.billing_date
+            ):
+                cost[i, j] = -1.0
+    row_ind, col_ind = linear_sum_assignment(cost)
+    out: list[tuple[BankStatementLine, Receipt]] = []
+    for ri, cj in zip(row_ind, col_ind, strict=True):
+        if cost[ri, cj] >= _INVALID_ASSIGNMENT_COST / 2:
+            continue
+        out.append((ul[ri], ur[cj]))
+    return out
+
+
+def _pass1b_assignment_pairs(
+    lines: list[BankStatementLine],
+    receipts: list[Receipt],
+    cfg: MatchConfig,
+) -> list[tuple[BankStatementLine, Receipt]]:
+    """Maximum total confidence for eligible 1:1 pairs (amount + threshold + vendor floor)."""
+    ul = sorted(
+        (ln for ln in lines if ln.match_status == MatchStatus.unmatched),
+        key=lambda x: x.line_id,
+    )
+    ur = sorted(
+        (r for r in receipts if r.match_status == MatchStatus.unmatched),
+        key=lambda x: x.receipt_id,
+    )
+    if not ul or not ur:
+        return []
+    n, m = len(ul), len(ur)
+    cost = np.full((n, m), _INVALID_ASSIGNMENT_COST, dtype=np.float64)
+    for i, line in enumerate(ul):
+        for j, receipt in enumerate(ur):
+            conf = calculate_confidence(line, receipt, cfg)
+            if conf >= cfg.confidence_threshold:
+                cost[i, j] = -float(conf)
+    row_ind, col_ind = linear_sum_assignment(cost)
+    out: list[tuple[BankStatementLine, Receipt]] = []
+    for ri, cj in zip(row_ind, col_ind, strict=True):
+        if cost[ri, cj] >= _INVALID_ASSIGNMENT_COST / 2:
+            continue
+        line, receipt = ul[ri], ur[cj]
+        conf = calculate_confidence(line, receipt, cfg)
+        if conf < cfg.confidence_threshold:
+            continue
+        out.append((line, receipt))
+    return out
 
 
 async def apply_perfect_matches(
@@ -188,50 +333,22 @@ async def apply_perfect_matches(
     """
     cfg = config if config is not None else MatchConfig()
 
-    # --- Pass 1a: exact amount + exact date ---
-    for line in lines:
-        if line.match_status != MatchStatus.unmatched:
-            continue
-        for receipt in receipts:
-            if receipt.match_status != MatchStatus.unmatched:
-                continue
-            if (
-                line.charge == receipt.charged_amount
-                and line.transaction_date == receipt.billing_date
-            ):
-                db.add(
-                    ReconciliationMatch(
-                        job_id=job.job_id,
-                        line_id=line.line_id,
-                        receipt_id=receipt.receipt_id,
-                        match_type=MatchStatus.perfect_matched,
-                        created_by=current_user.user_id,
-                    )
-                )
-                line.match_status = MatchStatus.perfect_matched
-                receipt.match_status = MatchStatus.perfect_matched
-                break
+    # --- Pass 1a: exact amount + exact date (maximum cardinality, deterministic) ---
+    for line, receipt in _pass1a_assignment_pairs(lines, receipts):
+        db.add(
+            ReconciliationMatch(
+                job_id=job.job_id,
+                line_id=line.line_id,
+                receipt_id=receipt.receipt_id,
+                match_type=MatchStatus.perfect_matched,
+                created_by=current_user.user_id,
+            )
+        )
+        line.match_status = MatchStatus.perfect_matched
+        receipt.match_status = MatchStatus.perfect_matched
 
-    # --- Pass 1b: exact amount + fuzzy vendor + date proximity ---
-    candidates = []
-    for line in lines:
-        if line.match_status != MatchStatus.unmatched:
-            continue
-        for receipt in receipts:
-            if receipt.match_status != MatchStatus.unmatched:
-                continue
-            score = calculate_confidence(line, receipt, cfg)
-            if score >= cfg.confidence_threshold:
-                candidates.append((score, line, receipt))
-
-    candidates.sort(key=lambda x: x[0], reverse=True)
-
-    for score, line, receipt in candidates:
-        if (
-            line.match_status != MatchStatus.unmatched
-            or receipt.match_status != MatchStatus.unmatched
-        ):
-            continue
+    # --- Pass 1b: exact amount + fuzzy vendor + date proximity (max total confidence) ---
+    for line, receipt in _pass1b_assignment_pairs(lines, receipts, cfg):
         db.add(
             ReconciliationMatch(
                 job_id=job.job_id,
@@ -267,23 +384,24 @@ async def apply_lines_to_receipt(
             continue
 
         matched_subset = None
-        rv = _clean_vendor(receipt.vendor or "")
+        best_key: tuple | None = None
 
         for size in range(2, cfg.max_bundle_size + 1):
             for subset in combinations(unmatched_lines, size):
                 if sum(line.charge for line in subset) != receipt.charged_amount:
                     continue
-                vendor_ok = all(
-                    _vendor_similarity(_clean_vendor(line.vendor or ""), rv)
-                    >= cfg.bundle_vendor_threshold
+                sims = [
+                    _line_vendor_similarity(line, receipt.vendor or "")
                     for line in subset
-                )
-                if not vendor_ok:
+                ]
+                if not all(s >= cfg.bundle_vendor_threshold for s in sims):
                     continue
-                matched_subset = subset
-                break
-            if matched_subset:
-                break
+                avg_sim = sum(sims) / len(sims)
+                min_sim = min(sims)
+                key = (avg_sim, min_sim, tuple(sorted(ln.line_id for ln in subset)))
+                if best_key is None or key > best_key:
+                    best_key = key
+                    matched_subset = subset
 
         if not matched_subset:
             continue
@@ -326,23 +444,21 @@ async def apply_receipts_to_line(
             continue
 
         matched_subset = None
-        lv = _clean_vendor(line.vendor or "")
+        best_key: tuple | None = None
 
         for size in range(2, cfg.max_bundle_size + 1):
             for subset in combinations(unmatched_receipts, size):
                 if sum(r.charged_amount for r in subset) != line.charge:
                     continue
-                vendor_ok = all(
-                    _vendor_similarity(_clean_vendor(r.vendor or ""), lv)
-                    >= cfg.bundle_vendor_threshold
-                    for r in subset
-                )
-                if not vendor_ok:
+                sims = [_line_vendor_similarity(line, r.vendor or "") for r in subset]
+                if not all(s >= cfg.bundle_vendor_threshold for s in sims):
                     continue
-                matched_subset = subset
-                break
-            if matched_subset:
-                break
+                avg_sim = sum(sims) / len(sims)
+                min_sim = min(sims)
+                key = (avg_sim, min_sim, tuple(sorted(r.receipt_id for r in subset)))
+                if best_key is None or key > best_key:
+                    best_key = key
+                    matched_subset = subset
 
         if not matched_subset:
             continue
@@ -391,6 +507,7 @@ def _print_match_summary(
         "Config:"
         f" max_date_window={cfg.max_date_window},"
         f" confidence_threshold={cfg.confidence_threshold},"
+        f" min_vendor_similarity_pass1b={cfg.min_vendor_similarity_pass1b},"
         f" bundle_vendor_threshold={cfg.bundle_vendor_threshold},"
         f" max_bundle_size={cfg.max_bundle_size}",
         style="dim",
@@ -429,15 +546,13 @@ def _print_match_summary(
                     continue
 
                 amount_exact = line.charge == receipt.charged_amount
-                vendor_similarity = _vendor_similarity(
-                    _clean_vendor(line.vendor or ""),
-                    _clean_vendor(receipt.vendor or ""),
-                )
+                vendor_similarity = line_vendor_similarity(line, receipt)
                 vendor_score = _vendor_score(line, receipt)
                 days_diff = _date_days_diff(line, receipt)
                 date_score = _date_score(line, receipt, cfg)
+                soft_pair = calculate_soft_pair_score(line, receipt, cfg)
                 confidence = calculate_confidence(line, receipt, cfg)
-                amount_score = 40 if amount_exact else 0
+                amount_score = AMOUNT_SCORE if amount_exact else 0
 
                 if match.match_type == MatchStatus.bundle_matched:
                     reasoning = (
@@ -471,6 +586,7 @@ def _print_match_summary(
                     f"amount_exact={amount_exact} (score={amount_score}), "
                     f"vendor_similarity={vendor_similarity:.1f} (score={vendor_score}), "
                     f"date_diff_days={days_diff} (score={date_score}), "
+                    f"soft_pair={soft_pair}, "
                     f"total_confidence={confidence}",
                 )
                 console.print(Panel(detail, border_style="green"))
@@ -498,15 +614,12 @@ def _print_match_summary(
             # Show top candidate receipts with explicit rejection reasons.
             candidate_rows = []
             for receipt in unmatched_receipts:
-                vendor_similarity = _vendor_similarity(
-                    _clean_vendor(line.vendor or ""),
-                    _clean_vendor(receipt.vendor or ""),
-                )
+                vendor_similarity = line_vendor_similarity(line, receipt)
                 vendor_score = _vendor_score(line, receipt)
                 days_diff = _date_days_diff(line, receipt)
                 date_score = _date_score(line, receipt, cfg)
                 amount_exact = line.charge == receipt.charged_amount
-                amount_score = 40 if amount_exact else 0
+                amount_score = AMOUNT_SCORE if amount_exact else 0
                 confidence = calculate_confidence(line, receipt, cfg)
                 candidate_rows.append(
                     (
@@ -522,8 +635,7 @@ def _print_match_summary(
                 )
 
             candidate_rows.sort(
-                key=lambda row: (row[0], row[2], -row[3]),
-                reverse=True,
+                key=lambda row: candidate_pair_sort_key(line, row[4], row[0], cfg),
             )
             top_candidates = candidate_rows[:3]
 
@@ -578,11 +690,13 @@ def _print_match_summary(
                         f"date={receipt.billing_date}",
                     )
                     detail.add_row("vendor", f"{receipt.vendor or ''}")
+                    soft_pair = calculate_soft_pair_score(line, receipt, cfg)
                     detail.add_row(
                         "components",
                         f"amount_exact={amount_exact} (score={amount_score}), "
                         f"vendor_similarity={vendor_similarity:.1f} (score={vendor_score}), "
                         f"date_diff_days={days_diff} (score={date_score}), "
+                        f"soft_pair={soft_pair}, "
                         f"total_confidence={confidence}",
                     )
                     detail.add_row("rejection", ", ".join(rejection_reasons))

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.enums import AccountBookRole, UserRole
+from app.enums import UserRole
 from app.models.account_book import AccountBook
 from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
@@ -94,7 +94,6 @@ async def create_account_book(
     owner_member = AccountBookMember(
         account_id=account.account_id,
         user_id=current_user.user_id,
-        role=AccountBookRole.owner,
     )
     db.add(owner_member)
     await db.commit()
@@ -107,18 +106,41 @@ async def create_account_book(
 async def list_account_books(
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20, ge=1, le=100),
+    provisioned_tenant_only: bool = Query(
+        default=False,
+        description=(
+            "Developer only: when true, only account books owned by this developer "
+            "or by users they provisioned (created_by_user_id)."
+        ),
+    ),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_any),
 ):
+    if provisioned_tenant_only:
+        if current_user.role != UserRole.developer:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="provisioned_tenant_only is restricted to developer users",
+            )
+
     accessible_ids = await get_accessible_account_ids(current_user, db)
 
     if not accessible_ids:
         return AccountBookListResponse(accounts=[], total=0, offset=offset, limit=limit)
 
-    base_filter = (
+    base_filter: list = [
         AccountBook.account_id.in_(accessible_ids),
         AccountBook.deleted_at.is_(None),
-    )
+    ]
+
+    if provisioned_tenant_only:
+        prov = await db.execute(
+            select(User.user_id).where(
+                User.created_by_user_id == current_user.user_id
+            )
+        )
+        tenant_owner_ids = set(prov.scalars().all()) | {current_user.user_id}
+        base_filter.append(AccountBook.user_id.in_(tenant_owner_ids))
 
     total = (
         await db.execute(
@@ -262,7 +284,6 @@ async def list_members(
                 user_id=m.user_id,
                 user_name=m.user.name,
                 user_email=m.user.email,
-                role=m.role,
                 created_at=m.created_at,
             )
             for m in members
@@ -316,7 +337,6 @@ async def add_member(
     member = AccountBookMember(
         account_id=account_id,
         user_id=body.user_id,
-        role=AccountBookRole.viewer,
     )
     db.add(member)
     await db.commit()
@@ -328,7 +348,6 @@ async def add_member(
         user_id=member.user_id,
         user_name=target_user.name,
         user_email=target_user.email,
-        role=member.role,
         created_at=member.created_at,
     )
 
@@ -356,8 +375,11 @@ async def remove_member(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    if member.role == AccountBookRole.owner:
-        raise HTTPException(status_code=400, detail="Cannot remove the owner")
+    account_book = await db.get(AccountBook, account_id)
+    if not account_book:
+        raise HTTPException(status_code=404, detail="Account book not found")
+    if user_id == account_book.user_id:
+        raise HTTPException(status_code=400, detail="Cannot remove the primary owner")
 
     await db.delete(member)
     await db.commit()

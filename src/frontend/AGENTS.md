@@ -70,6 +70,8 @@ src/frontend/
 │   └── dashboard/
 │       ├── layout.tsx      # Dashboard layout (sidebar, breadcrumb; client)
 │       ├── page.tsx        # Redirects to first account
+│       ├── global-admin/
+│       │   └── page.tsx    # Developer-only tenant management (client component)
 │       ├── [accountId]/
 │       │   ├── page.tsx    # Account-level view
 │       │   ├── [year]/
@@ -96,6 +98,9 @@ src/frontend/
 │   ├── data-table.tsx         # Generic data table (sorting, filtering, pagination; TanStack Table)
 │   ├── upload-dialog.tsx      # File upload dialog (drag-and-drop); statement/ledger uploads
 │   ├── job-status-float.tsx   # Floating bottom-right widget showing active parsing/reconciliation job progress
+│   ├── viewer-mode-banner.tsx # Amber strip when user.role is viewer (read-only mode reminder)
+│   ├── developer-console-shell.tsx # Minimal header for `/dashboard/global-admin` (developer tenant console)
+│   ├── developer-global-admin-panel.tsx # Tenants + account books tables, user/member dialogs
 │   ├── component-example.tsx  # shadcn component showcase
 │   └── example.tsx            # Example wrapper utilities
 ├── hooks/
@@ -119,6 +124,7 @@ src/frontend/
 │   ├── query-client.tsx    # React Query QueryClientProvider wrapper
 │   ├── dashboard-routes.ts # Dashboard URL helpers (selectionToPath, parseDashboardPath)
 │   ├── constants.ts        # Shared constants (MONTH_LABELS, chart config, match rate badge variant)
+│   ├── permissions.ts      # Role helpers: isViewerRole, canMutateData, canCreateAccountBook
 │   ├── domain-types.ts     # Frontend domain types (AccountBook, YearData, MonthData, Transaction) and formatting utilities
 │   └── job-status-provider.tsx # JobStatusProvider context wrapper (wraps dashboard layout)
 ├── public/                 # Static assets (SVGs)
@@ -150,12 +156,13 @@ src/frontend/
 | `/auth/login`   | `app/auth/login/page.tsx`                     | Client   | Login form (email + password)                    |
 | `/auth/signup`  | `app/auth/signup/page.tsx`                    | Server   | WIP notice — registration currently closed       |
 | *(unrouted)*    | `app/auth/_signup/page.tsx`                   | Client   | Original signup form, preserved for future use   |
-| `/dashboard`    | `app/dashboard/page.tsx`                       | Client   | Redirects to first account (`/dashboard/[accountId]`) via `useAccountBooks()` |
+| `/dashboard`    | `app/dashboard/page.tsx`                       | Client   | Redirects: developers → `/dashboard/global-admin`; others → first account via `useAccountBooks()` |
+| `/dashboard/global-admin` | `app/dashboard/global-admin/page.tsx`     | Client   | Developer-only tenant management (users + account books + members); no reconciliation drill-down |
 | `/dashboard/[accountId]` | `app/dashboard/[accountId]/page.tsx`   | Client   | Account-level dashboard view (drill-down entry)  |
 | `/dashboard/[accountId]/[year]` | `app/dashboard/[accountId]/[year]/page.tsx` | Client | Year-level dashboard view                        |
 | `/dashboard/[accountId]/[year]/[month]` | `app/dashboard/[accountId]/[year]/[month]/page.tsx` | Client | Month-level dashboard view (transactions) |
 
-Dashboard drill-down state is URL-driven: the path reflects the current account/year/month, so refreshing the page keeps the same view. The shared layout (`app/dashboard/layout.tsx`) derives selection from the pathname and renders the sidebar and breadcrumb; navigation uses `router.push` to update the URL.
+Dashboard drill-down state is URL-driven: the path reflects the current account/year/month, so refreshing the page keeps the same view. The shared layout (`app/dashboard/layout.tsx`) derives selection from the pathname and renders the sidebar and breadcrumb; navigation uses `router.push` to update the URL. The static segment `/dashboard/global-admin` uses a minimal shell (`DeveloperConsoleShell`) instead of the reconciliation sidebar.
 
 ### Path Aliases
 
@@ -184,6 +191,9 @@ import { AppSidebar } from "@/components/app-sidebar";
 - **UploadDialog** — Trigger + dialog for file upload (e.g. bank statements, receipts) with drag-and-drop and configurable accept types. Connected to the backend via `useTrackedDocumentUpload` hook (presigned S3 URLs + automatic job tracking). Automatically associates uploaded documents with the current `account_id`.
 - **AppSidebar** — Main sidebar navigation. Receives `accountBooks` (fetched via API) as a prop from the dashboard layout; renders an account selector and collapsible year/month tree. The logout button calls `await logout()` (async) before redirecting.
 - **JobStatusFloat** — Floating widget fixed to the bottom-right corner of the dashboard. Shows active parsing and reconciliation jobs with real-time progress polling (every 3 s via `GET /jobs/{id}/status`). Displays parsed-document count for parsing jobs and matching status for reconciliation jobs. Collapsible header with expand/collapse toggle; completed jobs auto-dismiss after 15 s. Rendered in `app/dashboard/layout.tsx` inside `JobStatusProvider`.
+- **ViewerModeBanner** — When `user.role === "viewer"`, an amber **View-only** strip appears at the top of the main dashboard column (above the breadcrumb bar) on every `/dashboard/*` route, reminding the user that uploads, edits, reconciliation, and manual matching are disabled; export and browsing remain available. Gated by `isViewerRole()` in `lib/permissions.ts`.
+- **DeveloperConsoleShell** — Minimal top-bar layout shell used by the `/dashboard/global-admin` route in place of the sidebar. Renders the Matcha logo, "Developer Console" title, a back-link to reconciliation, user name, and logout button. Wraps children in a scrollable container.
+- **DeveloperGlobalAdminPanel** — Main content component for `/dashboard/global-admin`. Fetches provisioned users via `useAdminUsers({ provisioned_by_me: true })` and tenant account books via `useProvisionedTenantAccounts()`. Renders four summary stat cards (total tenants, role distribution, account books, active rate), a tabbed data view with **Tenants** and **Account Books** `DataTable` tabs (search, role filter), and three dialogs: Add User, Edit User (with deactivate), and Edit Account Book (with member management and delete).
 
 ### Adding New shadcn/ui Components
 
@@ -273,6 +283,8 @@ const { user, loading, login, logout } = useAuth();
 | `login(email, password)` | `() => Promise<void>` | Calls the login endpoint and populates `user`. Throws on failure. |
 | `logout()` | `() => Promise<void>` | Calls the logout endpoint, clears `user`. Always `await` before navigating. |
 
+**Viewer role (`user.role === "viewer"`):** Application-level read-only users only see account books they are a member of (backend-enforced). The dashboard shows **ViewerModeBanner** and hides mutating actions (see `lib/permissions.ts`: `isViewerRole`, `canMutateData`); only browsing and export are offered in the UI.
+
 > **Note:** `ensureToken()` still exists in `lib/auth.tsx` as a deprecated no-op shim that returns `""`. It exists only to prevent compile errors during any ongoing migration. **Do not use it in new code.** Remove existing calls as you encounter them.
 
 ### Data Layer
@@ -280,7 +292,7 @@ const { user, loading, login, logout } = useAuth();
 The frontend fetches all data from the FastAPI backend (`NEXT_PUBLIC_API_URL`). The data flows through three layers:
 
 1. **API client** (`lib/api.ts`) — Thin async functions wrapping `fetch` for every backend endpoint. All functions use `credentials: "include"` and inject `X-CSRF-Token` automatically for mutating requests. No token parameters. Handles error parsing and query-string construction. Organized by tier: auth, documents, receipts, statements, accounts, admin users.
-2. **React Query hooks** (`hooks/use-*.ts`) — One file per domain: `use-accounts.ts`, `use-statements.ts`, `use-receipts.ts`, `use-documents.ts`, `use-admin-users.ts`, `use-account-members.ts`, plus `use-document-upload.ts` for the S3 upload flow. Each exports query hooks (read) and mutation hooks (write) with automatic cache invalidation. Hooks that gate on authentication use `enabled: !!user` (from `useAuth()`) rather than token presence.
+2. **React Query hooks** (`hooks/use-*.ts`) — One file per domain: `use-accounts.ts` (includes `useProvisionedTenantAccounts` for developer tenant scope), `use-statements.ts`, `use-receipts.ts`, `use-documents.ts`, `use-admin-users.ts`, `use-account-members.ts`, plus `use-document-upload.ts` for the S3 upload flow. Each exports query hooks (read) and mutation hooks (write) with automatic cache invalidation. Hooks that gate on authentication use `enabled: !!user` (from `useAuth()`) rather than token presence.
 3. **Transforms** (`lib/transforms.ts`) — Pure functions that convert API response types (flat, snake_case) into the hierarchical view types used by dashboard components. Key transforms: `apiAccountToAccountBook()`, `statementsToYearData()`, `statementToMonthData()`, `lineToTransaction()`.
 
 Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`).
@@ -296,9 +308,9 @@ Helper functions: `formatCurrency()`, `formatNumber()` (in `lib/domain-types.ts`
 | **Tier 4** — Reconciliation | `POST /reconciliation/start`, `GET /reconciliation/ai-summary` | `useStartReconciliation()` (`hooks/use-reconciliation.ts`), `useReconciliationAISummary()` (`hooks/use-reconciliation-summary.ts`) |
 | **Tier 3** — Receipts | `GET /receipts`, `GET /receipts/{id}`, `PATCH /receipts/{id}`, `GET /receipts/{id}/file-url` | `useReceipts()`, `useReceipt()`, `useUpdateReceipt()`, `useReceiptFileUrl()` |
 | **Tier 3** — Statements | `GET /statements`, `GET /statements/{id}`, `GET /statements/{id}/lines`, `PATCH /statements/{id}/lines/{lineId}`, `GET /statements/{id}/file-url` | `useStatements()`, `useStatement()`, `useStatementLines()`, `useUpdateStatementLine()`, `useStatementFileUrl()` |
-| **Tier 5** — Accounts | `POST /accounts`, `GET /accounts`, `GET /accounts/{id}`, `PATCH /accounts/{id}`, `DELETE /accounts/{id}` | `useAccounts()`, `useAccount()`, `useAccountBook()`, `useAccountBooks()`, `useCreateAccount()`, `useUpdateAccount()`, `useDeleteAccount()` |
+| **Tier 5** — Accounts | `POST /accounts`, `GET /accounts` (optional `provisioned_tenant_only` for developers), `GET /accounts/{id}`, `PATCH /accounts/{id}`, `DELETE /accounts/{id}` | `useAccounts()`, `useAccount()`, `useAccountBook()`, `useAccountBooks()`, `useProvisionedTenantAccounts()`, `useCreateAccount()`, `useUpdateAccount()`, `useDeleteAccount()` |
 | **Tier 5** — Members | `GET /accounts/{id}/members`, `POST /accounts/{id}/members`, `DELETE /accounts/{id}/members/{userId}` | `useAccountMembers()`, `useAddAccountMember()`, `useRemoveAccountMember()` |
-| **Tier 5** — Admin Users | `GET /admin/users`, `POST /admin/users`, `GET /admin/users/{id}`, `PATCH /admin/users/{id}`, `DELETE /admin/users/{id}` | `useAdminUsers()`, `useCreateAdminUser()`, `useUpdateAdminUser()`, `useDeactivateAdminUser()` |
+| **Tier 5** — Admin Users | `GET /admin/users` (optional `provisioned_by_me`), `POST /admin/users`, `GET /admin/users/{id}`, `PATCH /admin/users/{id}`, `DELETE /admin/users/{id}` | `useAdminUsers()`, `useCreateAdminUser()`, `useUpdateAdminUser()`, `useDeactivateAdminUser()` |
 
 ---
 

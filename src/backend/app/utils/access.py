@@ -5,7 +5,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.enums import AccountBookRole, UserRole
+from app.enums import UserRole
 from app.models.account_book import AccountBook
 from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
@@ -74,7 +74,8 @@ async def require_account_access(
     """Fetch an account book and verify the user has access.
 
     Raises 404 if the book doesn't exist and 403 if the user lacks permission.
-    When *write=True*, viewers are rejected.
+    When *write=True*, app-level read-only users (:class:`UserRole.viewer`) are
+    rejected via the same rule as document/receipt/statement writes.
     """
     account = await db.get(AccountBook, account_id)
     if not account or account.deleted_at is not None:
@@ -100,11 +101,8 @@ async def require_account_access(
             detail="You do not have access to this account book",
         )
 
-    if write and member.role == AccountBookRole.viewer:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Viewers cannot modify this account book",
-        )
+    if write:
+        _assert_can_write(user)
 
     return account
 

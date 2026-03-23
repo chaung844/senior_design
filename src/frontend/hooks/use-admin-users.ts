@@ -8,18 +8,16 @@ import {
     updateAdminUser,
     deactivateAdminUser,
 } from "@/lib/api";
-import type { UserCreate, UserUpdate, UserRole } from "@/lib/types";
+import type { AdminUserListParams, UserCreate, UserUpdate } from "@/lib/types";
 
 export const adminUserKeys = {
     all: ["admin-users"] as const,
-    list: (params?: { role?: UserRole; is_active?: boolean }) =>
+    list: (params?: AdminUserListParams) =>
         [...adminUserKeys.all, "list", params] as const,
     detail: (id: number) => [...adminUserKeys.all, "detail", id] as const,
 };
 
-export function useAdminUsers(
-    params: { role?: UserRole; is_active?: boolean } = {},
-) {
+export function useAdminUsers(params: AdminUserListParams = {}) {
     return useQuery({
         queryKey: adminUserKeys.list(params),
         queryFn: () => listAdminUsers(params),

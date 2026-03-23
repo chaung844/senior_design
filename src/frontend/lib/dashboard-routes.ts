@@ -24,6 +24,8 @@ export type ParsedDashboardPath = {
     accountId: string | null;
     year: number | null;
     month: number | null;
+    /** True when the path is `/dashboard/global-admin` (not a bank account id). */
+    globalAdmin: boolean;
 };
 
 /**
@@ -33,10 +35,13 @@ export type ParsedDashboardPath = {
 export function parseDashboardPath(pathname: string): ParsedDashboardPath {
     const prefix = DASHBOARD_BASE;
     if (!pathname.startsWith(prefix)) {
-        return { accountId: null, year: null, month: null };
+        return { accountId: null, year: null, month: null, globalAdmin: false };
     }
     const rest = pathname.slice(prefix.length).replace(/^\//, "");
     const segments = rest ? rest.split("/") : [];
+    if (segments[0] === "global-admin") {
+        return { accountId: null, year: null, month: null, globalAdmin: true };
+    }
     const accountId =
         segments.length >= 1 && segments[0] !== "" ? segments[0] : null;
     const yearNum =
@@ -45,7 +50,7 @@ export function parseDashboardPath(pathname: string): ParsedDashboardPath {
     const monthNum =
         segments.length >= 3 ? parseInt(segments[2], 10) : NaN;
     const month = Number.isNaN(monthNum) ? null : monthNum;
-    return { accountId, year, month };
+    return { accountId, year, month, globalAdmin: false };
 }
 
 /**
@@ -56,7 +61,15 @@ export function pathToSelection(
     pathname: string,
     firstAccountId: string,
 ): Selection {
-    const { accountId, year, month } = parseDashboardPath(pathname);
+    const { accountId, year, month, globalAdmin } = parseDashboardPath(pathname);
+    if (globalAdmin) {
+        return {
+            accountId: "",
+            year: null,
+            month: null,
+            level: "account",
+        };
+    }
     const accountIdResolved = accountId ?? firstAccountId;
     if (month !== null && year !== null) {
         return {

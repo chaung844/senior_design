@@ -54,6 +54,8 @@ import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
 interface DashboardYearProps {
     account: AccountBook;
     yearData: YearData;
+    /** When false (viewer), upload is hidden. */
+    canMutate: boolean;
     onMonthClick: (month: number) => void;
     onBack: () => void;
 }
@@ -217,6 +219,7 @@ function makeMonthColumns(currency: string): ColumnDef<MonthData, unknown>[] {
 export function DashboardYear({
     account,
     yearData,
+    canMutate,
     onMonthClick,
     onBack,
 }: DashboardYearProps) {
@@ -281,19 +284,21 @@ export function DashboardYear({
                 subtitle={`Monthly breakdown for ${yearData.year}`}
                 onBack={onBack}
                 actions={
-                    <UploadDialog
-                        title="Upload Bank Statements"
-                        description="Upload bank statement files. Uploading for a month that already has a statement will overwrite it."
-                        accept=".pdf,.csv,.xlsx,.xls"
-                        acceptLabel="PDF, CSV, or Excel"
-                        multiple
-                        onUpload={uploadFiles}
-                        isUploading={isUploading}
-                        uploadResults={uploadResults}
-                        onOpenChange={(open) => {
-                            if (!open) resetUpload();
-                        }}
-                    />
+                    canMutate ? (
+                        <UploadDialog
+                            title="Upload Bank Statements"
+                            description="Upload bank statement files. Uploading for a month that already has a statement will overwrite it."
+                            accept=".pdf,.csv,.xlsx,.xls"
+                            acceptLabel="PDF, CSV, or Excel"
+                            multiple
+                            onUpload={uploadFiles}
+                            isUploading={isUploading}
+                            uploadResults={uploadResults}
+                            onOpenChange={(open) => {
+                                if (!open) resetUpload();
+                            }}
+                        />
+                    ) : undefined
                 }
             />
 

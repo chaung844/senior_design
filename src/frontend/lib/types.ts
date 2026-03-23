@@ -24,8 +24,6 @@ export type DocumentStatus =
     | "parsed"
     | "failed";
 
-export type AccountBookRole = "owner" | "viewer";
-
 export type JobStatus =
     | "pending"
     | "processing"
@@ -50,6 +48,7 @@ export interface UserRead {
     email: string;
     role: UserRole;
     is_active: boolean;
+    created_by_user_id?: number | null;
     created_at: string;
     updated_at: string;
 }
@@ -287,7 +286,17 @@ export interface AccountBookListResponse {
     limit: number;
 }
 
-export interface AccountBookListParams extends PaginatedParams {}
+export interface AccountBookListParams extends PaginatedParams {
+    /** Developer only: restrict to tenant books (provisioned users + own books). */
+    provisioned_tenant_only?: boolean;
+}
+
+export interface AdminUserListParams extends PaginatedParams {
+    role?: UserRole;
+    is_active?: boolean;
+    /** Only users created by the current developer. */
+    provisioned_by_me?: boolean;
+}
 
 // ── Account Book Members (Tier 5) ───────────────────────────────────
 
@@ -297,7 +306,6 @@ export interface MemberRead {
     user_id: number;
     user_name: string;
     user_email: string;
-    role: AccountBookRole;
     created_at: string;
 }
 

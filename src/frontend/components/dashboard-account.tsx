@@ -39,6 +39,8 @@ interface DashboardAccountProps {
     rawAccount?: AccountBookRead;
     /** The current user's system role — edit controls are shown for admins only. */
     userRole?: UserRole;
+    /** When false (viewer), upload is hidden. */
+    canMutate: boolean;
     onYearClick: (year: number) => void;
 }
 
@@ -176,6 +178,7 @@ export function DashboardAccount({
     account,
     rawAccount,
     userRole,
+    canMutate,
     onYearClick,
 }: DashboardAccountProps) {
     const {
@@ -251,19 +254,21 @@ export function DashboardAccount({
                         {isAdmin && rawAccount && (
                             <EditAccountDialog account={rawAccount} />
                         )}
-                        <UploadDialog
-                            title="Upload Bank Statement"
-                            description="Upload a PDF bank statement to be parsed and reconciled against this account."
-                            accept=".pdf"
-                            acceptLabel="PDF only"
-                            multiple={false}
-                            onUpload={uploadFiles}
-                            isUploading={isUploading}
-                            uploadResults={uploadResults}
-                            onOpenChange={(open) => {
-                                if (!open) resetUpload();
-                            }}
-                        />
+                        {canMutate && (
+                            <UploadDialog
+                                title="Upload Bank Statement"
+                                description="Upload a PDF bank statement to be parsed and reconciled against this account."
+                                accept=".pdf"
+                                acceptLabel="PDF only"
+                                multiple={false}
+                                onUpload={uploadFiles}
+                                isUploading={isUploading}
+                                uploadResults={uploadResults}
+                                onOpenChange={(open) => {
+                                    if (!open) resetUpload();
+                                }}
+                            />
+                        )}
                     </div>
                 </div>
                 <p className="text-xs text-muted-foreground">

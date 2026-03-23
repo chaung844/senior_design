@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
-from app.enums import AccountBookRole, AccountType
+from app.enums import AccountType
 
 
 class AccountBookCreate(BaseModel):
@@ -50,7 +50,6 @@ class MemberRead(BaseModel):
     user_id: int
     user_name: str
     user_email: str
-    role: AccountBookRole
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

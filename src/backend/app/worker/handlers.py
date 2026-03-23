@@ -12,6 +12,7 @@ from app.models.receipt import Receipt
 from app.models.statement import BankStatement, BankStatementLine
 from app.models.user import User
 from app.services.aws_model_services import (
+    model_categorize_transaction,
     model_parse_bank_statement_metadata,
     model_parse_document,
 )
@@ -117,12 +118,16 @@ async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSSer
         if not parsed:
             raise ValueError("Model returned empty response for receipt")
 
+        categorized = model_categorize_transaction(parsed)
+        expense_type = categorized.get("expense_type") if categorized else None
+
         receipt = Receipt(
             vendor=_safe_str(parsed.get("vendor"), "Unknown"),
             invoice_number=_safe_str(parsed.get("invoice_number")) or None,
             billing_date=_safe_date(parsed.get("date"), "date"),
             charged_amount=_safe_decimal(parsed.get("total")),
             description=_safe_str(parsed.get("purchase_desc")) or None,
+            expense_type=expense_type,
             statement_id=statement_id,
         )
         session.add(receipt)
@@ -213,9 +218,7 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
         os.unlink(tmp_path)
 
 
-async def handle_reconciliation(
-    payload: dict, session: AsyncSession, aws: AWSService
-):
+async def handle_reconciliation(payload: dict, session: AsyncSession, aws: AWSService):
     job_id = payload["job_id"]
     account_id = payload["account_id"]
     statement_id = payload.get("statement_id")

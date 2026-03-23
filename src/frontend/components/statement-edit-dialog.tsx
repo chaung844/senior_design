@@ -59,6 +59,8 @@ interface StatementEditDialogProps {
     onOpenChange: (open: boolean) => void;
     /** Called after a successful delete so the parent can navigate away. */
     onDeleted?: () => void;
+    /** When true, edits and delete are hidden (viewer). */
+    readOnly?: boolean;
 }
 
 export function StatementEditDialog({
@@ -66,6 +68,7 @@ export function StatementEditDialog({
     open,
     onOpenChange,
     onDeleted,
+    readOnly = false,
 }: StatementEditDialogProps) {
     const updateMutation = useUpdateStatement();
     const deleteMutation = useDeleteStatement();
@@ -115,7 +118,7 @@ export function StatementEditDialog({
     // totalAmount !== String(statement.total_amount);
 
     function handleSave() {
-        if (!statement) return;
+        if (!statement || readOnly) return;
         setError(null);
 
         const body: BankStatementUpdate = {};
@@ -186,7 +189,7 @@ export function StatementEditDialog({
     }
 
     function handleDelete() {
-        if (!statement || !statement.document_id) return;
+        if (!statement || !statement.document_id || readOnly) return;
         setError(null);
 
         deleteMutation.mutate(statement.document_id, {
@@ -205,7 +208,8 @@ export function StatementEditDialog({
     }
 
     const canDelete = statement.document_id !== null;
-    const isBusy = updateMutation.isPending || deleteMutation.isPending;
+    const isBusy =
+        updateMutation.isPending || deleteMutation.isPending || readOnly;
 
     const reconcileLabel = statement.reconciled ? (
         <Badge variant="default" className="text-[9px] h-4 px-1.5">
@@ -238,11 +242,13 @@ export function StatementEditDialog({
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
-                        Edit Statement
+                        {readOnly ? "Statement" : "Edit Statement"}
                         {reconcileLabel}
                     </DialogTitle>
                     <DialogDescription>
-                        Modify the bank statement metadata below.{" "}
+                        {readOnly
+                            ? "Bank statement metadata for this period."
+                            : "Modify the bank statement metadata below."}{" "}
                         {statement.file_name && (
                             <>
                                 Source file:{" "}
@@ -388,77 +394,91 @@ export function StatementEditDialog({
                 <Separator />
 
                 <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-                    {/* Delete — guarded by a nested AlertDialog */}
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
-                                disabled={isBusy || !canDelete}
-                            >
-                                <HugeiconsIcon
-                                    icon={Delete02Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Delete Statement
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                    Delete Statement
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will permanently delete the{" "}
-                                    <strong>
-                                        {monthName} {statement.year}
-                                    </strong>{" "}
-                                    bank statement, all{" "}
-                                    <strong>{statement.line_count}</strong>{" "}
-                                    transaction lines, every linked receipt, and
-                                    all reconciliation matches. This action
-                                    cannot be undone.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel size="sm">
-                                    Cancel
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                    variant="destructive"
+                    {!readOnly && (
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="outline"
                                     size="sm"
-                                    onClick={handleDelete}
-                                    disabled={isBusy}
+                                    className="text-destructive border-destructive/30 hover:bg-destructive/10 gap-1.5"
+                                    disabled={isBusy || !canDelete}
                                 >
-                                    {deleteMutation.isPending
-                                        ? "Deleting…"
-                                        : "Delete"}
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
+                                    <HugeiconsIcon
+                                        icon={Delete02Icon}
+                                        strokeWidth={2}
+                                        className="size-3.5"
+                                    />
+                                    Delete Statement
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Delete Statement
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete the{" "}
+                                        <strong>
+                                            {monthName} {statement.year}
+                                        </strong>{" "}
+                                        bank statement, all{" "}
+                                        <strong>{statement.line_count}</strong>{" "}
+                                        transaction lines, every linked receipt,
+                                        and all reconciliation matches. This
+                                        action cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel size="sm">
+                                        Cancel
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                        variant="destructive"
+                                        size="sm"
+                                        onClick={handleDelete}
+                                        disabled={isBusy}
+                                    >
+                                        {deleteMutation.isPending
+                                            ? "Deleting…"
+                                            : "Delete"}
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
 
-                    <div className="flex items-center gap-2">
+                    <div
+                        className={
+                            readOnly
+                                ? "flex w-full items-center justify-end gap-2"
+                                : "flex items-center gap-2"
+                        }
+                    >
                         <DialogClose asChild>
                             <Button
                                 variant="outline"
                                 size="sm"
-                                disabled={isBusy}
+                                disabled={
+                                    readOnly
+                                        ? false
+                                        : updateMutation.isPending ||
+                                          deleteMutation.isPending
+                                }
                             >
-                                Cancel
+                                {readOnly ? "Close" : "Cancel"}
                             </Button>
                         </DialogClose>
-                        <Button
-                            size="sm"
-                            onClick={handleSave}
-                            disabled={!isDirty || isBusy}
-                        >
-                            {updateMutation.isPending
-                                ? "Saving…"
-                                : "Save Changes"}
-                        </Button>
+                        {!readOnly && (
+                            <Button
+                                size="sm"
+                                onClick={handleSave}
+                                disabled={!isDirty || isBusy}
+                            >
+                                {updateMutation.isPending
+                                    ? "Saving…"
+                                    : "Save Changes"}
+                            </Button>
+                        )}
                     </div>
                 </DialogFooter>
             </DialogContent>

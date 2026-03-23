@@ -15,6 +15,7 @@ import json
 import logging
 from typing import Any
 
+from rich import print
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette.concurrency import run_in_threadpool
 
@@ -27,11 +28,12 @@ from app.models.statement import BankStatementLine
 from app.services.aws_model_services import call_model
 from app.services.reconciliation_matching import (
     MatchConfig,
-    _clean_vendor,
     _date_score,
     _vendor_score,
-    _vendor_similarity,
     calculate_confidence,
+    calculate_soft_pair_score,
+    candidate_pair_sort_key,
+    line_vendor_similarity,
 )
 
 logger = logging.getLogger(__name__)
@@ -50,10 +52,7 @@ def _rejection_reasons(
     reasons: list[str] = []
     amount_exact = line.charge == receipt.charged_amount
     days_diff = abs((line.transaction_date - receipt.billing_date).days)
-    vendor_similarity = _vendor_similarity(
-        _clean_vendor(line.vendor or ""),
-        _clean_vendor(receipt.vendor or ""),
-    )
+    vendor_similarity = line_vendor_similarity(line, receipt)
 
     if not amount_exact:
         reasons.append(
@@ -62,6 +61,11 @@ def _rejection_reasons(
     if days_diff > cfg.max_date_window:
         reasons.append(
             f"Date outside window: {days_diff} days apart (max {cfg.max_date_window})"
+        )
+    if vendor_similarity < cfg.min_vendor_similarity_pass1b:
+        reasons.append(
+            f"Vendor similarity below Pass 1b floor: {vendor_similarity:.0f}% "
+            f"(min {cfg.min_vendor_similarity_pass1b}%)"
         )
     if confidence < cfg.confidence_threshold:
         reasons.append(
@@ -89,6 +93,7 @@ def gather_unmatched_analysis_data(
     """
     cfg = config if config is not None else MatchConfig()
     all_receipts = [r for r in receipts]
+    receipt_by_id = {r.receipt_id: r for r in all_receipts}
     result: list[dict[str, Any]] = []
 
     for line in lines:
@@ -98,14 +103,12 @@ def gather_unmatched_analysis_data(
         candidates = []
         for receipt in all_receipts:
             confidence = calculate_confidence(line, receipt, cfg)
-            vendor_sim = _vendor_similarity(
-                _clean_vendor(line.vendor or ""),
-                _clean_vendor(receipt.vendor or ""),
-            )
+            vendor_sim = line_vendor_similarity(line, receipt)
             v_score = _vendor_score(line, receipt)
             d_score = _date_score(line, receipt, cfg)
             days_diff = abs((line.transaction_date - receipt.billing_date).days)
             amount_exact = line.charge == receipt.charged_amount
+            soft_pair = calculate_soft_pair_score(line, receipt, cfg)
             reasons = _rejection_reasons(line, receipt, confidence, cfg)
 
             candidates.append(
@@ -115,6 +118,7 @@ def gather_unmatched_analysis_data(
                     "charged_amount": str(receipt.charged_amount),
                     "billing_date": str(receipt.billing_date),
                     "confidence": confidence,
+                    "soft_pair_score": soft_pair,
                     "amount_exact": amount_exact,
                     "vendor_similarity": round(vendor_sim, 1),
                     "vendor_score": v_score,
@@ -125,7 +129,12 @@ def gather_unmatched_analysis_data(
             )
 
         candidates.sort(
-            key=lambda c: (c["confidence"], c["vendor_similarity"]), reverse=True
+            key=lambda c: candidate_pair_sort_key(
+                line,
+                receipt_by_id[c["receipt_id"]],
+                c["confidence"],
+                cfg,
+            ),
         )
         top = candidates[:TOP_CANDIDATES_COUNT]
 
@@ -234,6 +243,7 @@ async def analyze_and_store(
             return
 
         prompt = build_analysis_prompt(unmatched_data)
+        print(prompt)
         raw_response = await run_in_threadpool(
             call_model,
             settings.llm_model_id,
@@ -255,6 +265,7 @@ async def analyze_and_store(
                     "charged_amount": c["charged_amount"],
                     "billing_date": c["billing_date"],
                     "confidence": c["confidence"],
+                    "soft_pair_score": c["soft_pair_score"],
                     "rejection_reasons": c["rejection_reasons"],
                 }
                 for c in item["top_candidates"]

@@ -48,15 +48,15 @@ import {
 import { lookupUserByEmail } from "@/lib/api";
 import type { AccountBookRead, MemberRead } from "@/lib/types";
 
-// ── Role badge ────────────────────────────────────────────────────────
+// ── Member badge (primary owner = AccountBook.user_id) ────────────────
 
-function RoleBadge({ role }: { role: MemberRead["role"] }) {
+function MemberKindBadge({ isPrimary }: { isPrimary: boolean }) {
     return (
         <Badge
-            variant={role === "owner" ? "default" : "outline"}
-            className="text-[10px] h-4 px-1.5 capitalize"
+            variant={isPrimary ? "default" : "outline"}
+            className="text-[10px] h-4 px-1.5"
         >
-            {role}
+            {isPrimary ? "Owner" : "Member"}
         </Badge>
     );
 }
@@ -437,37 +437,43 @@ export function EditAccountDialog({ account }: EditAccountDialogProps) {
                                 </p>
                             ) : (
                                 <div className="flex flex-col divide-y divide-border border border-border">
-                                    {members.map((member) => (
-                                        <div
-                                            key={member.id}
-                                            className="flex items-center gap-2 px-2.5 py-2"
-                                        >
-                                            <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
-                                                <HugeiconsIcon
-                                                    icon={UserIcon}
-                                                    strokeWidth={2}
-                                                    className="size-3"
+                                    {members.map((member) => {
+                                        const isPrimaryOwner =
+                                            member.user_id === account.user_id;
+                                        return (
+                                            <div
+                                                key={member.id}
+                                                className="flex items-center gap-2 px-2.5 py-2"
+                                            >
+                                                <div className="flex size-6 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                                                    <HugeiconsIcon
+                                                        icon={UserIcon}
+                                                        strokeWidth={2}
+                                                        className="size-3"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-1 min-w-0 flex-col">
+                                                    <span className="truncate text-xs font-medium leading-none">
+                                                        {member.user_name}
+                                                    </span>
+                                                    <span className="truncate text-[10px] text-muted-foreground mt-0.5">
+                                                        {member.user_email}
+                                                    </span>
+                                                </div>
+                                                <MemberKindBadge
+                                                    isPrimary={isPrimaryOwner}
                                                 />
+                                                {!isPrimaryOwner && (
+                                                    <RemoveMemberButton
+                                                        member={member}
+                                                        accountId={
+                                                            account.account_id
+                                                        }
+                                                    />
+                                                )}
                                             </div>
-                                            <div className="flex flex-1 min-w-0 flex-col">
-                                                <span className="truncate text-xs font-medium leading-none">
-                                                    {member.user_name}
-                                                </span>
-                                                <span className="truncate text-[10px] text-muted-foreground mt-0.5">
-                                                    {member.user_email}
-                                                </span>
-                                            </div>
-                                            <RoleBadge role={member.role} />
-                                            {member.role !== "owner" && (
-                                                <RemoveMemberButton
-                                                    member={member}
-                                                    accountId={
-                                                        account.account_id
-                                                    }
-                                                />
-                                            )}
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             )}
 

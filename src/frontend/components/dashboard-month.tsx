@@ -48,7 +48,6 @@ import { DataTable } from "@/components/data-table";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { UploadDialog } from "@/components/upload-dialog";
 import { ExportDialog } from "@/components/export-dialog";
-import { useDocumentUpload } from "@/hooks/use-document-upload";
 import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
 import { ReceiptEditDialog } from "@/components/receipt-edit-dialog";
 import { StatementEditDialog } from "@/components/statement-edit-dialog";
@@ -75,6 +74,8 @@ interface DashboardMonthProps {
     statementId: number;
     /** Raw API statement lines — used to open the line-detail dialog. */
     rawLines: BankStatementLineRead[];
+    /** When false (viewer), uploads, reconciliation, and edits are hidden. */
+    canMutate: boolean;
     onBack: () => void;
 }
 
@@ -316,37 +317,39 @@ function ReceiptFileLink({ receiptId }: { receiptId: number }) {
 
 function makeReceiptColumns(
     currency: string,
+    includeSelection: boolean,
 ): ColumnDef<ReceiptRead, unknown>[] {
-    return [
-        {
-            id: "select",
-            header: ({ table }) => (
+    const selectColumn: ColumnDef<ReceiptRead, unknown> = {
+        id: "select",
+        header: ({ table }) => (
+            <Checkbox
+                checked={
+                    table.getIsAllPageRowsSelected() ||
+                    (table.getIsSomePageRowsSelected() && "indeterminate")
+                }
+                onCheckedChange={(value) =>
+                    table.toggleAllPageRowsSelected(!!value)
+                }
+                aria-label="Select all"
+                className="translate-y-0.5"
+            />
+        ),
+        cell: ({ row }) => (
+            <div onClick={(e) => e.stopPropagation()}>
                 <Checkbox
-                    checked={
-                        table.getIsAllPageRowsSelected() ||
-                        (table.getIsSomePageRowsSelected() && "indeterminate")
-                    }
-                    onCheckedChange={(value) =>
-                        table.toggleAllPageRowsSelected(!!value)
-                    }
-                    aria-label="Select all"
+                    checked={row.getIsSelected()}
+                    onCheckedChange={(value) => row.toggleSelected(!!value)}
+                    aria-label="Select row"
                     className="translate-y-0.5"
                 />
-            ),
-            cell: ({ row }) => (
-                <div onClick={(e) => e.stopPropagation()}>
-                    <Checkbox
-                        checked={row.getIsSelected()}
-                        onCheckedChange={(value) => row.toggleSelected(!!value)}
-                        aria-label="Select row"
-                        className="translate-y-0.5"
-                    />
-                </div>
-            ),
-            enableSorting: false,
-            enableHiding: false,
-            size: 40,
-        },
+            </div>
+        ),
+        enableSorting: false,
+        enableHiding: false,
+        size: 40,
+    };
+
+    const dataColumns: ColumnDef<ReceiptRead, unknown>[] = [
         {
             accessorKey: "match_status",
             header: "Status",
@@ -516,6 +519,7 @@ function makeReceiptColumns(
             },
         },
     ];
+    return includeSelection ? [selectColumn, ...dataColumns] : dataColumns;
 }
 
 function makeVendorColumns(currency: string): ColumnDef<VendorRow, unknown>[] {
@@ -873,6 +877,7 @@ export function DashboardMonth({
     monthData,
     statementId,
     rawLines,
+    canMutate,
     onBack,
 }: DashboardMonthProps) {
     const deleteDoc = useDeleteDocument();
@@ -1063,8 +1068,8 @@ export function DashboardMonth({
     }, [allReceipts, receiptFilter, receiptSearch]);
 
     const receiptColumns = React.useMemo(
-        () => makeReceiptColumns(account.currency),
-        [account.currency],
+        () => makeReceiptColumns(account.currency, canMutate),
+        [account.currency, canMutate],
     );
 
     const matchedReceiptCount = React.useMemo(
@@ -1121,7 +1126,7 @@ export function DashboardMonth({
                     />
                 </div>
                 {/* Action buttons */}
-                {Object.keys(rowSelection).length > 0 && (
+                {canMutate && Object.keys(rowSelection).length > 0 && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button
@@ -1358,7 +1363,7 @@ export function DashboardMonth({
                 }
                 actions={
                     <div className="flex items-center gap-2">
-                        {statementId != null && statementDetail && (
+                        {canMutate && statementId != null && statementDetail && (
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -1372,20 +1377,22 @@ export function DashboardMonth({
                                 Edit Statement
                             </Button>
                         )}
-                        <UploadDialog
-                            title="Upload Receipts"
-                            description="Upload receipt images or PDFs for reconciliation matching."
-                            accept=".png,.jpg,.jpeg,.pdf"
-                            acceptLabel="PNG, JPEG, JPG, or PDF"
-                            multiple
-                            onUpload={uploadFiles}
-                            isUploading={isUploading}
-                            uploadResults={uploadResults}
-                            onOpenChange={(open) => {
-                                if (!open) resetUpload();
-                            }}
-                        />
-                        {statementId != null && (
+                        {canMutate && (
+                            <UploadDialog
+                                title="Upload Receipts"
+                                description="Upload receipt images or PDFs for reconciliation matching."
+                                accept=".png,.jpg,.jpeg,.pdf"
+                                acceptLabel="PNG, JPEG, JPG, or PDF"
+                                multiple
+                                onUpload={uploadFiles}
+                                isUploading={isUploading}
+                                uploadResults={uploadResults}
+                                onOpenChange={(open) => {
+                                    if (!open) resetUpload();
+                                }}
+                            />
+                        )}
+                        {canMutate && statementId != null && (
                             <>
                                 <Button
                                     variant="outline"
@@ -1606,8 +1613,12 @@ export function DashboardMonth({
                             }
                             globalFilter={receiptSearch}
                             onGlobalFilterChange={setReceiptSearch}
-                            rowSelection={rowSelection}
-                            onRowSelectionChange={setRowSelection}
+                            {...(canMutate
+                                ? {
+                                      rowSelection,
+                                      onRowSelectionChange: setRowSelection,
+                                  }
+                                : {})}
                             getRowId={(row) => String(row.receipt_id)}
                             onRowClick={(row) => {
                                 setSelectedReceipt(row);
@@ -1637,12 +1648,14 @@ export function DashboardMonth({
                     if (!open) setSelectedReceipt(null);
                 }}
                 currency={account.currency}
+                readOnly={!canMutate}
             />
             <StatementEditDialog
                 statement={statementDetail ?? null}
                 open={stmtEditDialogOpen}
                 onOpenChange={setStmtEditDialogOpen}
                 onDeleted={onBack}
+                readOnly={!canMutate}
             />
             <StatementLineDialog
                 line={selectedLine}
@@ -1651,6 +1664,7 @@ export function DashboardMonth({
                 statementId={statementId}
                 currency={account.currency}
                 initialReceiptFilter={lineDialogInitialFilter}
+                readOnly={!canMutate}
                 open={lineDialogOpen}
                 onOpenChange={(open) => {
                     setLineDialogOpen(open);

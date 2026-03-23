@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, List
 
-from sqlalchemy import Enum, String, event
+from sqlalchemy import Enum, ForeignKey, String, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.enums import UserRole
@@ -29,6 +29,17 @@ class User(Base, TimestampMixin):
         default=UserRole.viewer,
     )
     is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+
+    created_by_user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.user_id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+    created_by: Mapped["User | None"] = relationship(
+        "User",
+        foreign_keys=[created_by_user_id],
+        remote_side=[user_id],
+    )
 
     # Relationships
     uploaded_documents: Mapped[List["Document"]] = relationship(
