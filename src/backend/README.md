@@ -3,519 +3,359 @@
 ---
 
 ## Stacks
-- `FastAPI` for server + API endpoints
-- `Pydantic` for data validation
-- `AWS RDS ` for relational database manaement
-- `AWS S3` for storing objects (e.g, PDFs, Images)
-- `AWS SQS` for messages queuing service
-- `AWS Bedrock` for AI Model inference service
-- `PostgreSQL 16` (local via `Docker` / prod via `AWS RDS`)
-- `SQLAlchemy` (ORM) & `Alembic` (Migration)
+
+- **FastAPI** — HTTP API
+- **Pydantic** / **pydantic-settings** — request/response and configuration
+- **Slowapi** — rate limiting (login)
+- **AWS RDS** — managed PostgreSQL in production
+- **AWS S3** — document storage (PDFs, images)
+- **AWS SQS** — async parsing and reconciliation jobs
+- **AWS Bedrock** — LLM / VLM inference (OpenAI-compatible HTTP API via `openai` client)
+- **PostgreSQL 16** — local via Docker Compose; production via RDS
+- **SQLAlchemy 2** (async) + **Alembic** — ORM and migrations
+- **Python 3.13+** — see `pyproject.toml`
 
 ---
 
-## Directory
-- Based on [Structuring a FastAPI Project: Best Practices](https://dev.to/mohammad222pr/structuring-a-fastapi-project-best-practices-53l6) 
-```shell
+## Directory layout
+
+Based on [Structuring a FastAPI Project: Best Practices](https://dev.to/mohammad222pr/structuring-a-fastapi-project-best-practices-53l6).
+
+```text
 src/backend/
-├── alembic/                    # Database migration history 
-├── app/                        # Main application source code
-│   ├── __init__.py
-│   ├── main.py                 # App entry point (FastAPI instance)
-│   ├── logging_setup.py        # Shared Rich console logging (API + worker)
-│   ├── config.py               # Server configuration file by Pydantic
-│   ├── models/                 # Database models
-│   │   └── __init__.py
-│   ├── routers/                # API endpoints
-│   │   └── __init__.py
-│   ├── schemas/                # Schemas for Pydantic data validation
-│   │   └── __init__.py
-│   ├── services/               # Business logic
-│   │   ├── __init__.py
-│   │   └── aws_services.py     # AWS services
-│   └── utils/                  # Utility functions
-│       ├── __init__.py
-│       └── lm_utils.py         
-├── safe/                       # Sensitive data zone. Files in this directory should never be commited
-│   ├── prompts/                # System instruction (refer below on how to get prompts data)
-│   └── samples/                # Sample bank statements + receipts  (refer below on how to get sample data)
-├── .env.example                # Example Environment variables
-├── .gitignore                  # Files to ignore (venv, db, pyc)
-├── alembic.ini                 # Alembic configuration
-├── docker-compose.yml          # Local infrastructure (PostgreSQL)
-├── seed.py                     # Database seeding script
-├── pyproject.toml              # Project metadata & dependencies (Managed by uv)
-├── uv.lock                     # Exact dependency versions (Managed by uv)
+├── alembic/                    # Migration scripts
+├── app/
+│   ├── main.py                 # FastAPI app, CORS, /health, router includes
+│   ├── config.py               # Settings (env / .env)
+│   ├── database.py             # Async engine and session
+│   ├── enums.py                # Shared enums (document, job, match, roles, …)
+│   ├── logging_setup.py        # Rich logging (API + worker)
+│   ├── models/                 # SQLAlchemy models
+│   ├── routers/                # Route modules: auth, admin, accounts, documents,
+│   │                           # jobs, receipts, reconciliation, statements
+│   ├── schemas/                # Pydantic schemas
+│   ├── services/               # AWS, parsing, reconciliation matching/runner, cleanup
+│   ├── utils/                  # auth, JWT, CSRF, security, access control, limiter, PDF helpers
+│   └── worker/                 # SQS consumer (parsing + reconciliation handlers)
+├── safe/                       # Local prompts & samples (not committed)
+│   ├── prompts/
+│   └── samples/
+├── tests/                      # Pytest tests
+├── alembic.ini
+├── docker-compose.yml          # Local PostgreSQL
+├── env.example                 # Example environment variables (copy to .env)
+├── pyproject.toml              # Dependencies (uv)
+├── uv.lock
+├── seed.py                     # Dev user / seed data
+├── s3-cors.json                # Sample S3 CORS config (browser uploads)
 └── README.md
 ```
 
-> *How to get `safe/` data?*
->
-> System prompt should be shared with teammates via Matcha-Config google docs (for now, in search of better secrets management option).
->
-> Sample data should be shared with teammates via project advisor from Midea.
+### How to get `safe/` data?
+
+- **Prompts:** shared with the team via Matcha-Config doc (or your team’s secrets/docs process).
+- **Sample statements / receipts:** provided by the project advisor (Midea).
 
 ---
 
-## Running backend
-- Make sure [uv](https://docs.astral.sh/uv/) is installed
-- Install python dependencies
-```bash
-uv sync
-```
-- Start the local database:
-```bash
-docker compose up -d
-```
-- Refer to `.env.example` file for how to setup `.env`
-> Note that you only need to put in AWS Bedrock API key, other variables value can be derived from `config.py` default value.
+## Running the backend
 
-- Generate alembic versioning
-```bash
-uv run alembic revision --autogenerate -m "Description of changes"
-```
-- Apply database migrations and (optional) seed test data:
-```bash
-uv run alembic upgrade head
-uv run seed.py
-```
-- Run the server
-```bash
-uv run uvicorn app.main:app --reload --loop uvloop --http httptools
-```
-- From the localhost link, append `/docs` to get swagger UI
+1. Install [uv](https://docs.astral.sh/uv/) and **Python 3.13+**.
+2. Install dependencies:
 
-- Run the worker
-```bash
- uv run python -m app.worker.main
-```
+   ```bash
+   uv sync
+   ```
+
+3. Start local PostgreSQL:
+
+   ```bash
+   docker compose up -d
+   ```
+
+4. Copy **`env.example`** to **`.env`** in `src/backend/` and fill in required values. At minimum, `app.config.Settings` requires:
+
+   - `AWS_BEDROCK_API_KEY`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`
+   - `S3_BUCKET_NAME`, `AWS_SQS_URL`
+   - `DATABASE_URL` (async URL, e.g. `postgresql+asyncpg://…`)
+   - `JWT_SECRET_KEY`
+
+   Optional keys and defaults are documented in `app/config.py` and commented in `env.example`.
+
+5. **Local HTTP dev:** `cookie_secure` defaults to **`true`**, which makes browsers drop auth cookies on plain `http://localhost`. Set explicitly:
+
+   ```env
+   COOKIE_SECURE=false
+   ```
+
+6. Migrations and optional seed:
+
+   ```bash
+   uv run alembic revision --autogenerate -m "Description of changes"
+   uv run alembic upgrade head
+   uv run seed.py
+   ```
+
+7. API server:
+
+   ```bash
+   uv run uvicorn app.main:app --reload --loop uvloop --http httptools
+   ```
+
+   Open **http://127.0.0.1:8000/docs** for Swagger UI.
+
+8. SQS worker (required for document parsing and for **`POST /reconciliation/start`**):
+
+   ```bash
+   uv run python -m app.worker.main
+   ```
+
+### Rate limiting
+
+`POST /auth/login` is limited to **10 requests per minute per client IP** (`slowapi`). Excess attempts return **429 Too Many Requests**.
 
 ---
 
 ## Logging
 
-The API process and the SQS worker both use **[Rich](https://rich.readthedocs.io/)** for colorized, readable console logs. Shared setup lives in `app/logging_setup.py` (`configure_rich_logging`).
+The API and the SQS worker use **[Rich](https://rich.readthedocs.io/)** via `app/logging_setup.py` (`configure_rich_logging`).
 
-**Behavior**
+- **Level:** `INFO` by default. Set **`DEBUG=true`** in `.env` for debug logs, richer tracebacks, and SQLAlchemy engine logging.
+- **Uvicorn:** Plain-text handlers on `uvicorn` loggers are removed so access lines go through the root Rich handler without duplicates.
+- **HTTP:** **`X-Response-Time-Ms`** is set on every response; access lines come from **`uvicorn.access`**.
+- **TTY:** Rich disables color when there is no TTY. Use **`FORCE_COLOR=1`** in containers; **`NO_COLOR`** forces plain output.
 
-- **Log level:** `INFO` by default. Set **`DEBUG=true`** in `.env` (see `app/config.py`) for `DEBUG` logging, richer exception tracebacks (locals), and `sqlalchemy.engine` at `DEBUG` (alongside SQLAlchemy `echo` when debugging).
-- **Uvicorn:** On startup, Uvicorn attaches its own plain-text handlers to the `uvicorn`, `uvicorn.error`, and `uvicorn.access` loggers with `propagate=False`. After installing a single Rich handler on the root logger, those handlers are cleared and propagation is re-enabled so you do not get duplicate plain + Rich lines.
-- **HTTP requests:** Per-request lines come from **`uvicorn.access`** (Rich). The HTTP middleware still adds an **`X-Response-Time-Ms`** response header; it does not log a second access line for the same request.
-- **Containers / non-TTY:** Rich disables color when there is no TTY. To force color in Docker or log collectors, set **`FORCE_COLOR=1`**. **`NO_COLOR`** is respected when you want plain output.
+`seed.py` uses standard library logging. Alembic uses `alembic.ini`.
 
-The **`seed.py`** script uses standard `logging` configuration, not `configure_rich_logging`. Alembic continues to use `alembic.ini` for migration logging.
+---
+
+## Operational endpoints
+
+| Method | Path | Notes |
+|--------|------|--------|
+| `GET` | `/` | Simple JSON: service up |
+| `GET` | `/health` | **200** `{ "status": "ok" }` if the app can run `SELECT 1` on the database; **503** if the DB is unreachable (for probes/load balancers) |
 
 ---
 
 ## Notes
-- Currently, AWS Bedrock foundation model is invoked via OpenAI-Compatible API call. Future features involve deeper integration with AWS (.e.g, S3, RDS, ...) may need to use [boto3](https://boto3.amazonaws.com/v1/documentation/api/latest/index.html)([installation](https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html)) - AWS Python SDK.
 
-### Docker compose routine for local dev
+- Bedrock is called through the **OpenAI-compatible** Bedrock Runtime endpoint (`bedrock_base_url` in `config.py`). **boto3** / **aioboto3** are still used for S3 and SQS.
+
+### Docker Compose (local)
+
 ```bash
-# ---- start ----
+# Start
 docker compose up -d
 
-# ---- stop temporarily ----
+# Stop (keep volumes)
 docker compose stop
 
-# ---- resume from stop ----
+# Start again
 docker compose start
 
-# ---- remove (excluding the mounted volume) ----
+# Remove containers/networks (keep named volumes)
 docker compose down
 
-# ---- remove (including the mounted volume) ----
-# down - Stops and removes containers/networks from this Compose project
-# -v / --volumes - Removes named volumes declared in your Compose file + anonymous volumes attached to those containers
-# --rmi all - Removes all images used by services in this specific Compose file (both local/untagged and tagged images)​
-# --remove-orphans - Removes containers from other Compose projects that use the same project name
+# Remove volumes and images for this project (destructive)
 docker compose down -v --rmi all --remove-orphans
 ```
 
-### S3 CORS (required for document upload)
+### S3 CORS (required for direct browser upload)
 
-The frontend uploads files **directly to S3** using presigned PUT URLs. The browser enforces CORS, so the S3 bucket must allow your frontend origin. Otherwise you will see: *"Fetch API cannot load presigned url s3 due to access control checks"*.
+The frontend uploads with **presigned PUT** URLs; the bucket must allow the frontend origin.
 
-1. **Edit `s3-cors.json`** in this directory: add your production frontend origin to `AllowedOrigins` (e.g. `https://your-app.vercel.app`). The file already includes `http://localhost:3000` and `http://127.0.0.1:3000` for local dev.
-
-2. **Apply the CORS configuration** to your bucket (replace `YOUR_BUCKET_NAME` with the value of `S3_BUCKET_NAME` from your `.env`):
+1. Edit **`s3-cors.json`**: add production origins to `AllowedOrigins` (localhost entries are already there for dev).
+2. Apply:
 
    ```bash
    aws s3api put-bucket-cors --bucket YOUR_BUCKET_NAME --cors-configuration file://s3-cors.json
    ```
 
-3. **Verify** in the AWS Console: S3 → your bucket → Permissions → Cross-origin resource sharing (CORS).
+3. Confirm in AWS Console → bucket → Permissions → CORS.
 
-**If you get "Preflight response is not successful. Status code: 500"**  
-- Re-apply the CORS config above (e.g. `aws s3api put-bucket-cors ...`). The sample uses `AllowedHeaders: ["*"]` so the browser’s preflight headers are accepted.  
-- If the bucket is behind **CloudFront**, enable CORS for the distribution (e.g. use the “CORS-S3Origin” origin request policy) and allow the `OPTIONS` method and `Origin`, `Access-Control-Request-Headers`, `Access-Control-Request-Method` headers so the preflight reaches S3 correctly.
-
-## App workflows
-
-- user upload docs
-- save to s3
-- server send out sqs messages
-- server worker get sqs messages:
-    - receipt parsing with aws bedrock
-    - bank statmment parsing using server logic
-- when all parsing messages is completed
-- server do internal matching/reconciliation algorithm
-- done
-
-> Note that during the process of parsing docs, the user should be notified which doc is pending, being sent to aws bedrock, finished pening reconciliation
+If preflight returns **500** and you use **CloudFront**, ensure the distribution forwards **OPTIONS** and CORS headers so preflight reaches S3.
 
 ---
 
-## Architecture (Production)
+## Application workflows (high level)
 
-- **App Runner** serves the FastAPI HTTP API.
-- **ECS Fargate** runs a separate SQS worker process from the same codebase (different entrypoint).
-- Both share **RDS**, **S3**, and **SQS**. See prior architecture discussion for Dockerfile multi-target setup.
+1. User requests a presigned upload URL and uploads the file to S3.
+2. User confirms upload; the API creates a **parsing** `Job`, enqueues SQS (`parse_receipt` or `parse_statement`), and sets the document to `pending_processing`.
+3. The **worker** downloads from S3, runs Bedrock / pdfplumber as appropriate, writes `Receipt` or `BankStatement` + lines, sets the document to `parsed`, and completes the parsing job.
+4. User starts reconciliation via **`POST /reconciliation/start`**; the API creates a **reconciliation** job, enqueues **`run_reconciliation`**, and returns immediately. The worker runs matching + optional AI line summaries.
+5. The UI polls **`GET /jobs/{job_id}/status`** and reads results via reconciliation endpoints.
 
----
-
-## Production Notices
-
-Critical configuration differences between local development and a production deployment. Missing any of these will result in broken auth, rejected cookies, or CORS failures.
+Frontend should reflect document and job status (pending → processing → parsed / failed; reconciliation job states).
 
 ---
 
-### Cookie-Based Authentication
+## Architecture (production)
 
-Authentication uses **HttpOnly cookies** instead of tokens in the response body. Two cookies are issued on every successful login:
-
-| Cookie | `HttpOnly` | Purpose |
-|---|---|---|
-| `access_token` | `true` | Signed JWT — never readable by JavaScript |
-| `csrf_token` | `false` | Random hex token — read by JS and echoed as `X-CSRF-Token` header (Double Submit Cookie CSRF pattern) |
-
-The browser sends both cookies automatically on every request because the API client sets `credentials: "include"` on all fetches.
+- **App Runner** (or similar) serves the FastAPI app.
+- **ECS Fargate** (or a second process) runs **`python -m app.worker.main`** from the same image/repo.
+- Shared **RDS**, **S3**, and **SQS**.
 
 ---
 
-### `COOKIE_SECURE` — Most Common Production Breakage
+## Production configuration
 
-> **TL;DR:** Set `COOKIE_SECURE=true` in your production `.env`. Leave it unset (or `false`) for local dev.
+### Cookie-based authentication
 
-The `Secure` cookie attribute tells the browser to **only send the cookie over HTTPS**. When it is set on an HTTP connection (local dev), the browser **silently drops the cookie** with no error — the login appears to succeed but every subsequent request returns `401` because the `access_token` cookie is never stored.
+On successful login, two cookies are set:
 
-| Environment | `COOKIE_SECURE` value | Why |
-|---|---|---|
-| Local dev (`http://localhost`) | `false` (default) | Plain HTTP — `Secure` flag causes cookies to be silently dropped |
-| Production (`https://`) | `true` | Required; cookies without `Secure` are rejected by modern browsers over HTTPS |
+| Cookie | HttpOnly | Purpose |
+|--------|----------|---------|
+| `access_token` | yes | JWT — not readable from JavaScript |
+| `csrf_token` | no | HMAC-signed token (`nonce.signature` tied to user); JS sends it as **`X-CSRF-Token`** |
 
-Add to your production `.env`:
-```env
-COOKIE_SECURE=true
-```
+Use **`credentials: "include"`** on fetches so cookies are sent.
 
----
+### `COOKIE_SECURE` — common local/production mistake
 
-### `SameSite` and Cross-Origin Deployments
+**Default in code is `true`.** With `Secure` cookies, browsers **do not store or send** them on plain **HTTP** (e.g. local `http://localhost:8000`), so login appears to work but later requests get **401**.
 
-Cookies are issued with `SameSite=Lax` by default. This works correctly when the frontend and API share a **registrable domain** (e.g. `app.example.com` → `api.example.com`).
+| Environment | Setting |
+|-------------|---------|
+| Local HTTP | Set **`COOKIE_SECURE=false`** explicitly in `.env` |
+| Production HTTPS | **`COOKIE_SECURE=true`** (or omit if you rely on the default `true`) |
 
-If your frontend and backend are on **completely different domains** (e.g. Vercel + App Runner with no shared domain), you must switch to `SameSite=None; Secure=true`, otherwise cross-site `fetch` requests will not carry the cookies:
+### `SameSite` and cross-site frontends
 
-1. Add a `COOKIE_SAMESITE` setting to `config.py` (currently hardcoded to `"lax"`).
-2. Set `SameSite=None` only when both cookies also have `Secure=True` — the browser will reject `SameSite=None` without `Secure`.
-3. Ensure `Access-Control-Allow-Credentials: true` is present in responses (already configured via `allow_credentials=True` in `CORSMiddleware`).
+Cookies are set with **`SameSite=Lax`** in `app/routers/auth.py`. That works when the SPA and API are related sites (e.g. `app.example.com` and `api.example.com`). For **fully different domains** (e.g. Vercel + App Runner), you may need **`SameSite=None`** with **`Secure=true`** — that would require a dedicated setting in code today (currently hardcoded `lax`).
 
----
+### `CORS_ORIGINS`
 
-### CORS — `CORS_ORIGINS`
+With `allow_credentials=True`, you cannot use `*`. List every frontend origin explicitly (see `cors_origins` in `config.py`).
 
-`CORSMiddleware` is configured to **reject wildcard origins** (`"*"`) when `allow_credentials=True` (the browser itself blocks this). You must explicitly list every frontend origin.
+Allowed headers include: `Content-Type`, `Accept`, `Authorization`, `X-CSRF-Token`. Add new custom headers in `app/main.py` if needed.
 
-The default value in `config.py` is:
-```python
-cors_origins: List[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
-```
+### CSRF
 
-Override via `.env` for production:
-```env
-CORS_ORIGINS=["https://your-app.vercel.app"]
-```
+Mutating routes use **`verify_csrf_token`**: the **`X-CSRF-Token`** header must match the **`csrf_token`** cookie (double-submit), and the token is bound to the JWT user via HMAC.
 
-The following headers are explicitly allowed (required for the CSRF pattern):
-```
-Content-Type, Accept, Authorization, X-CSRF-Token
-```
+Typical errors: **403** `"CSRF token missing"` / `"CSRF token mismatch"`.
 
-> If you add new custom request headers on the frontend, add them to `allow_headers` in `app/main.py` as well.
+### Production checklist
+
+- [ ] `COOKIE_SECURE=true` on HTTPS deployments
+- [ ] `CORS_ORIGINS` includes the exact production frontend URL(s)
+- [ ] API served over HTTPS when using secure cookies
+- [ ] S3 CORS includes production origin(s)
+- [ ] `JWT_SECRET_KEY` is a long random secret (not the example in `env.example`)
 
 ---
 
-### CSRF Protection
+## API surface (summary)
 
-All state-changing endpoints (`POST`, `PUT`, `PATCH`, `DELETE`) require a valid `X-CSRF-Token` header. The backend validates it against the `csrf_token` cookie using the Double Submit Cookie pattern.
+The following mirrors the main routers. All routes except `/`, `/health`, and `/docs` expect the cookie session unless noted. State-changing routes require **CSRF** as above.
 
-**Frontend responsibility:** After login, read `document.cookie` for `csrf_token` and attach its value as the `X-CSRF-Token` header on every mutating request. The `api.ts` client already does this automatically via `getCookie("csrf_token")`.
+### Tier 1 — Auth & upload
 
-**What a mismatch returns:**
-```json
-HTTP 403 Forbidden
-{ "detail": "CSRF token missing" }   // header or cookie absent
-{ "detail": "CSRF token mismatch" }  // values differ
-```
+**`/auth`**
 
-Common causes of CSRF failures:
-- The `csrf_token` cookie was not stored (see `COOKIE_SECURE` section above).
-- The request omits `credentials: "include"` so the cookie is not sent.
-- The frontend reads the cookie before the login response has been fully processed.
+- [x] `POST /auth/login` — OAuth2 password form; sets cookies; **rate limited** 10/min/IP.
+- [x] `POST /auth/logout` — Clears cookies (authenticated + CSRF).
+- [x] `GET /auth/me` — Current user profile.
 
----
+**`/documents`**
 
-### Production Deployment Checklist
+- [x] `POST /documents/upload-url` — Body: `file_name`, `file_type`, `document_type`, optional `account_id`. Creates DB row (`pending_upload`), returns presigned PUT URL + `document_id` + `s3_key`.
+- [x] `POST /documents/{document_id}/confirm-upload` — Optional query `statement_id` (for receipts: link to a statement). Verifies S3 object, creates **parsing** `Job`, enqueues SQS, returns `job_id` + `pending_processing`.
+- [x] `GET /documents` — List with filters: `status`, `document_type`, `account_id`, pagination `offset` / `limit`.
+- [x] `GET /documents/{document_id}` — Detail.
+- [x] `DELETE /documents/{document_id}` — Soft delete + background S3 cleanup.
 
-- [ ] `COOKIE_SECURE=true` is set in the production environment
-- [ ] `CORS_ORIGINS` lists the exact production frontend URL (no trailing slash, no wildcard)
-- [ ] The backend is served over HTTPS (required for `Secure` cookies to be stored and sent)
-- [ ] S3 CORS is configured with the production frontend origin (see **S3 CORS** section above)
-- [ ] `JWT_SECRET_KEY` is a long, randomly generated secret (not the example value from `env.example`)
+### Tier 2 — Jobs
 
----
+**`/jobs`**
 
-## Todo
+- [x] `GET /jobs/{job_id}/status` — `job_id`, `status`, `job_type`, `documents[]`. For **parsing** jobs, `documents` contains the linked document. For **reconciliation** jobs, `documents` is currently **empty** (poll job status + reconciliation results separately).
 
-Priority list of endpoints, organized into implementation tiers. Each tier builds on the previous one.
+### Tier 3 — Parsed data
 
----
-
-### Tier 1 — Foundation (Auth + Upload)
-> *Goal: Users can log in and upload documents. This is the minimum for any demo.*
-
-#### Authentication (`/auth`)
-- [x] `POST /auth/login` — Validates credentials (email + password) and returns a JWT access token.
-- [x] `GET /auth/me` — Returns the current user's profile and role from the JWT.
-
-> For now, we will **not** allow new-user registration. The following accounts should be seeded in the DB via `seed.py`:
-> - `dev1`, `dev2`, `admin1`, `admin2`
->
-> Reference: [FastAPI Security — OAuth2 + JWT](https://fastapi.tiangolo.com/tutorial/security/oauth2-jwt/) — use `pwdlib` with Argon2 for hashing.
-
-#### Document Upload (`/documents`)
-- [x] `POST /documents/upload-url` — *(Authenticated)*
-    - Accepts: `{ file_name, file_type, document_type }` where `document_type` is `"receipt"` or `"bank_statement"`.
-    - Logic:
-        1. Generates a unique S3 object key (e.g., `user_{id}/{uuid}.pdf`).
-        2. Calls `boto3` to generate a **presigned PUT URL** for direct client → S3 upload.
-        3. Creates a `documents` row in PostgreSQL with `status = "pending_upload"`.
-    - Returns: `{ upload_url, document_id, s3_key }`.
-- [x] `POST /documents/{document_id}/confirm-upload` — *(Authenticated)*
-    - Client calls this after successfully uploading to S3.
-    - Logic:
-        1. Verifies the object exists in S3 (HEAD request).
-        2. Updates document status to `"pending_processing"`.
-        3. Sends an SQS message: `{ type: "parse_receipt" | "parse_statement", payload: { document_id, s3_key, user_id } }`.
-    - Returns: `{ document_id, status: "pending_processing" }`.
-
----
-
-### Tier 2 — Processing Status & Document Management
-> *Goal: Users can track processing progress and view their uploaded documents.*
-
-#### Document Status (`/documents`)
-- [x] `GET /documents` — *(Authenticated)* List all documents for the current user (reference user_id from JWT). Supports query params:
-    - `?status=pending_upload|pending_processing|processing|parsed|failed`
-    - `?document_type=receipt|bank_statement`
-- [x] `GET /documents/{document_id}` — *(Authenticated)* Get a single document's details and current processing status.
-- [x] `DELETE /documents/{document_id}` — *(Authenticated)* Soft-delete a document (marks as deleted; removes S3 object in background).
-
-#### Batch / Job Status (`/jobs`)
-- [x] `GET /jobs/{job_id}/status` — *(Authenticated)* Returns per-document processing progress within a job:
-    - Returns: `{ job_id, status, documents: [{ document_id, file_name, document_type, status }] }`.
-    - Frontend can poll this endpoint to show real-time progress (pending → processing → parsed → reconciled).
-
----
-
-### Tier 3 — Parsed Data (Receipts & Bank Statements)
-> *Goal: Users can view and correct AI-parsed results before reconciliation.*
-
-#### Receipts (`/receipts`)
-- [x] `GET /receipts` — *(Authenticated)* List parsed receipts for the current user.
-    - `?match_status=unmatched|perfect_matched|bundle_matched|manual`
-    - `?job_id=123`
-- [x] `GET /receipts/{receipt_id}` — *(Authenticated)* Get full receipt details (parsed vendor, amount, date, expense type, S3 file URL).
-- [x] `PATCH /receipts/{receipt_id}` — *(Authenticated)* Manually correct parsed receipt fields (vendor, amount, date, etc.) before reconciliation.
-- [x] `GET /receipts/{receipt_id}/file-url` — *(Authenticated)* Generate a presigned GET URL for viewing/downloading the original receipt file from S3.
-
-#### Bank Statements (`/statements`)
-- [x] `GET /statements` — *(Authenticated)* List parsed bank statements.
-- [x] `GET /statements/{statement_id}` — *(Authenticated)* Get statement metadata + all parsed line items.
-- [x] `GET /statements/{statement_id}/lines` — *(Authenticated)* List all parsed line items for a statement.
-    - `?match_status=unmatched|perfect_matched|bundle_matched|manual`
-- [x] `PATCH /statements/{statement_id}/lines/{line_id}` — *(Authenticated)* Manually correct a parsed statement line (description, vendor, amount, date).
-- [x] `GET /statements/{statement_id}/file-url` — *(Authenticated)* Presigned GET URL for the original bank statement PDF.
-
----
+**`/receipts`**, **`/statements`** — list, detail, PATCH corrections, presigned file URLs, filters including `match_status` and `job_id` where implemented (see OpenAPI).
 
 ### Tier 4 — Reconciliation
-> *Goal: The core business logic — matching receipts to bank statement lines.*
 
-Reconciliation is responsible for triggering the run and for manual match CRUD. **Job status is always read via `GET /jobs/{job_id}/status`** (no separate reconciliation-status endpoint). After a run, match state is reflected on `BankStatementLine.match_status` and `Receipt.match_status`; use existing document-scoped endpoints with `?match_status=unmatched` to list unmatched items.
+**`/reconciliation`**
 
-#### Reconciliation (`/reconciliation`)
-- [x] `POST /reconciliation/start` — *(Authenticated, CSRF)* **Preferred entry point.** Create a reconciliation job and immediately run the matching algorithm in a single call.
-    - Body: `{ account_id: int, statement_id: int }` — both fields required. `statement_id` scopes the run to a single bank statement; all lines and receipts belonging to the account are used otherwise.
-    - Logic: Creates a `Job` record (type `reconciliation`), runs exact-match algorithm (amount + date), writes `ReconciliationMatch` rows, updates `Job.status` (`pending → reconciling → completed/failed`), and stamps `match_status` on matched lines and receipts as `perfect_matched`.
-    - Returns: `201` with `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched } }`.
-- [x] `GET /reconciliation/ai-summary` — *(Authenticated)* AI-generated reconciliation summary for unmatched statement lines.
-    - Query params:
-        - `statement_id` (required) — bank statement in scope.
-        - `job_id` (optional) — specific reconciliation job; when omitted, the latest job that produced AI summaries for the statement is used.
-    - Logic: Reads `ReconciliationLineSummary` rows produced after reconciliation (one per unmatched line) and returns line metadata, top candidate receipts with scoring details, and a concise Bedrock-generated explanation of **why** each line could not be auto-matched.
-    - Returns: `{ job_id, statement_id, summaries: [...], total }` where each `summaries[i]` includes `{ line_id, vendor, charge, transaction_date, description, top_candidates, ai_analysis }`.
-- [x] `POST /reconciliation/jobs/{job_id}/run` — *(Authenticated, CSRF)* **Legacy / re-run.** Re-trigger the matching algorithm on an existing reconciliation job. Prefer `/reconciliation/start` for new runs.
-    - Body: `{ account_id?: int, statement_id?: int }` — both optional. When `account_id` is omitted the job is simply advanced to `reconciling` status without running the algorithm.
-    - Returns: `202` with `{ job_id, status }` (no summary). Poll **`GET /jobs/{job_id}/status`** for current status.
-- [x] `GET /reconciliation/jobs/{job_id}/results` — *(Authenticated)* Get reconciliation results for a job.
-    - Optional `?account_id=` query param to scope `total_lines` / `unmatched` counts to a specific account; without it, counts are derived from the matched lines only.
-    - Returns: `{ job_id, status, summary: { total_lines, matched, unmatched, bundle_matched }, matches: [...] }`.
-    - Each match entry: `{ match_id, statement_line: { line_id, statement_id, vendor, charge, transaction_date, match_status }, receipts: [{ receipt_id, vendor, charged_amount, billing_date, match_status }], match_type }`. Note: `receipts` is always a single-item list (one receipt per `match_id`).
-    - **Unmatched items:** use **`GET /receipts?match_status=unmatched`** and **`GET /statements/{statement_id}/lines?match_status=unmatched`**.
+- [x] `GET /reconciliation/matches` — List matches; optional `line_id`; pagination `offset` / `limit`.
+- [x] `POST /reconciliation/start` — Body: **`account_id`** (required), **`statement_id`** (optional; must belong to account), optional **`config`** (`ReconciliationConfig` — thresholds/window). Creates job, enqueues **`run_reconciliation`** on SQS, returns **201** with `job_id`, `status` (`pending`), `summary: null`. **Worker must be running.** Poll **`GET /jobs/{job_id}/status`** and fetch results when complete.
+- [x] `POST /reconciliation/jobs/{job_id}/run` — Legacy / re-run. If **`account_id`** is omitted, only bumps job toward `reconciling` without running the algorithm. If **`account_id`** is provided, runs **`run_reconciliation` in the API process** (synchronous request path).
+- [x] `GET /reconciliation/jobs/{job_id}/results` — Summary + paginated `matches` (`offset`, `limit`, `total_matches`).
+- [x] `GET /reconciliation/ai-summary` — AI line summaries for unmatched lines (`statement_id` required; optional `job_id`).
+- [x] `POST /reconciliation/matches` — Manual match (optional `job_id` query).
+- [x] `DELETE /reconciliation/matches/{match_id}` — Remove match.
+- [x] `PATCH /reconciliation/matches/{match_id}` — Swap receipt on a match.
 
-#### Manual Matching (`/reconciliation`)
-- [x] `POST /reconciliation/matches` — *(Authenticated, CSRF)* Manually create a match between a statement line and one or more receipts.
-    - Body: `{ line_id: int, receipt_ids: [int, ...], match_type: MatchStatus }` — `match_type` defaults to `"manual"`.
-    - Optional `?job_id=` query param to associate the match with an existing reconciliation job.
-    - Skips silently if a `(line_id, receipt_id)` pair is already matched. Stamps `match_status` on the line and each receipt to the provided `match_type`.
-    - Returns: `{ created: int, match_type: str }`.
-- [x] `DELETE /reconciliation/matches/{match_id}` — *(Authenticated, CSRF)* Remove a match. Resets `match_status` on the line and receipt to `unmatched` only when no other matches remain for each.
-    - Returns: `{ deleted: match_id }`.
-- [x] `PATCH /reconciliation/matches/{match_id}` — *(Authenticated, CSRF)* Swap the receipt linked to a match.
-    - Body: `{ receipt_id: int }` (singular — replaces the single existing receipt on the match).
-    - The old receipt's `match_status` is reset to `unmatched` if it has no remaining matches; the new receipt's `match_status` is set to the match's `match_type`.
-    - Returns: `{ updated: match_id }`.
+### Tier 5 — Accounts & admin
+
+**`/accounts`**, **`/accounts/{id}/members`** — Account books and membership (access rules in `app/utils/access.py`).
+
+**`/admin/users`** — Developer-only user CRUD (see router).
+
+### Tier 6 — Not implemented (planned)
+
+- [ ] `GET /dashboard/summary`, `GET /dashboard/jobs`
+- [ ] `GET /export/jobs/{job_id}/csv`, `GET /export/jobs/{job_id}/report`
+- [ ] `GET /health/bedrock` — authenticated Bedrock check (optional; `/health` is DB-only today)
 
 ---
 
-### Tier 5 — Account Books & Admin
-> *Goal: Multi-account support, role-based access control, and administrative controls.*
+## Data model notes
 
-**Account book access model:** `AccountBookMember` answers whether a user **belongs to a book** (binary membership). **`UserRole`** (`admin` / `developer` / `viewer`) answers whether that user may **mutate app data** on non-developer paths (e.g. documents, reconciliation writes, account book metadata when permitted by route guards). There is no separate per-book “owner vs viewer” role on the membership row; the book’s **primary owner** is `account_books.user_id`, and that user cannot be removed from the member list.
+### `Document`
 
-#### Role Permission Matrix
+Key fields: `document_id`, `uploaded_by`, `file_name`, `document_type`, `s3_key`, `status`, `account_id`, `receipt_id`, `statement_id`, `error_message`, soft delete via **`deleted_at`** (`SoftDeleteMixin`).
 
-| Capability | Developer | Admin | Viewer |
-|---|---|---|---|
-| Manage global users (CRUD) | Yes | — | — |
-| Create / edit / delete account books | Yes | Own only | — |
-| Add members to account book | Yes (any) | Non-admins only | — |
-| Upload / modify / delete documents | Yes | When `UserRole` allows write | — |
-| View documents, receipts, statements | All | Member of book | Member of book (read-only if `UserRole.viewer`) |
-| Export | Yes | Yes | Yes |
+### `Job`
 
-#### Developer — User Management (`/admin/users`)
+| Column | Notes |
+|--------|--------|
+| `job_id` | PK |
+| `name` | Human-readable label |
+| `job_type` | `parsing` \| `reconciliation` |
+| `status` | `pending` → `processing` / `reconciling` → `completed` \| `failed` |
+| `created_by` | FK → `users` |
+| `document_id` | Set for **parsing** jobs; null for reconciliation |
 
-All endpoints require `developer` role.
+### `ReconciliationLineSummary` (`reconciliation_line_summaries`)
 
-- [x] `GET /admin/users` — List all users. Supports `?role=admin|developer|viewer` and `?is_active=true|false` filters.
-- [x] `POST /admin/users` — Create a new user `{ name, email, password, role }`. Only developers can assign any role including `admin`.
-- [x] `GET /admin/users/{user_id}` — Get a single user's details.
-- [x] `PATCH /admin/users/{user_id}` — Update user fields (name, email, role, is_active). Supports password reset via `{ new_password }`.
-- [x] `DELETE /admin/users/{user_id}` — Soft-deactivate a user (`is_active = false`). Does not delete data.
+Per unmatched line after a run: `job_id`, `line_id`, `statement_id`, `top_candidates` (JSONB), `ai_analysis`, `created_at`.
 
-#### Account Books (`/accounts`)
+### Enums (`app/enums.py`)
 
-- [x] `POST /accounts` — *(Admin, Developer)* Create account book `{ bank_name, account_name, account_type, currency, account_number_last4 }`. Auto-creates a membership row for the creator (same as any other member; primary owner is `user_id` on the account book).
-- [x] `GET /accounts` — *(Any authenticated)* List accessible account books. Developer sees all; admin sees owned; viewer sees shared.
-- [x] `GET /accounts/{account_id}` — *(Any authenticated)* Get account book details (if user has access).
-- [x] `PATCH /accounts/{account_id}` — *(Owner admin or Developer)* Update account book details.
-- [x] `DELETE /accounts/{account_id}` — *(Owner admin or Developer)* Soft-delete account book.
-
-#### Account Book Members (`/accounts/{account_id}/members`)
-
-- [x] `GET /accounts/{account_id}/members` — *(Owner admin, Developer)* List all members of an account book.
-- [x] `POST /accounts/{account_id}/members` — *(Owner admin, Developer)* Add a user as a member `{ user_id }`. Admin cannot add another admin (must delegate to a developer). Developers cannot be added (implicit access).
-- [x] `DELETE /accounts/{account_id}/members/{user_id}` — *(Owner admin, Developer)* Remove a member. Cannot remove the primary owner (`user_id` on the account book).
+- **DocumentStatus:** `pending_upload`, `pending_processing`, `processing`, `parsed`, `failed`
+- **DocumentType:** `receipt`, `bank_statement`
+- **UserRole:** `admin`, `developer`, `viewer`
+- **AccountType:** `checking`, `credit_card`
+- **MatchStatus:** `unmatched`, `perfect_matched`, `bundle_matched`, `manual`
+- **JobType:** `parsing`, `reconciliation`
+- **JobStatus:** `pending`, `processing`, `reconciling`, `completed`, `failed`
 
 ---
 
-### Tier 6 — Polish & Analytics
-> *Goal: Dashboard data, export, and quality-of-life improvements.*
+## SQS message types (worker)
 
-#### Dashboard (`/dashboard`)
-- [ ] `GET /dashboard/summary` — *(Authenticated)* High-level stats for the current user:
-    - Total documents uploaded, pending processing, parsed, failed.
-    - Total receipts, matched vs unmatched.
-    - Total statement lines, matched vs unmatched.
-    - Recent activity feed.
-- [ ] `GET /dashboard/jobs` — *(Authenticated)* List all reconciliation jobs with summary stats.
+| Type | Typical trigger | Handler |
+|------|-----------------|--------|
+| `parse_receipt` | Confirm upload (receipt) | S3 → VLM parse → categorize → `Receipt`; optional `statement_id` in payload |
+| `parse_statement` | Confirm upload (bank statement) | Requires `account_id` in payload; metadata + **pdfplumber** lines → `BankStatement` + `BankStatementLine` |
+| `run_reconciliation` | **`POST /reconciliation/start`** | `run_reconciliation` in worker: matching, `ReconciliationMatch` rows, job status, line summaries |
 
-#### Export (`/export`)
-- [ ] `GET /export/jobs/{job_id}/csv` — *(Authenticated)* Export reconciliation results as CSV.
-- [ ] `GET /export/jobs/{job_id}/report` — *(Authenticated)* Generate a reconciliation summary report (PDF or JSON).
-
-#### Health & System
-- [ ] `GET /health` — Public health check (DB connectivity, SQS reachable, S3 reachable).
-- [ ] `GET /health/bedrock` — *(Authenticated)* Bedrock model availability check.
+Legacy **`POST /reconciliation/jobs/{id}/run`** with body including `account_id` runs reconciliation **inside the API**, not via this queue message.
 
 ---
 
-### Models & Enums
+## Reconciliation tuning (environment)
 
-Data layer models implemented so far:
+Optional overrides in `.env` (see `app/config.py`):
 
-#### `Document` model
-| Column | Type | Notes |
-|--------|------|-------|
-| `document_id` | `int` PK | |
-| `file_name` | `str` | Original file name |
-| `document_type` | `enum` | `receipt`, `bank_statement` |
-| `s3_key` | `str` | S3 object key |
-| `status` | `enum` | `pending_upload`, `pending_processing`, `processing`, `parsed`, `failed` |
-| `uploaded_by` | `int` FK → users | |
-| `account_id` | `int` FK → account_books | nullable |
-| `receipt_id` | `int` FK → receipts | nullable, set after parsing |
-| `statement_id` | `int` FK → bank_statements | nullable, set after parsing |
-| `error_message` | `str` | nullable, set on failure |
-| `deleted_at` | `datetime` | nullable, soft-delete |
+- `RECONCILIATION_MAX_DATE_WINDOW`
+- `RECONCILIATION_CONFIDENCE_THRESHOLD`
+- `RECONCILIATION_BUNDLE_VENDOR_THRESHOLD`
+- `RECONCILIATION_MAX_BUNDLE_SIZE`
+- `RECONCILIATION_MIN_VENDOR_SIMILARITY_PASS1B`
 
-#### `AccountBookMember` model (Tier 5)
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `int` PK | |
-| `account_id` | `int` FK → account_books | CASCADE on delete |
-| `user_id` | `int` FK → users | CASCADE on delete |
-| `created_at` | `datetime` | |
-| | | UNIQUE(`account_id`, `user_id`) |
-
-#### `Job` model (Tier 2 — not yet implemented)
-| Column | Type | Notes |
-|--------|------|-------|
-| `job_id` | `int` PK | |
-| `name` | `str` | User-defined label |
-| `job_type` | `enum` | `parsing`, `reconciliation` |
-| `status` | `enum` | `pending`, `processing`, `reconciling`, `completed`, `failed` |
-| `created_by` | `int` FK → users | |
-| `document_id` | `int` FK → documents | nullable, parsing jobs only |
-
-#### `ReconciliationLineSummary` model
-| Column | Type | Notes |
-|--------|------|-------|
-| `id` | `int` PK | Auto-increment |
-| `job_id` | `int` FK → jobs | Reconciliation job that produced this summary |
-| `line_id` | `int` FK → bank_statement_lines | Unmatched statement line in scope |
-| `statement_id` | `int` | Denormalized for fast filtering per statement |
-| `top_candidates` | `JSON` | Array of top candidate receipts with scoring metadata (amount/date/vendor, confidence, rejection reasons) |
-| `ai_analysis` | `str` | Short Bedrock-generated explanation of why the line could not be auto-matched |
-| `created_at` | `datetime` | When the summary was generated |
-
-#### Enums
-- `DocumentStatus`: `pending_upload`, `pending_processing`, `processing`, `parsed`, `failed`
-- `DocumentType`: `receipt`, `bank_statement`
-- `UserRole`: `admin`, `developer`, `viewer`
-- `AccountType`: `checking`, `credit_card`
-- `MatchStatus`: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`
-- `JobType`: `parsing`, `reconciliation`
-- `JobStatus`: `pending`, `processing`, `reconciling`, `completed`, `failed`
----
-
-### SQS Message Types (Worker Handlers)
-
-| Message Type | Trigger | Worker Action |
-|---|---|---|
-| `parse_receipt` | `POST /documents/{id}/confirm-upload` | Download from S3 → Bedrock VLM → write `Receipt` row → update `Document.status = parsed` |
-| `parse_statement` | `POST /documents/{id}/confirm-upload` | Download from S3 → pdfplumber + Bedrock → write `BankStatement` + `BankStatementLine` rows → update `Document.status = parsed` |
-| `run_reconciliation` | `POST /reconciliation/jobs/{id}/run` | Load all parsed receipts + lines for job → run matching algorithm → write `Match` rows → update `Job.status = completed` |
+Per-run overrides are accepted in **`POST /reconciliation/start`** via the `config` object in the JSON body.
