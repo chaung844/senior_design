@@ -7,6 +7,7 @@ import {
     removeAccountMember,
 } from "@/lib/api";
 import type { MemberAdd } from "@/lib/types";
+import { accountKeys, provisionedAccountKeys } from "@/hooks/use-accounts";
 
 export const memberKeys = {
     all: ["account-members"] as const,
@@ -36,6 +37,8 @@ export function useAddAccountMember() {
             qc.invalidateQueries({
                 queryKey: memberKeys.list(vars.accountId),
             });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+            qc.invalidateQueries({ queryKey: provisionedAccountKeys.all });
         },
     });
 }
@@ -54,6 +57,8 @@ export function useRemoveAccountMember() {
             qc.invalidateQueries({
                 queryKey: memberKeys.list(vars.accountId),
             });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+            qc.invalidateQueries({ queryKey: provisionedAccountKeys.all });
         },
     });
 }

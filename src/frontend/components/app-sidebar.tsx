@@ -41,7 +41,9 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { AddAccountDialog } from "@/components/add-account-dialog";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
+import { isDeveloperRole } from "@/lib/permissions";
 import type { AccountBook, Selection } from "@/lib/domain-types";
 import { getMatchRateBadgeVariant } from "@/lib/constants";
 import { HugeiconsIcon } from "@hugeicons/react";
@@ -146,6 +148,20 @@ export function AppSidebar({
                     </div>
                 </div>
                 <SidebarSeparator className="mx-0 data-horizontal:w-auto" />
+                {user && isDeveloperRole(user) && (
+                    <div className="px-2 pt-2">
+                        <Button
+                            variant="outline"
+                            size="sm"
+                            className="w-full text-xs"
+                            asChild
+                        >
+                            <Link href="/dashboard/global-admin">
+                                Developer console
+                            </Link>
+                        </Button>
+                    </div>
+                )}
                 <div className="px-2 pt-1">
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                         <label className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground block">

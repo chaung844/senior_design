@@ -1,5 +1,10 @@
 import type { UserRead } from "@/lib/types";
 
+/** True when the signed-in user has the developer (global admin) role. */
+export function isDeveloperRole(user: UserRead | null | undefined): boolean {
+    return user?.role === "developer";
+}
+
 /** True when the signed-in user has the application viewer (read-only) role. */
 export function isViewerRole(user: UserRead | null | undefined): boolean {
     return user?.role === "viewer";

@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { useQuery } from "@tanstack/react-query";
 import {
     SidebarProvider,
     SidebarInset,
@@ -14,11 +15,17 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ErrorBoundary } from "@/components/error-boundary";
 import { JobStatusFloat } from "@/components/job-status-float";
 import { JobStatusProvider } from "@/lib/job-status-provider";
+import { DeveloperConsoleShell } from "@/components/developer-console-shell";
 import { useAuth } from "@/lib/auth";
 import { pathToSelection, selectionToPath } from "@/lib/dashboard-routes";
-import { useAccountBooks } from "@/hooks/use-accounts";
+import { accountKeys, useAccountBooks } from "@/hooks/use-accounts";
+import { listAccounts } from "@/lib/api";
 import { MONTH_LABELS } from "@/lib/constants";
-import { canCreateAccountBook, isViewerRole } from "@/lib/permissions";
+import {
+    canCreateAccountBook,
+    isDeveloperRole,
+    isViewerRole,
+} from "@/lib/permissions";
 import { ViewerModeBanner } from "@/components/viewer-mode-banner";
 
 export default function DashboardLayout({
@@ -29,10 +36,23 @@ export default function DashboardLayout({
     const pathname = usePathname();
     const router = useRouter();
     const { user, loading: authLoading } = useAuth();
-    const { data: accountBooks, isLoading: accountsLoading } =
-        useAccountBooks();
+    const isGlobalAdminRoute = pathname.startsWith("/dashboard/global-admin");
+
+    const { data: accountBooks, isLoading: accountsLoading } = useAccountBooks(
+        { enabled: !!user && !isGlobalAdminRoute },
+    );
+
+    const { data: peekAccounts } = useQuery({
+        queryKey: [...accountKeys.list(), "peek-first"] as const,
+        queryFn: () => listAccounts({ limit: 1 }),
+        enabled: !!user && isGlobalAdminRoute,
+    });
 
     const firstAccountId = accountBooks?.[0]?.id ?? "";
+    const reconciliationHref =
+        peekAccounts?.accounts[0]?.account_id != null
+            ? `/dashboard/${peekAccounts.accounts[0].account_id}`
+            : "/dashboard";
 
     const selection = React.useMemo(
         () => pathToSelection(pathname, firstAccountId),
@@ -52,7 +72,20 @@ export default function DashboardLayout({
         }
     }, [authLoading, accountsLoading, user, router]);
 
-    if (authLoading || accountsLoading) {
+    React.useEffect(() => {
+        if (
+            !authLoading &&
+            user &&
+            isGlobalAdminRoute &&
+            !isDeveloperRole(user)
+        ) {
+            router.replace("/dashboard");
+        }
+    }, [authLoading, user, isGlobalAdminRoute, router]);
+
+    const waitAccounts = !isGlobalAdminRoute && accountsLoading;
+
+    if (authLoading || waitAccounts) {
         return (
             <div className="flex h-dvh items-center justify-center">
                 <Skeleton className="h-8 w-48" />
@@ -61,6 +94,27 @@ export default function DashboardLayout({
     }
     if (!user) {
         return null;
+    }
+
+    if (isGlobalAdminRoute) {
+        if (!isDeveloperRole(user)) {
+            return (
+                <div className="flex h-dvh items-center justify-center">
+                    <Skeleton className="h-8 w-48" />
+                </div>
+            );
+        }
+        return (
+            <TooltipProvider>
+                <JobStatusProvider>
+                    <DeveloperConsoleShell reconciliationHref={reconciliationHref}>
+                        <main className="p-6">
+                            <ErrorBoundary>{children}</ErrorBoundary>
+                        </main>
+                    </DeveloperConsoleShell>
+                </JobStatusProvider>
+            </TooltipProvider>
+        );
     }
 
     const account = accountBooks?.find((a) => a.id === selection.accountId);

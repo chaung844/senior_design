@@ -46,8 +46,9 @@ export function useAccount(accountId: number | null) {
  * Fetches all accounts with their statements, then transforms into
  * the frontend AccountBook[] shape used by sidebar and dashboard.
  */
-export function useAccountBooks() {
+export function useAccountBooks(options?: { enabled?: boolean }) {
     const { user } = useAuth();
+    const extraEnabled = options?.enabled ?? true;
     return useQuery({
         queryKey: accountKeys.withStatements(),
         queryFn: async () => {
@@ -60,7 +61,27 @@ export function useAccountBooks() {
                 statementsRes.statements,
             );
         },
-        enabled: !!user,
+        enabled: !!user && extraEnabled,
+    });
+}
+
+export const provisionedAccountKeys = {
+    all: ["accounts", "provisioned-tenant"] as const,
+};
+
+/**
+ * Account books owned by this developer or users they provisioned (developer only).
+ */
+export function useProvisionedTenantAccounts() {
+    const { user } = useAuth();
+    return useQuery({
+        queryKey: provisionedAccountKeys.all,
+        queryFn: () =>
+            listAccounts({
+                limit: DEFAULT_LIST_LIMIT,
+                provisioned_tenant_only: true,
+            }),
+        enabled: !!user && user.role === "developer",
     });
 }
 
@@ -92,6 +113,7 @@ export function useCreateAccount() {
         mutationFn: (body: AccountBookCreate) => createAccount(body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: accountKeys.all });
+            qc.invalidateQueries({ queryKey: provisionedAccountKeys.all });
         },
     });
 }
@@ -108,6 +130,7 @@ export function useUpdateAccount() {
         }) => updateAccount(accountId, body),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: accountKeys.all });
+            qc.invalidateQueries({ queryKey: provisionedAccountKeys.all });
         },
     });
 }
@@ -118,6 +141,7 @@ export function useDeleteAccount() {
         mutationFn: (accountId: number) => deleteAccount(accountId),
         onSuccess: () => {
             qc.invalidateQueries({ queryKey: accountKeys.all });
+            qc.invalidateQueries({ queryKey: provisionedAccountKeys.all });
         },
     });
 }

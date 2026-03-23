@@ -363,7 +363,11 @@ export async function getStatementFileUrl(
 export async function listAccounts(
     params: AccountBookListParams = {},
 ): Promise<AccountBookListResponse> {
-    const query = qs({ offset: params.offset, limit: params.limit });
+    const query = qs({
+        offset: params.offset,
+        limit: params.limit,
+        provisioned_tenant_only: params.provisioned_tenant_only,
+    });
     return request<AccountBookListResponse>(`/accounts${query}`);
 }
 
@@ -514,6 +518,7 @@ export async function listAdminUsers(
     params: {
         role?: UserRole;
         is_active?: boolean;
+        provisioned_by_me?: boolean;
         offset?: number;
         limit?: number;
     } = {},
@@ -521,6 +526,7 @@ export async function listAdminUsers(
     const query = qs({
         role: params.role,
         is_active: params.is_active,
+        provisioned_by_me: params.provisioned_by_me,
         offset: params.offset,
         limit: params.limit,
     });
