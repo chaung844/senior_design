@@ -477,7 +477,7 @@ export function DashboardYear({
                 <CardContent>
                     <ChartContainer
                         config={reconciliationChartConfig}
-                        className="h-[250px] w-full"
+                        className="h-62.5 w-full"
                     >
                         <BarChart
                             accessibilityLayer

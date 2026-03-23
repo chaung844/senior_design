@@ -9,6 +9,8 @@ Reconciliation API (Tier 4).
 - Manual matching: POST/DELETE/PATCH /reconciliation/matches.
 """
 
+from datetime import date
+from decimal import Decimal
 from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -32,7 +34,6 @@ from app.schemas.reconciliation import (
     MatchLineSummary,
     MatchReceiptSummary,
     ReconciliationAISummaryResponse,
-    ReconciliationConfig,
     ReconciliationLineSummaryRead,
     ReconciliationMatchDetail,
     ReconciliationMatchListResponse,
@@ -641,8 +642,8 @@ async def get_ai_summary(
                 line_id=row.line_id,
                 statement_id=row.statement_id,
                 line_vendor=line.vendor if line else "",
-                line_charge=line.charge if line else 0,
-                line_date=line.transaction_date if line else "1970-01-01",
+                line_charge=line.charge if line else Decimal(0),
+                line_date=line.transaction_date if line else date(1970, 1, 1),
                 line_description=line.description if line else "",
                 top_candidates=candidates,
                 ai_analysis=row.ai_analysis or "Analysis unavailable.",

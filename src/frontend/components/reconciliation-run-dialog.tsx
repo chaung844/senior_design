@@ -131,7 +131,9 @@ export function ReconciliationRunDialog({
             setConfig(DEFAULT_CONFIG);
             setDraftValues({
                 max_date_window: String(DEFAULT_CONFIG.max_date_window),
-                confidence_threshold: String(DEFAULT_CONFIG.confidence_threshold),
+                confidence_threshold: String(
+                    DEFAULT_CONFIG.confidence_threshold,
+                ),
                 bundle_vendor_threshold: String(
                     DEFAULT_CONFIG.bundle_vendor_threshold,
                 ),
@@ -154,7 +156,9 @@ export function ReconciliationRunDialog({
         setDraftValues({
             max_date_window: String(DEFAULT_CONFIG.max_date_window),
             confidence_threshold: String(DEFAULT_CONFIG.confidence_threshold),
-            bundle_vendor_threshold: String(DEFAULT_CONFIG.bundle_vendor_threshold),
+            bundle_vendor_threshold: String(
+                DEFAULT_CONFIG.bundle_vendor_threshold,
+            ),
             max_bundle_size: String(DEFAULT_CONFIG.max_bundle_size),
         });
     }
@@ -163,12 +167,11 @@ export function ReconciliationRunDialog({
         await onRun(config);
     }
 
-    const isDefault =
-        JSON.stringify(config) === JSON.stringify(DEFAULT_CONFIG);
+    const isDefault = JSON.stringify(config) === JSON.stringify(DEFAULT_CONFIG);
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-[480px]">
+            <DialogContent className="sm:max-w-120">
                 <DialogHeader>
                     <DialogTitle>Run Reconciliation</DialogTitle>
                     <DialogDescription>
@@ -230,8 +233,7 @@ export function ReconciliationRunDialog({
                                             {field.label}
                                         </Label>
                                         <span className="text-xs text-muted-foreground">
-                                            default:{" "}
-                                            {DEFAULT_CONFIG[field.key]}{" "}
+                                            default: {DEFAULT_CONFIG[field.key]}{" "}
                                             {field.unit}
                                         </span>
                                     </div>

@@ -186,7 +186,7 @@ class SQSWorker:
             await session.commit()
 
     async def _run_job_handler(
-        self, handler, payload: dict, job_id: int
+        self, handler, payload: dict, job_id: int | None
     ) -> None:
         """Run a job-only handler; the handler itself sets final status."""
         async with AsyncSessionLocal() as session:

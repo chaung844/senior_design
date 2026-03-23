@@ -3,10 +3,13 @@
 from datetime import date, timedelta
 from decimal import Decimal
 from types import SimpleNamespace
+from typing import cast
 
 import pytest
 
 from app.enums import MatchStatus
+from app.models.receipt import Receipt
+from app.models.statement import BankStatementLine
 from app.services.reconciliation_matching import (
     AMOUNT_SCORE,
     DATE_SOFT_MAX,
@@ -28,15 +31,18 @@ def _line(
     vendor: str = "",
     charge: str = "10.00",
     transaction_date: date | None = None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        line_id=line_id,
-        statement_id=1,
-        description=description,
-        vendor=vendor,
-        charge=Decimal(charge),
-        transaction_date=transaction_date or date(2024, 1, 1),
-        match_status=MatchStatus.unmatched,
+) -> BankStatementLine:
+    return cast(
+        BankStatementLine,
+        SimpleNamespace(
+            line_id=line_id,
+            statement_id=1,
+            description=description,
+            vendor=vendor,
+            charge=Decimal(charge),
+            transaction_date=transaction_date or date(2024, 1, 1),
+            match_status=MatchStatus.unmatched,
+        ),
     )
 
 
@@ -45,13 +51,16 @@ def _receipt(
     vendor: str = "amazon",
     charged_amount: str = "10.00",
     billing_date: date | None = None,
-) -> SimpleNamespace:
-    return SimpleNamespace(
-        receipt_id=receipt_id,
-        vendor=vendor,
-        charged_amount=Decimal(charged_amount),
-        billing_date=billing_date or date(2024, 1, 1),
-        match_status=MatchStatus.unmatched,
+) -> Receipt:
+    return cast(
+        Receipt,
+        SimpleNamespace(
+            receipt_id=receipt_id,
+            vendor=vendor,
+            charged_amount=Decimal(charged_amount),
+            billing_date=billing_date or date(2024, 1, 1),
+            match_status=MatchStatus.unmatched,
+        ),
     )
 
 

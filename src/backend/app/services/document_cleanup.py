@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import List
 
 from fastapi import BackgroundTasks
@@ -100,7 +101,7 @@ async def cleanup_bank_statement_document(
             Document.deleted_at.is_(None),
         )
     )
-    receipt_docs = receipt_docs_result.scalars().all()
+    receipt_docs = list(receipt_docs_result.scalars().all())
     for receipt_doc in receipt_docs:
         receipt_doc.soft_delete()
 
@@ -118,7 +119,7 @@ async def soft_delete_documents_and_commit(
 def schedule_s3_deletes(
     background_tasks: BackgroundTasks,
     aws_service: AWSService,
-    docs: List[Document],
+    docs: Sequence[Document],
 ) -> None:
     for doc in docs:
         background_tasks.add_task(aws_service.async_delete_s3_object, doc.s3_key)

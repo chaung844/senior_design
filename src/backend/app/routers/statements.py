@@ -79,7 +79,7 @@ def _statement_to_detail(stmt: BankStatement) -> BankStatementDetailRead:
         unmatched_count=len(lines) - matched_count,
         lines=[
             BankStatementLineRead.model_validate(line)
-            for line in sorted(lines, key=lambda l: l.line_number)
+            for line in sorted(lines, key=lambda ln: ln.line_number)
         ],
     )
 
