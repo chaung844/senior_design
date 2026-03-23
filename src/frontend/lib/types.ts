@@ -24,8 +24,6 @@ export type DocumentStatus =
     | "parsed"
     | "failed";
 
-export type AccountBookRole = "owner" | "viewer";
-
 export type JobStatus =
     | "pending"
     | "processing"
@@ -297,7 +295,6 @@ export interface MemberRead {
     user_id: number;
     user_name: string;
     user_email: string;
-    role: AccountBookRole;
     created_at: string;
 }
 

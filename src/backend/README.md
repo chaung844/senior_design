@@ -376,15 +376,17 @@ Reconciliation is responsible for triggering the run and for manual match CRUD. 
 ### Tier 5 — Account Books & Admin
 > *Goal: Multi-account support, role-based access control, and administrative controls.*
 
+**Account book access model:** `AccountBookMember` answers whether a user **belongs to a book** (binary membership). **`UserRole`** (`admin` / `developer` / `viewer`) answers whether that user may **mutate app data** on non-developer paths (e.g. documents, reconciliation writes, account book metadata when permitted by route guards). There is no separate per-book “owner vs viewer” role on the membership row; the book’s **primary owner** is `account_books.user_id`, and that user cannot be removed from the member list.
+
 #### Role Permission Matrix
 
 | Capability | Developer | Admin | Viewer |
 |---|---|---|---|
 | Manage global users (CRUD) | Yes | — | — |
 | Create / edit / delete account books | Yes | Own only | — |
-| Add viewers to account book | Yes (any) | Viewers only | — |
-| Upload / modify / delete documents | Yes | Own account books | — |
-| View documents, receipts, statements | All | Own account books | Shared account books (read-only) |
+| Add members to account book | Yes (any) | Non-admins only | — |
+| Upload / modify / delete documents | Yes | When `UserRole` allows write | — |
+| View documents, receipts, statements | All | Member of book | Member of book (read-only if `UserRole.viewer`) |
 | Export | Yes | Yes | Yes |
 
 #### Developer — User Management (`/admin/users`)
@@ -399,7 +401,7 @@ All endpoints require `developer` role.
 
 #### Account Books (`/accounts`)
 
-- [x] `POST /accounts` — *(Admin, Developer)* Create account book `{ bank_name, account_name, account_type, currency, account_number_last4 }`. Auto-creates an `owner` membership for the creator.
+- [x] `POST /accounts` — *(Admin, Developer)* Create account book `{ bank_name, account_name, account_type, currency, account_number_last4 }`. Auto-creates a membership row for the creator (same as any other member; primary owner is `user_id` on the account book).
 - [x] `GET /accounts` — *(Any authenticated)* List accessible account books. Developer sees all; admin sees owned; viewer sees shared.
 - [x] `GET /accounts/{account_id}` — *(Any authenticated)* Get account book details (if user has access).
 - [x] `PATCH /accounts/{account_id}` — *(Owner admin or Developer)* Update account book details.
@@ -408,8 +410,8 @@ All endpoints require `developer` role.
 #### Account Book Members (`/accounts/{account_id}/members`)
 
 - [x] `GET /accounts/{account_id}/members` — *(Owner admin, Developer)* List all members of an account book.
-- [x] `POST /accounts/{account_id}/members` — *(Owner admin, Developer)* Add a user as viewer `{ user_id }`. Admin can only add viewers (not other admins — must delegate to developer). Developers cannot be added (implicit access).
-- [x] `DELETE /accounts/{account_id}/members/{user_id}` — *(Owner admin, Developer)* Remove a viewer from account book. Cannot remove the owner.
+- [x] `POST /accounts/{account_id}/members` — *(Owner admin, Developer)* Add a user as a member `{ user_id }`. Admin cannot add another admin (must delegate to a developer). Developers cannot be added (implicit access).
+- [x] `DELETE /accounts/{account_id}/members/{user_id}` — *(Owner admin, Developer)* Remove a member. Cannot remove the primary owner (`user_id` on the account book).
 
 ---
 
@@ -459,7 +461,6 @@ Data layer models implemented so far:
 | `id` | `int` PK | |
 | `account_id` | `int` FK → account_books | CASCADE on delete |
 | `user_id` | `int` FK → users | CASCADE on delete |
-| `role` | `enum` | `owner`, `viewer` |
 | `created_at` | `datetime` | |
 | | | UNIQUE(`account_id`, `user_id`) |
 
@@ -489,7 +490,6 @@ Data layer models implemented so far:
 - `DocumentType`: `receipt`, `bank_statement`
 - `UserRole`: `admin`, `developer`, `viewer`
 - `AccountType`: `checking`, `credit_card`
-- `AccountBookRole`: `owner`, `viewer`
 - `MatchStatus`: `unmatched`, `perfect_matched`, `bundle_matched`, `manual`
 - `JobType`: `parsing`, `reconciliation`
 - `JobStatus`: `pending`, `processing`, `reconciling`, `completed`, `failed`

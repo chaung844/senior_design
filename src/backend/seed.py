@@ -14,7 +14,6 @@ from sqlalchemy import select
 
 from app.database import AsyncSessionLocal, engine
 from app.enums import (
-    AccountBookRole,
     AccountType,
     DocumentStatus,
     DocumentType,
@@ -183,7 +182,6 @@ async def seed_account_books(session, user_map: dict[str, User]):
         owner_member = AccountBookMember(
             account_id=book.account_id,
             user_id=owner.user_id,
-            role=AccountBookRole.owner,
         )
         session.add(owner_member)
 
@@ -191,7 +189,6 @@ async def seed_account_books(session, user_map: dict[str, User]):
             viewer_member = AccountBookMember(
                 account_id=book.account_id,
                 user_id=viewer.user_id,
-                role=AccountBookRole.viewer,
             )
             session.add(viewer_member)
 

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.database import get_db
-from app.enums import AccountBookRole, UserRole
+from app.enums import UserRole
 from app.models.account_book import AccountBook
 from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
@@ -94,7 +94,6 @@ async def create_account_book(
     owner_member = AccountBookMember(
         account_id=account.account_id,
         user_id=current_user.user_id,
-        role=AccountBookRole.owner,
     )
     db.add(owner_member)
     await db.commit()
@@ -262,7 +261,6 @@ async def list_members(
                 user_id=m.user_id,
                 user_name=m.user.name,
                 user_email=m.user.email,
-                role=m.role,
                 created_at=m.created_at,
             )
             for m in members
@@ -316,7 +314,6 @@ async def add_member(
     member = AccountBookMember(
         account_id=account_id,
         user_id=body.user_id,
-        role=AccountBookRole.viewer,
     )
     db.add(member)
     await db.commit()
@@ -328,7 +325,6 @@ async def add_member(
         user_id=member.user_id,
         user_name=target_user.name,
         user_email=target_user.email,
-        role=member.role,
         created_at=member.created_at,
     )
 
@@ -356,8 +352,11 @@ async def remove_member(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    if member.role == AccountBookRole.owner:
-        raise HTTPException(status_code=400, detail="Cannot remove the owner")
+    account_book = await db.get(AccountBook, account_id)
+    if not account_book:
+        raise HTTPException(status_code=404, detail="Account book not found")
+    if user_id == account_book.user_id:
+        raise HTTPException(status_code=400, detail="Cannot remove the primary owner")
 
     await db.delete(member)
     await db.commit()
