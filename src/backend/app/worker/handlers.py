@@ -1,8 +1,7 @@
 import logging
 import os
 import tempfile
-from datetime import date, datetime
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -19,74 +18,14 @@ from app.services.aws_model_services import (
 from app.services.aws_services import AWSService
 from app.services.reconciliation_matching import MatchConfig
 from app.services.reconciliation_runner import run_reconciliation
+from app.utils.date_parsing import parse_mmdd_with_year
+from app.utils.money_parsing import parse_money_amount
 from app.utils.pdf_plumber import parse_statement
 
 logger = logging.getLogger("sqs_worker.handlers")
 
 IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png"}
 PDF_EXTENSIONS = {".pdf"}
-
-
-def _safe_decimal(value) -> Decimal:
-    if value is None or str(value).strip().lower() == "n/a":
-        raise ValueError("Missing required amount field")
-    cleaned = str(value).replace(",", "").replace("$", "").strip()
-    try:
-        return Decimal(cleaned)
-    except InvalidOperation:
-        raise ValueError(f"Cannot convert '{value}' to Decimal")
-
-
-def _safe_date(value, field_name: str = "date") -> date:
-    today = date.today()
-    if value is None or str(value).strip().lower() == "n/a":
-        logger.warning(
-            f"Missing date field '{field_name}', defaulting to today ({today})"
-        )
-        return today
-    raw = str(value).strip()
-    try:
-        return datetime.strptime(raw, "%Y-%m-%d").date()
-    except ValueError:
-        logger.warning(
-            f"Invalid date format for '{field_name}': expected YYYY-MM-DD, got '{raw}'. "
-            f"Defaulting to today ({today})"
-        )
-        return today
-
-
-def _construct_date_with_year(
-    value, year, start_month, field_name: str = "date"
-) -> date:
-    today = date.today()
-    if value is None or str(value).strip().lower() == "n/a":
-        logger.warning(
-            f"Missing date field '{field_name}', defaulting to today ({today})"
-        )
-        return today
-    raw = str(value).strip()
-    try:
-        parts = raw.split("/")
-        month = int(parts[0])
-        day = int(parts[1])
-        adjusted_year = (
-            year + 1 if month < start_month else year
-        )  # for statements that span across 2 years (Dec - Jan)
-        # add adjusted year to raw month/date
-        constructed_date = f"{adjusted_year}-{month:02d}-{day:02d}"
-        return datetime.strptime(constructed_date, "%Y-%m-%d").date()
-    except (ValueError, IndexError):
-        logger.warning(
-            f"Invalid date format for '{field_name}': expected MM/DD, got '{raw}'. "
-            f"Defaulting to today ({today})"
-        )
-        return today
-
-
-def _safe_str(value, fallback: str = "") -> str:
-    if value is None or str(value).strip().lower() == "n/a":
-        return fallback
-    return str(value).strip()
 
 
 def _download_to_temp(aws: AWSService, s3_key: str) -> str:
@@ -98,6 +37,12 @@ def _download_to_temp(aws: AWSService, s3_key: str) -> str:
         os.unlink(tmp.name)
         raise RuntimeError(f"Failed to download s3://{s3_key}")
     return tmp.name
+
+
+def _line_charge_value(raw) -> Decimal:
+    if isinstance(raw, Decimal):
+        return raw.quantize(Decimal("0.01"))
+    return parse_money_amount(raw, field_name="charge")
 
 
 async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSService):
@@ -115,18 +60,15 @@ async def handle_parse_receipt(payload: dict, session: AsyncSession, aws: AWSSer
         else:
             raise ValueError(f"Unsupported file extension for receipt: {ext}")
 
-        if not parsed:
-            raise ValueError("Model returned empty response for receipt")
-
         categorized = model_categorize_transaction(parsed)
-        expense_type = categorized.get("expense_type") if categorized else None
+        expense_type = categorized.expense_type
 
         receipt = Receipt(
-            vendor=_safe_str(parsed.get("vendor"), "Unknown"),
-            invoice_number=_safe_str(parsed.get("invoice_number")) or None,
-            billing_date=_safe_date(parsed.get("date"), "date"),
-            charged_amount=_safe_decimal(parsed.get("total")),
-            description=_safe_str(parsed.get("purchase_desc")) or None,
+            vendor=parsed.vendor,
+            invoice_number=parsed.invoice_number,
+            billing_date=parsed.date,
+            charged_amount=parsed.total,
+            description=parsed.purchase_desc,
             expense_type=expense_type,
             statement_id=statement_id,
         )
@@ -154,52 +96,58 @@ async def handle_parse_statement(payload: dict, session: AsyncSession, aws: AWSS
     tmp_path = _download_to_temp(aws, s3_key)
     try:
         metadata = model_parse_bank_statement_metadata(tmp_path)
-        if not metadata:
-            raise ValueError("Model returned empty metadata for bank statement")
-
-        stmt_date = _safe_date(metadata.get("statement_date"), "statement_date")
+        stmt_date = metadata.statement_date
 
         df = parse_statement(tmp_path)
         if df.empty:
             raise ValueError("pdfplumber extracted zero transaction lines")
 
-        total_amount = Decimal(str(df["charge"].astype(float).sum())).quantize(
-            Decimal("0.01")
-        )
+        total_amount = sum(
+            (_line_charge_value(row.get("charge")) for _, row in df.iterrows()),
+            Decimal("0"),
+        ).quantize(Decimal("0.01"))
 
         statement = BankStatement(
             account_id=account_id,
             month=stmt_date.month,
             year=stmt_date.year,
-            account_number_last4=_safe_str(metadata.get("last_4_digits"), "0000"),
+            account_number_last4=metadata.last_4_digits,
             total_amount=total_amount,
         )
         session.add(statement)
         await session.flush()
 
         for line_num, (_, row) in enumerate(df.iterrows(), start=1):
+            desc = str(row.get("description", "")).strip()
+            if not desc:
+                raise ValueError(
+                    f"Statement line {line_num}: missing description after parse"
+                )
+            ref = str(row.get("reference", "")).strip()
+            if not ref:
+                raise ValueError(
+                    f"Statement line {line_num}: missing reference number after parse"
+                )
+            vendor_token = desc.split()[0]
+
             line = BankStatementLine(
                 statement_id=statement.statement_id,
                 line_number=line_num,
-                reference_number=str(row.get("reference", "")),
-                transaction_date=_construct_date_with_year(
+                reference_number=ref,
+                transaction_date=parse_mmdd_with_year(
                     row.get("transaction_date"),
-                    stmt_date.year,
-                    stmt_date.month,
-                    "transaction_date",
+                    statement_date=stmt_date,
+                    field_name="transaction_date",
                 ),
-                posting_date=_construct_date_with_year(
+                posting_date=parse_mmdd_with_year(
                     row.get("posting_date"),
-                    stmt_date.year,
-                    stmt_date.month,
-                    "posting_date",
+                    statement_date=stmt_date,
+                    field_name="posting_date",
                 ),
-                description=str(row.get("description", "")),
-                vendor=str(row.get("description", "")).split()[0]
-                if row.get("description")
-                else "",
-                mcc=str(row.get("mcc", "")) or None,
-                charge=_safe_decimal(row.get("charge")),
+                description=desc,
+                vendor=vendor_token,
+                mcc=str(row.get("mcc", "")).strip() or None,
+                charge=_line_charge_value(row.get("charge")),
             )
             session.add(line)
 

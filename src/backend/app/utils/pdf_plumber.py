@@ -1,32 +1,18 @@
-import re
+from decimal import Decimal
 
 import pandas as pd
 import pdfplumber
+
+from app.utils.money_parsing import parse_money_amount
 
 """
 This is really messy. Need a re-eval of function name and tight pydantic validation.
 """
 
 
-def sanitize_charge_amount(raw_content):
-    """
-    Sanitizes the charge amount by removing any non-numeric characters except for '.'.
-
-    Args:
-        raw_content: The raw content to be sanitized.
-
-    Returns:
-        A sanitized string representing the charge amount.
-    """
-    # Use regex to remove unwanted characters
-    sanitized = re.sub(r"[^0-9.]", "", raw_content)
-
-    # to number format
-    try:
-        float(sanitized)
-    except ValueError:
-        sanitized = "nan"
-    return sanitized
+def parse_statement_charge(raw_content: str) -> Decimal:
+    """Parse a charge cell from extracted PDF text (debit +, credit -)."""
+    return parse_money_amount(raw_content, field_name="charge")
 
 
 def validate_bankstatement_pdf(path):
@@ -196,7 +182,7 @@ def parse_statement(path) -> pd.DataFrame:
                 "description": " ".join(parts[2:-3]),
                 "reference": parts[-3].strip(),
                 "mcc": parts[-2].strip(),
-                "charge": sanitize_charge_amount(parts[-1].strip()),
+                "charge": parse_statement_charge(parts[-1].strip()),
             }
             data_rows.append(row)
 

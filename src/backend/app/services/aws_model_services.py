@@ -1,17 +1,16 @@
 import logging
 import os
-from typing import Any, Dict
 
 from openai import OpenAI
 from PIL import Image
 
 from app.config import get_settings
-from app.utils.llm_utils import (
-    encode_pil_image,
-    parse_yaml,
-    process_pdf,
-    sanitize_llm_output,
+from app.schemas.llm_parsed_models import (
+    BankStatementMetadataYAML,
+    ReceiptCategorizationYAML,
+    ReceiptParsingYAML,
 )
+from app.utils.llm_utils import encode_pil_image, parse_yaml_to_model, process_pdf
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -136,7 +135,7 @@ def call_model(
     return completion.choices[0].message.content
 
 
-def model_parse_document(file_path: str) -> Dict[str, Any]:
+def model_parse_document(file_path: str) -> ReceiptParsingYAML:
     """
     Parse a receipt document (image or PDF) using the Vision Language Model (VLM).
 
@@ -147,7 +146,7 @@ def model_parse_document(file_path: str) -> Dict[str, Any]:
         file_path (str): Path to the image or PDF file.
 
     Returns:
-        Dict[str, Any]: Parsed content from the document.
+        ReceiptParsingYAML: Validated parse result.
     """
     try:
         response = call_model(
@@ -160,12 +159,14 @@ def model_parse_document(file_path: str) -> Dict[str, Any]:
             f"(!) Error invoking model API for document parsing: {e}"
         ) from e
 
-    if response:
-        sanitized_content = sanitize_llm_output(response)
-        parsed_content = parse_yaml(sanitized_content)
-        return parsed_content
-    else:
-        return {}
+    if not response or not str(response).strip():
+        raise ValueError("Model returned empty response for receipt parsing")
+
+    return parse_yaml_to_model(
+        str(response),
+        ReceiptParsingYAML,
+        context="receipt_parse",
+    )
 
 
 # Backwards-compatible aliases — prefer model_parse_document for new call sites.
@@ -173,34 +174,38 @@ model_parse_image = model_parse_document
 model_parse_pdf = model_parse_document
 
 
-def model_categorize_transaction(transaction_content) -> Dict[str, Any]:
+def model_categorize_transaction(
+    transaction_content: ReceiptParsingYAML,
+) -> ReceiptCategorizationYAML:
     """
     Categorize a transaction based on its content using LLM.
 
     Args:
-        transaction_content (Dict[str, Any]): Parsed content from the transaction.
+        transaction_content: Validated receipt parse from ``model_parse_document``.
 
     Returns:
-        Dict[str, Any]: Categorized transaction type.
+        ReceiptCategorizationYAML: Validated categorization result.
     """
     try:
-        reponse = call_model(
+        response = call_model(
             settings.vlm_model_id,
             settings.categorizing_instruction_path,
-            prompt=str(transaction_content),
+            prompt=transaction_content.model_dump_json(),
         )
     except Exception as e:
         raise ValueError(f"(!) Error invoking model API for categorization: {e}") from e
 
-    if reponse:
-        sanitized_content = sanitize_llm_output(reponse)
-        parsed_content = parse_yaml(sanitized_content)
-        return parsed_content
-    else:
-        return {}
+    if not response or not str(response).strip():
+        raise ValueError("Model returned empty response for categorization")
+
+    return parse_yaml_to_model(
+        str(response),
+        ReceiptCategorizationYAML,
+        context="receipt_categorize",
+    )
 
 
-def model_parse_bank_statement_metadata(file_path: str) -> Dict[str, Any]:
+def model_parse_bank_statement_metadata(file_path: str) -> BankStatementMetadataYAML:
     """
     Parse a bank statement metadata using VLM.
 
@@ -208,10 +213,10 @@ def model_parse_bank_statement_metadata(file_path: str) -> Dict[str, Any]:
         file_path (str): Path to the bank statement file.
 
     Returns:
-        Dict[str, Any]: Parsed metadata from the bank statement.
+        BankStatementMetadataYAML: Validated metadata.
     """
     try:
-        reponse = call_model(
+        response = call_model(
             settings.vlm_model_id,
             settings.bankstatement_metadata_parsing_instruction_path,
             data_path=file_path,
@@ -221,12 +226,14 @@ def model_parse_bank_statement_metadata(file_path: str) -> Dict[str, Any]:
             f"(!) Error invoking model API for parsing bank statement: {e}"
         ) from e
 
-    if reponse:
-        sanitized_content = sanitize_llm_output(reponse)
-        parsed_content = parse_yaml(sanitized_content)
-        return parsed_content
-    else:
-        return {}
+    if not response or not str(response).strip():
+        raise ValueError("Model returned empty response for bank statement metadata")
+
+    return parse_yaml_to_model(
+        str(response),
+        BankStatementMetadataYAML,
+        context="bank_statement_metadata",
+    )
 
 
 if __name__ == "__main__":

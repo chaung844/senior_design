@@ -4,8 +4,10 @@ import logging
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
+from typing import Any, TypeVar
 
 import yaml
+from pydantic import BaseModel, ValidationError
 from pdf2image import convert_from_path
 from PIL import Image
 
@@ -145,9 +147,51 @@ def parse_yaml(content):
         content (str): The content to parse.
 
     Returns:
-        dict: The parsed YAML content.
+        Parsed Python object (typically dict or list).
     """
     try:
         return yaml.safe_load(content)
     except yaml.YAMLError as e:
         raise ValueError(f"Failed to parse YAML: {e}")
+
+
+TModel = TypeVar("TModel", bound=BaseModel)
+
+
+def extract_yaml_block(raw_content: str) -> str:
+    """Return YAML text, stripping markdown fences when present."""
+    if raw_content is None:
+        raise ValueError("Empty LLM response")
+    s = str(raw_content).strip()
+    if not s:
+        raise ValueError("Empty LLM response")
+    return sanitize_llm_output(s)
+
+
+def parse_yaml_strict(
+    yaml_str: str,
+    *,
+    expected_root_type: type | tuple[type, ...] = dict,
+) -> Any:
+    """Parse YAML and verify the document root type."""
+    data = parse_yaml(yaml_str)
+    if not isinstance(data, expected_root_type):
+        raise ValueError(
+            f"Expected YAML root type {expected_root_type!r}, got {type(data).__name__}"
+        )
+    return data
+
+
+def parse_yaml_to_model(
+    raw: str,
+    model: type[TModel],
+    *,
+    context: str,
+) -> TModel:
+    """Extract YAML from raw LLM output and validate against a Pydantic model."""
+    try:
+        block = extract_yaml_block(raw)
+        data = parse_yaml_strict(block, expected_root_type=dict)
+        return model.model_validate(data)
+    except ValidationError as e:
+        raise ValueError(f"{context}: invalid LLM YAML schema: {e}") from e
