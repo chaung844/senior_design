@@ -34,9 +34,10 @@ src/backend/
 │   ├── routers/                # Route modules: auth, admin, accounts, documents,
 │   │                           # jobs, receipts, reconciliation, statements
 │   ├── schemas/                # Pydantic schemas
-│   ├── services/               # AWS, parsing, reconciliation matching/runner, cleanup
+│   ├── services/               # AWS, parsing, reconciliation matching/runner, cleanup, archival
+│   ├── tasks/                  # CLI management commands (archival, etc.)
 │   ├── utils/                  # auth, JWT, CSRF, security, access control, limiter, PDF helpers
-│   └── worker/                 # SQS consumer (parsing + reconciliation handlers)
+│   ├── worker/                 # SQS consumer (parsing + reconciliation handlers)
 ├── safe/                       # Local prompts & samples (not committed)
 │   ├── prompts/
 │   └── samples/
@@ -108,6 +109,16 @@ src/backend/
 
    ```bash
    uv run python -m app.worker.main
+   ```
+
+9. Statement archival task (run daily via cron or EventBridge):
+
+   ```bash
+   # Preview what would be archived
+   uv run python -m app.tasks.archive_statements --dry-run
+
+   # Execute archival
+   uv run python -m app.tasks.archive_statements
    ```
 
 ### Rate limiting
@@ -305,6 +316,14 @@ The following mirrors the main routers. All routes except `/`, `/health`, and `/
 
 ## Data model notes
 
+### `AccountBook`
+
+Key fields: `account_id`, `bank_name`, `account_name`, `account_type`, `currency`, `account_number_last4`, `archive_after_months` (default 18), `user_id`, soft delete via **`deleted_at`** (`SoftDeleteMixin`).
+
+### `BankStatement`
+
+Key fields: `statement_id`, `account_id`, `month`, `year`, `total_amount`, `currency`, `status` (`active` | `archived`), `archived_at`.
+
 ### `Document`
 
 Key fields: `document_id`, `uploaded_by`, `file_name`, `document_type`, `s3_key`, `status`, `account_id`, `receipt_id`, `statement_id`, `error_message`, soft delete via **`deleted_at`** (`SoftDeleteMixin`).
@@ -333,6 +352,25 @@ Per unmatched line after a run: `job_id`, `line_id`, `statement_id`, `top_candid
 - **MatchStatus:** `unmatched`, `perfect_matched`, `bundle_matched`, `manual`
 - **JobType:** `parsing`, `reconciliation`
 - **JobStatus:** `pending`, `processing`, `reconciling`, `completed`, `failed`
+- **StatementStatus:** `active`, `archived`
+
+---
+
+## Statement archival (data retention)
+
+Statements are automatically archived after a configurable retention period set per account book (`archive_after_months`, default **18 months**). Archival is **irreversible** and enforced purely server-side (no user-facing button).
+
+**What happens when a statement is archived:**
+
+- `BankStatement.status` is set to `archived`; `archived_at` records the timestamp.
+- **S3 objects** for the statement document and linked receipt documents are deleted.
+- All structured data (lines, receipts, reconciliation matches) remains in PostgreSQL.
+- **PATCH** on the statement or its lines returns **403**.
+- **Reconciliation** cannot be started against an archived statement.
+- **File-URL** endpoints return **410 Gone** for both the statement and its receipt documents.
+- Receipts cannot be linked to an archived statement via `confirm-upload`.
+
+**CLI task:** `uv run python -m app.tasks.archive_statements` (supports `--dry-run`). Schedule daily via cron or AWS EventBridge.
 
 ---
 

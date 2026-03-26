@@ -5,7 +5,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
-from app.enums import UserRole
+from app.enums import StatementStatus, UserRole
 from app.models.account_book import AccountBook
 from app.models.account_book_member import AccountBookMember
 from app.models.document import Document
@@ -150,6 +150,15 @@ def _assert_can_write(user: User) -> None:
         )
 
 
+def _assert_statement_not_archived(statement: BankStatement) -> None:
+    """Archived statements are permanently read-only."""
+    if statement.status == StatementStatus.archived:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="This statement is archived and cannot be modified",
+        )
+
+
 def apply_document_access_filter(filters: list, user: User) -> list:
     """Append the appropriate access-control predicate to *filters* for list queries
     that join against the ``documents`` table.
@@ -264,6 +273,7 @@ async def get_owned_statement(
 
     if write:
         _assert_can_write(user)
+        _assert_statement_not_archived(statement)
 
     return statement
 
@@ -306,5 +316,8 @@ async def get_owned_statement_line(
 
     if write:
         _assert_can_write(user)
+        parent = await db.get(BankStatement, statement_id)
+        if parent:
+            _assert_statement_not_archived(parent)
 
     return line

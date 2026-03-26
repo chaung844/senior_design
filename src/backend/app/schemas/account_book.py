@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.enums import AccountType
 
@@ -12,6 +12,7 @@ class AccountBookCreate(BaseModel):
     account_type: AccountType = AccountType.credit_card
     currency: str = "USD"
     account_number_last4: str
+    archive_after_months: int = Field(default=18, ge=1, le=120)
 
 
 class AccountBookUpdate(BaseModel):
@@ -20,6 +21,7 @@ class AccountBookUpdate(BaseModel):
     account_type: Optional[AccountType] = None
     currency: Optional[str] = None
     account_number_last4: Optional[str] = None
+    archive_after_months: Optional[int] = Field(default=None, ge=1, le=120)
 
 
 class AccountBookRead(BaseModel):
@@ -29,6 +31,7 @@ class AccountBookRead(BaseModel):
     account_type: AccountType
     currency: str
     account_number_last4: str
+    archive_after_months: int
     user_id: int
     created_at: datetime
     updated_at: datetime

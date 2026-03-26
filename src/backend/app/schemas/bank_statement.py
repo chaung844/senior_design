@@ -18,6 +18,8 @@ class BankStatementRead(BaseModel):
     account_number_last4: str
     total_amount: Decimal
     currency: str
+    status: str
+    archived_at: Optional[datetime] = None
     created_at: datetime
     document_id: Optional[int] = None
     file_name: Optional[str] = None

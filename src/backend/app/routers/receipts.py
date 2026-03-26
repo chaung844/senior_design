@@ -7,9 +7,10 @@ from sqlalchemy.orm import joinedload
 
 from app.config import get_settings
 from app.database import get_db
-from app.enums import MatchStatus
+from app.enums import MatchStatus, StatementStatus
 from app.models.document import Document
 from app.models.receipt import Receipt
+from app.models.statement import BankStatement
 from app.models.user import User
 from app.schemas.document import FileUrlResponse
 from app.schemas.receipt import ReceiptListResponse, ReceiptRead, ReceiptUpdate
@@ -147,6 +148,14 @@ async def get_receipt_file_url(
     aws_service: AWSService = Depends(get_aws_service),
 ):
     receipt = await get_owned_receipt(receipt_id, current_user, db)
+
+    if receipt.statement_id is not None:
+        parent = await db.get(BankStatement, receipt.statement_id)
+        if parent and parent.status == StatementStatus.archived:
+            raise HTTPException(
+                status_code=410,
+                detail="The parent statement is archived; receipt files have been purged",
+            )
 
     s3_key = receipt.document.s3_key if receipt.document else None
     url = await generate_file_url(

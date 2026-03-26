@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload, selectinload
 
 from app.config import get_settings
 from app.database import get_db
-from app.enums import MatchStatus
+from app.enums import MatchStatus, StatementStatus
 from app.models.document import Document
 from app.models.statement import BankStatement, BankStatementLine
 from app.models.user import User
@@ -48,6 +48,8 @@ def _statement_to_read(stmt: BankStatement) -> BankStatementRead:
         account_number_last4=stmt.account_number_last4,
         total_amount=stmt.total_amount,
         currency=stmt.currency,
+        status=stmt.status.value,
+        archived_at=stmt.archived_at,
         created_at=stmt.created_at,
         document_id=doc.document_id if doc else None,
         file_name=doc.file_name if doc else None,
@@ -71,6 +73,8 @@ def _statement_to_detail(stmt: BankStatement) -> BankStatementDetailRead:
         account_number_last4=stmt.account_number_last4,
         total_amount=stmt.total_amount,
         currency=stmt.currency,
+        status=stmt.status.value,
+        archived_at=stmt.archived_at,
         created_at=stmt.created_at,
         document_id=doc.document_id if doc else None,
         file_name=doc.file_name if doc else None,
@@ -267,6 +271,12 @@ async def get_statement_file_url(
     aws_service: AWSService = Depends(get_aws_service),
 ):
     statement = await get_owned_statement(statement_id, current_user, db)
+
+    if statement.status == StatementStatus.archived:
+        raise HTTPException(
+            status_code=410,
+            detail="Statement is archived; the original document has been purged",
+        )
 
     s3_key = statement.document.s3_key if statement.document else None
     url = await generate_file_url(

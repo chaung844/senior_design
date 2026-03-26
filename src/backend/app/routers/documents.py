@@ -6,9 +6,10 @@ from sqlalchemy import ColumnElement, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_db
-from app.enums import DocumentStatus, DocumentType, JobStatus, JobType
+from app.enums import DocumentStatus, DocumentType, JobStatus, JobType, StatementStatus
 from app.models.document import Document
 from app.models.job import Job
+from app.models.statement import BankStatement
 from app.models.user import User
 from app.schemas.document import (
     DocumentConfirmResponse,
@@ -89,6 +90,14 @@ async def confirm_upload(
     _assert_can_write(current_user)
 
     doc = await get_owned_document(document_id, current_user, db, write=True)
+
+    if statement_id is not None:
+        target_stmt = await db.get(BankStatement, statement_id)
+        if target_stmt and target_stmt.status == StatementStatus.archived:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot link a receipt to an archived statement",
+            )
 
     if not await aws_service.async_verify_s3_upload(doc.s3_key):
         raise HTTPException(

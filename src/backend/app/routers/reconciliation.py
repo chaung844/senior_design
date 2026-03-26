@@ -19,7 +19,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import joinedload
 
 from app.database import get_db
-from app.enums import JobStatus, JobType, MatchStatus
+from app.enums import JobStatus, JobType, MatchStatus, StatementStatus
 from app.models.document import Document
 from app.models.job import Job
 from app.models.receipt import Receipt
@@ -181,10 +181,16 @@ async def start_reconciliation(
                 BankStatement.account_id == account_id,
             )
         )
-        if stmt_check.scalar_one_or_none() is None:
+        target_stmt = stmt_check.scalar_one_or_none()
+        if target_stmt is None:
             raise HTTPException(
                 status_code=404,
                 detail="Statement not found in this account",
+            )
+        if target_stmt.status == StatementStatus.archived:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot run reconciliation on an archived statement",
             )
 
     # Create the job
@@ -265,10 +271,16 @@ async def run_reconciliation_legacy(
                 BankStatement.account_id == account_id,
             )
         )
-        if stmt_check.scalar_one_or_none() is None:
+        target_stmt = stmt_check.scalar_one_or_none()
+        if target_stmt is None:
             raise HTTPException(
                 status_code=404,
                 detail="Statement not found in this account",
+            )
+        if target_stmt.status == StatementStatus.archived:
+            raise HTTPException(
+                status_code=403,
+                detail="Cannot run reconciliation on an archived statement",
             )
 
     await run_reconciliation(job, account_id, statement_id, db, current_user)

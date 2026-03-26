@@ -59,6 +59,7 @@ def _account_to_read(account: AccountBook) -> AccountBookRead:
         account_type=account.account_type,
         currency=account.currency,
         account_number_last4=account.account_number_last4,
+        archive_after_months=account.archive_after_months,
         user_id=account.user_id,
         created_at=account.created_at,
         updated_at=account.updated_at,
@@ -86,6 +87,7 @@ async def create_account_book(
         account_type=body.account_type,
         currency=body.currency,
         account_number_last4=body.account_number_last4,
+        archive_after_months=body.archive_after_months,
         user_id=current_user.user_id,
     )
     db.add(account)
@@ -197,6 +199,7 @@ async def update_account_book(
         "account_type",
         "currency",
         "account_number_last4",
+        "archive_after_months",
     }
 
     update_data = body.model_dump(exclude_unset=True)

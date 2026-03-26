@@ -37,6 +37,7 @@ class AccountBookSeed(TypedDict):
     account_type: AccountType
     currency: str
     account_number_last4: str
+    archive_after_months: int
     owner: "User"
     viewers: "list[User]"
 
@@ -151,6 +152,7 @@ async def seed_account_books(session, user_map: dict[str, User]):
             "account_type": AccountType.credit_card,
             "currency": "USD",
             "account_number_last4": "4321",
+            "archive_after_months": 18,
             "owner": admin1,
             "viewers": [viewer1] if viewer1 else [],
         },
@@ -160,8 +162,19 @@ async def seed_account_books(session, user_map: dict[str, User]):
             "account_type": AccountType.checking,
             "currency": "USD",
             "account_number_last4": "8765",
+            "archive_after_months": 18,
             "owner": admin2,
             "viewers": [],
+        },
+        {
+            "bank_name": "Chase",
+            "account_name": "Archival test account book",
+            "account_type": AccountType.credit_card,
+            "currency": "USD",
+            "account_number_last4": "2020",
+            "archive_after_months": 18,
+            "owner": admin1,
+            "viewers": [viewer1] if viewer1 else [],
         },
     ]
 
@@ -190,6 +203,7 @@ async def seed_account_books(session, user_map: dict[str, User]):
             account_type=data["account_type"],
             currency=data["currency"],
             account_number_last4=data["account_number_last4"],
+            archive_after_months=data["archive_after_months"],
             user_id=owner.user_id,
         )
         session.add(book)
@@ -224,6 +238,7 @@ async def seed_account_books(session, user_map: dict[str, User]):
 # Stable seed s3_key — must never change so the UNIQUE constraint doesn't
 # cause a rollback on repeated runs.
 _SEED_STATEMENT_S3_KEY = "seed/statements/chase-4321-dec-2025.pdf"
+_SEED_ARCHIVAL_STATEMENT_S3_KEY = "seed/statements/chase-2020-jan-2020.pdf"
 
 
 async def seed_statements(session, user_map: dict[str, "User"]):
@@ -354,6 +369,98 @@ async def seed_statements(session, user_map: dict[str, "User"]):
     logger.info(
         "Created statement for Business Credit Card Dec 2025 with 5 lines (account_id: %d).",
         book.account_id,
+    )
+
+    # ---------------------------------------------------------------------
+    # Archival test seed: an old statement (2020) that is eligible to archive
+    # ---------------------------------------------------------------------
+    archival_book_result = await session.execute(
+        select(AccountBook).where(
+            AccountBook.account_name == "Archival test account book",
+            AccountBook.user_id == admin1.user_id,
+        )
+    )
+    archival_book = archival_book_result.scalar_one_or_none()
+    if not archival_book:
+        logger.warning(
+            "Archival test account book not found, skipping archival statement seed."
+        )
+        return
+
+    existing_archival_doc = await session.execute(
+        select(Document).where(Document.s3_key == _SEED_ARCHIVAL_STATEMENT_S3_KEY)
+    )
+    if existing_archival_doc.scalar_one_or_none():
+        logger.info(
+            "Statement for Archival test account book Jan 2020 already exists. Skipping."
+        )
+        return
+
+    archival_statement = BankStatement(
+        account_id=archival_book.account_id,
+        month=1,
+        year=2020,
+        account_number_last4=archival_book.account_number_last4,
+        total_amount=Decimal("123.45"),
+        currency="USD",
+    )
+    session.add(archival_statement)
+    await session.flush()
+
+    archival_document = Document(
+        uploaded_by=admin1.user_id,
+        file_name="chase-2020-jan-2020.pdf",
+        document_type=DocumentType.bank_statement,
+        s3_key=_SEED_ARCHIVAL_STATEMENT_S3_KEY,
+        status=DocumentStatus.parsed,
+        account_id=archival_book.account_id,
+        statement_id=archival_statement.statement_id,
+    )
+    session.add(archival_document)
+    await session.flush()
+
+    archival_lines_data = [
+        {
+            "line_number": 1,
+            "reference_number": "ARCH20200101001",
+            "transaction_date": date(2020, 1, 3),
+            "posting_date": date(2020, 1, 4),
+            "description": "OFFICE DEPOT",
+            "vendor": "Office Depot",
+            "mcc": "5943",
+            "charge": Decimal("45.67"),
+        },
+        {
+            "line_number": 2,
+            "reference_number": "ARCH20200101002",
+            "transaction_date": date(2020, 1, 10),
+            "posting_date": date(2020, 1, 11),
+            "description": "AMAZON MKTPLACE PMTS",
+            "vendor": "Amazon",
+            "mcc": "5999",
+            "charge": Decimal("77.78"),
+        },
+    ]
+
+    for line_data in archival_lines_data:
+        line = BankStatementLine(
+            statement_id=archival_statement.statement_id,
+            line_number=line_data["line_number"],
+            reference_number=line_data["reference_number"],
+            transaction_date=line_data["transaction_date"],
+            posting_date=line_data["posting_date"],
+            description=line_data["description"],
+            vendor=line_data["vendor"],
+            mcc=line_data["mcc"],
+            charge=line_data["charge"],
+            currency="USD",
+            match_status=MatchStatus.unmatched,
+        )
+        session.add(line)
+
+    logger.info(
+        "Created statement for Archival test account book Jan 2020 (eligible for archival) (account_id: %d).",
+        archival_book.account_id,
     )
 
 

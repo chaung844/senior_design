@@ -43,3 +43,8 @@ class JobStatus(str, Enum):
     reconciling = "reconciling"
     completed = "completed"
     failed = "failed"
+
+
+class StatementStatus(str, Enum):
+    active = "active"
+    archived = "archived"

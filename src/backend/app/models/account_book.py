@@ -25,6 +25,9 @@ class AccountBook(Base, TimestampMixin, SoftDeleteMixin):
         String(3), nullable=False, default="USD", server_default="USD"
     )
     account_number_last4: Mapped[str] = mapped_column(String(4), nullable=False)
+    archive_after_months: Mapped[int] = mapped_column(
+        nullable=False, default=18, server_default="18"
+    )
     user_id: Mapped[int] = mapped_column(ForeignKey("users.user_id"), nullable=False)
     user: Mapped["User"] = relationship(back_populates="account_books")
     bank_statements: Mapped[List["BankStatement"]] = relationship(

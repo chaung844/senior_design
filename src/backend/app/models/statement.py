@@ -1,11 +1,11 @@
-from datetime import date
+from datetime import date, datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING, List, Optional
 
 from sqlalchemy import Enum, ForeignKey, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.enums import MatchStatus
+from app.enums import MatchStatus, StatementStatus
 from app.models.base import Base, TimestampMixin
 
 if TYPE_CHECKING:
@@ -29,6 +29,14 @@ class BankStatement(Base, TimestampMixin):
     currency: Mapped[str] = mapped_column(
         String(3), nullable=False, default="USD", server_default="USD"
     )
+    status: Mapped[StatementStatus] = mapped_column(
+        Enum(StatementStatus, name="statement_status_enum", native_enum=False),
+        nullable=False,
+        default=StatementStatus.active,
+        server_default=StatementStatus.active.value,
+        index=True,
+    )
+    archived_at: Mapped[Optional[datetime]] = mapped_column(nullable=True, default=None)
     document: Mapped[Optional["Document"]] = relationship(
         "Document", back_populates="bank_statement", uselist=False
     )

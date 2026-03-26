@@ -43,6 +43,7 @@ testpaths = ["tests"]
 # Logging must be configured before remaining imports (Rich replaces root handlers).
 "app/main.py" = ["E402"]
 "app/worker/main.py" = ["E402"]
+"app/tasks/archive_statements.py" = ["E402"]
 
 [dependency-groups]
 dev = [
