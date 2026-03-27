@@ -55,6 +55,8 @@ interface ReceiptEditDialogProps {
     currency: string;
     /** When true, fields are read-only and save/delete are hidden (viewer). */
     readOnly?: boolean;
+    /** When true, do not offer opening the original receipt file (e.g. statement archived). */
+    hideSourceFile?: boolean;
 }
 
 export function ReceiptEditDialog({
@@ -63,6 +65,7 @@ export function ReceiptEditDialog({
     onOpenChange,
     currency,
     readOnly = false,
+    hideSourceFile = false,
 }: ReceiptEditDialogProps) {
     const updateMutation = useUpdateReceipt();
     const deleteMutation = useDeleteDocument();
@@ -104,6 +107,8 @@ export function ReceiptEditDialog({
     }, [receipt, open]);
 
     if (!receipt) return null;
+
+    const showSourceFile = Boolean(receipt.file_name) && !hideSourceFile;
 
     const isDirty =
         vendor !== receipt.vendor ||
@@ -249,7 +254,7 @@ export function ReceiptEditDialog({
                         {readOnly
                             ? "Parsed receipt data for this month."
                             : "Modify the parsed receipt data below."}
-                        {receipt.file_name && (
+                        {showSourceFile && (
                             <>
                                 {" "}
                                 Source file:{" "}
@@ -259,7 +264,7 @@ export function ReceiptEditDialog({
                             </>
                         )}
                     </DialogDescription>
-                    {receipt.file_name && (
+                    {showSourceFile && (
                         <Button
                             variant="outline"
                             size="xs"

@@ -109,6 +109,7 @@ export function statementToMonthData(
         matchRate,
         statementCount: transactions.length,
         reconciled: isInPast && matchRate >= RECONCILE_THRESHOLD,
+        isStatementArchived: statement.status === "archived",
     };
 }
 
@@ -150,6 +151,7 @@ export function statementSummaryToMonthData(
         matchRate,
         statementCount: stmt.line_count,
         reconciled,
+        isStatementArchived: stmt.status === "archived",
     };
 }
 

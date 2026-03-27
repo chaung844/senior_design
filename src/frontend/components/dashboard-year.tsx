@@ -40,9 +40,8 @@ import {
     Calendar03Icon,
     MoneyReceiveSquareIcon,
     MoneySendSquareIcon,
-    BarChartIcon,
-    ArrowLeft01Icon,
     TransactionHistoryIcon,
+    Archive03Icon,
 } from "@hugeicons/core-free-icons";
 import { Button } from "@/components/ui/button";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -185,7 +184,19 @@ function makeMonthColumns(currency: string): ColumnDef<MonthData, unknown>[] {
             enableSorting: false,
             cell: ({ row }) => (
                 <div className="text-center">
-                    {row.original.reconciled ? (
+                    {row.original.isStatementArchived ? (
+                        <Badge
+                            variant="secondary"
+                            className="text-[10px] h-4 px-1.5 text-muted-foreground"
+                        >
+                            <HugeiconsIcon
+                                icon={Archive03Icon}
+                                strokeWidth={2}
+                                className="size-2.5 mr-0.5"
+                            />
+                            Archived
+                        </Badge>
+                    ) : row.original.reconciled ? (
                         <Badge
                             variant="default"
                             className="text-[10px] h-4 px-1.5"
@@ -237,8 +248,14 @@ export function DashboardYear({
         () => yearData.months.slice().sort((a, b) => a.month - b.month),
         [yearData.months],
     );
-    const reconciledMonths = months.filter((m) => m.reconciled).length;
     const totalMonths = months.length;
+    const activeMonths = months.filter((m) => !m.isStatementArchived);
+    const reconciledMonths = months.filter(
+        (m) => m.reconciled && !m.isStatementArchived,
+    ).length;
+    const archivedMonthsCount = months.filter(
+        (m) => m.isStatementArchived,
+    ).length;
 
     // Find best and worst months
     const bestMonth = months.reduce(
@@ -361,7 +378,10 @@ export function DashboardYear({
                         <>
                             {reconciledMonths}
                             <span className="text-base font-normal text-muted-foreground">
-                                /{totalMonths}
+                                /
+                                {activeMonths.length > 0
+                                    ? activeMonths.length
+                                    : totalMonths}
                             </span>
                         </>
                     }
@@ -369,14 +389,17 @@ export function DashboardYear({
                     <div className="flex flex-col gap-1.5">
                         <Progress
                             value={
-                                totalMonths > 0
-                                    ? (reconciledMonths / totalMonths) * 100
+                                activeMonths.length > 0
+                                    ? (reconciledMonths / activeMonths.length) *
+                                      100
                                     : 0
                             }
                             className="h-1.5"
                         />
                         <div className="text-[11px] text-muted-foreground">
-                            months fully reconciled
+                            {archivedMonthsCount > 0
+                                ? `${formatNumber(reconciledMonths)} of ${formatNumber(activeMonths.length)} active months · ${formatNumber(archivedMonthsCount)} archived`
+                                : "months fully reconciled"}
                         </div>
                     </div>
                 </StatCard>

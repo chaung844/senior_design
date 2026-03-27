@@ -48,6 +48,8 @@ import {
 import { lookupUserByEmail } from "@/lib/api";
 import type { AccountBookRead, MemberRead } from "@/lib/types";
 
+const DEFAULT_ARCHIVE_AFTER_MONTHS = 18;
+
 // ── Member badge (primary owner = AccountBook.user_id) ────────────────
 
 function MemberKindBadge({ isPrimary }: { isPrimary: boolean }) {
@@ -322,6 +324,9 @@ export function EditAccountDialog({ account }: EditAccountDialogProps) {
     }
 
     // ── Derived ───────────────────────────────────────────────────────
+    const displayArchiveAfterMonths =
+        account.archive_after_months ?? DEFAULT_ARCHIVE_AFTER_MONTHS;
+
     const isDirty =
         accountName.trim() !== account.account_name ||
         last4.trim() !== account.account_number_last4 ||
@@ -410,6 +415,25 @@ export function EditAccountDialog({ account }: EditAccountDialogProps) {
                                         className="font-mono uppercase"
                                     />
                                 </div>
+                            </div>
+
+                            <div className="flex flex-col gap-1.5">
+                                <Label id="edit-archive-after-months-label">
+                                    Archive statements after (months)
+                                </Label>
+                                <div
+                                    className="flex h-9 items-center rounded-none border border-input bg-muted/50 px-3 font-mono text-sm tabular-nums"
+                                    aria-labelledby="edit-archive-after-months-label"
+                                >
+                                    {displayArchiveAfterMonths}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground">
+                                    After this many months past the statement
+                                    period, Matcha archives the statement and
+                                    removes stored files. Set when the account
+                                    book is created; itcannot be changed
+                                    afterward.
+                                </p>
                             </div>
                         </section>
 

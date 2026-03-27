@@ -15,6 +15,9 @@ export type UserRole = "admin" | "developer" | "viewer";
 
 export type AccountType = "checking" | "credit_card";
 
+/** Bank statement lifecycle (server-driven archival). */
+export type StatementStatus = "active" | "archived";
+
 export type DocumentType = "receipt" | "bank_statement";
 
 export type DocumentStatus =
@@ -179,6 +182,8 @@ export interface BankStatementRead {
     account_number_last4: string;
     total_amount: number;
     currency: string;
+    status: StatementStatus;
+    archived_at: string | null;
     created_at: string;
     document_id: number | null;
     file_name: string | null;
@@ -256,6 +261,8 @@ export interface AccountBookCreate {
     account_type?: AccountType;
     currency?: string;
     account_number_last4: string;
+    /** Months after statement period end before auto-archive (default 18 on server). */
+    archive_after_months?: number;
 }
 
 export interface AccountBookUpdate {
@@ -264,6 +271,7 @@ export interface AccountBookUpdate {
     account_type?: AccountType;
     currency?: string;
     account_number_last4?: string;
+    archive_after_months?: number;
 }
 
 export interface AccountBookRead {
@@ -273,6 +281,7 @@ export interface AccountBookRead {
     account_type: AccountType;
     currency: string;
     account_number_last4: string;
+    archive_after_months: number;
     user_id: number;
     created_at: string;
     updated_at: string;

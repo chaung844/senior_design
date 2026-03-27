@@ -28,12 +28,17 @@ interface AddAccountDialogProps {
     onCreated?: (accountId: number) => void;
 }
 
+const DEFAULT_ARCHIVE_MONTHS = 18;
+const MIN_ARCHIVE_MONTHS = 1;
+const MAX_ARCHIVE_MONTHS = 120;
+
 const DEFAULT_BODY: AccountBookCreate = {
     bank_name: "",
     account_name: "",
     account_type: "credit_card",
     currency: "USD",
     account_number_last4: "",
+    archive_after_months: DEFAULT_ARCHIVE_MONTHS,
 };
 
 function onlyDigits(value: string): string {
@@ -58,12 +63,21 @@ export function AddAccountDialog({
 
     const isSubmitting = createAccount.isPending;
 
+    const archiveMonths = body.archive_after_months ?? DEFAULT_ARCHIVE_MONTHS;
+    const archiveOk =
+        Number.isInteger(archiveMonths) &&
+        archiveMonths >= MIN_ARCHIVE_MONTHS &&
+        archiveMonths <= MAX_ARCHIVE_MONTHS;
+
+    const currencyTrimmed = (body.currency ?? "").trim();
+
     const canSubmit =
         body.bank_name.trim().length > 0 &&
         body.account_name.trim().length > 0 &&
         (body.account_type === "credit_card" || body.account_type === "checking") &&
-        body.currency.trim().length > 0 &&
-        body.account_number_last4.trim().length === 4;
+        currencyTrimmed.length > 0 &&
+        body.account_number_last4.trim().length === 4 &&
+        archiveOk;
 
     async function handleSubmit(e: React.FormEvent) {
         e.preventDefault();
@@ -74,8 +88,10 @@ export function AddAccountDialog({
                 bank_name: body.bank_name.trim(),
                 account_name: body.account_name.trim(),
                 account_type: body.account_type ?? "credit_card",
-                currency: body.currency.trim().toUpperCase(),
+                currency: currencyTrimmed.toUpperCase(),
                 account_number_last4: body.account_number_last4.trim(),
+                archive_after_months:
+                    body.archive_after_months ?? DEFAULT_ARCHIVE_MONTHS,
             });
             onOpenChange(false);
             onCreated?.(created.account_id);
@@ -187,6 +203,34 @@ export function AddAccountDialog({
                             autoComplete="off"
                             disabled={isSubmitting}
                         />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <Label htmlFor="archive_after_months">
+                            Archive statements after (months)
+                        </Label>
+                        <Input
+                            id="archive_after_months"
+                            type="number"
+                            min={MIN_ARCHIVE_MONTHS}
+                            max={MAX_ARCHIVE_MONTHS}
+                            value={body.archive_after_months ?? DEFAULT_ARCHIVE_MONTHS}
+                            onChange={(e) => {
+                                const n = parseInt(e.target.value, 10);
+                                setBody((prev) => ({
+                                    ...prev,
+                                    archive_after_months: Number.isNaN(n)
+                                        ? undefined
+                                        : n,
+                                }));
+                            }}
+                            disabled={isSubmitting}
+                            className="font-mono tabular-nums"
+                        />
+                        <p className="text-[11px] text-muted-foreground">
+                            Default {DEFAULT_ARCHIVE_MONTHS} months (range{" "}
+                            {MIN_ARCHIVE_MONTHS}–{MAX_ARCHIVE_MONTHS}).
+                        </p>
                     </div>
 
                     {error && (

@@ -46,6 +46,8 @@ interface ExportDialogProps {
     monthData: MonthData;
     statementId: number;
     rawLines: BankStatementLineRead[];
+    /** When true, hide statement PDF and receipt ZIP downloads (files purged). CSV export remains. */
+    isStatementArchived?: boolean;
 }
 
 // ── CSV helpers ───────────────────────────────────────────────────────
@@ -573,6 +575,7 @@ export function ExportDialog({
     monthData,
     statementId,
     rawLines,
+    isStatementArchived = false,
 }: ExportDialogProps) {
     const [open, setOpen] = React.useState(false);
 
@@ -678,35 +681,57 @@ export function ExportDialog({
                 <DialogHeader>
                     <DialogTitle>Export Statement Data</DialogTitle>
                     <DialogDescription>
-                        Download documents and data for{" "}
-                        <span className="font-medium text-foreground">
-                            {monthData.label} {yearValue}
-                        </span>
-                        .
+                        {isStatementArchived ? (
+                            <>
+                                Archived statement: original statement and
+                                receipt files are no longer available. You can
+                                still export{" "}
+                                <span className="font-medium text-foreground">
+                                    matching results (CSV)
+                                </span>{" "}
+                                for{" "}
+                                <span className="font-medium text-foreground">
+                                    {monthData.label} {yearValue}
+                                </span>
+                                .
+                            </>
+                        ) : (
+                            <>
+                                Download documents and data for{" "}
+                                <span className="font-medium text-foreground">
+                                    {monthData.label} {yearValue}
+                                </span>
+                                .
+                            </>
+                        )}
                     </DialogDescription>
                 </DialogHeader>
 
                 {/* Export options */}
                 <div className="flex flex-col">
-                    <ExportRow
-                        icon={PdfIcon}
-                        title="Bank Statement PDF"
-                        description="Download the original statement PDF from storage."
-                        state={pdfState}
-                        onDownload={handlePdfDownload}
-                    />
+                    {!isStatementArchived && (
+                        <>
+                            <ExportRow
+                                icon={PdfIcon}
+                                title="Bank Statement PDF"
+                                description="Download the original statement PDF from storage."
+                                state={pdfState}
+                                onDownload={handlePdfDownload}
+                            />
 
-                    <Separator />
+                            <Separator />
 
-                    <ExportRow
-                        icon={FileZipIcon}
-                        title="Receipts Archive (.zip)"
-                        description="Package all matched receipts for this account into a ZIP file."
-                        state={zipState}
-                        onDownload={handleZipDownload}
-                    />
+                            <ExportRow
+                                icon={FileZipIcon}
+                                title="Receipts Archive (.zip)"
+                                description="Package all matched receipts for this account into a ZIP file."
+                                state={zipState}
+                                onDownload={handleZipDownload}
+                            />
 
-                    <Separator />
+                            <Separator />
+                        </>
+                    )}
 
                     <ExportRow
                         icon={Invoice02Icon}

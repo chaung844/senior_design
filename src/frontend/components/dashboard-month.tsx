@@ -33,9 +33,7 @@ import {
     Alert02Icon,
     MoneyReceiveSquareIcon,
     MoneySendSquareIcon,
-    BarChartIcon,
     Search01Icon,
-    Invoice02Icon,
     File01Icon,
     LinkSquare02Icon,
     Delete02Icon,
@@ -318,6 +316,7 @@ function ReceiptFileLink({ receiptId }: { receiptId: number }) {
 function makeReceiptColumns(
     currency: string,
     includeSelection: boolean,
+    showReceiptFileLink: boolean,
 ): ColumnDef<ReceiptRead, unknown>[] {
     const selectColumn: ColumnDef<ReceiptRead, unknown> = {
         id: "select",
@@ -513,7 +512,13 @@ function makeReceiptColumns(
                         >
                             {file_name}
                         </span>
-                        <ReceiptFileLink receiptId={receipt_id} />
+                        {showReceiptFileLink ? (
+                            <ReceiptFileLink receiptId={receipt_id} />
+                        ) : (
+                            <span className="text-muted-foreground text-[10px]">
+                                —
+                            </span>
+                        )}
                     </div>
                 );
             },
@@ -633,6 +638,33 @@ function ReconciliationSummaryTab({
     onLineClick,
     onReceiptClick,
 }: ReconciliationSummaryTabProps) {
+    const sortedItems = React.useMemo(() => {
+        const liveStatusByLineId = new Map<
+            number,
+            BankStatementLineRead["match_status"]
+        >();
+        for (const l of rawLines) {
+            liveStatusByLineId.set(l.line_id, l.match_status);
+        }
+
+        return summaries
+            .map((summary, idx) => {
+                const status = liveStatusByLineId.get(summary.line_id);
+                const isMatched = status ? status !== "unmatched" : false;
+                return { summary, isMatched, idx };
+            })
+            .sort((a, b) => {
+                if (a.isMatched !== b.isMatched)
+                    return Number(a.isMatched) - Number(b.isMatched);
+                return a.idx - b.idx;
+            });
+    }, [summaries, rawLines]);
+
+    const stillUnmatched = React.useMemo(
+        () => sortedItems.filter((i) => !i.isMatched).length,
+        [sortedItems],
+    );
+
     if (loading) {
         return (
             <div className="flex flex-col gap-4">
@@ -668,29 +700,6 @@ function ReconciliationSummaryTab({
             </div>
         );
     }
-
-    const sortedItems = React.useMemo(() => {
-        const liveStatusByLineId = new Map<number, BankStatementLineRead["match_status"]>();
-        for (const l of rawLines) {
-            liveStatusByLineId.set(l.line_id, l.match_status);
-        }
-
-        return summaries
-            .map((summary, idx) => {
-                const status = liveStatusByLineId.get(summary.line_id);
-                const isMatched = status ? status !== "unmatched" : false;
-                return { summary, isMatched, idx };
-            })
-            .sort((a, b) => {
-                if (a.isMatched !== b.isMatched) return Number(a.isMatched) - Number(b.isMatched);
-                return a.idx - b.idx;
-            });
-    }, [summaries, rawLines]);
-
-    const stillUnmatched = React.useMemo(
-        () => sortedItems.filter((i) => !i.isMatched).length,
-        [sortedItems],
-    );
 
     return (
         <div className="flex flex-col gap-3">
@@ -882,6 +891,10 @@ export function DashboardMonth({
 }: DashboardMonthProps) {
     const deleteDoc = useDeleteDocument();
 
+    const { data: statementDetail } = useStatement(statementId ?? null);
+    const isStatementArchived = statementDetail?.status === "archived";
+    const canMutateStatement = canMutate && !isStatementArchived;
+
     const {
         uploadFiles,
         isUploading,
@@ -976,9 +989,6 @@ export function DashboardMonth({
     const [rowSelection, setRowSelection] = React.useState({});
     const [stmtEditDialogOpen, setStmtEditDialogOpen] = React.useState(false);
 
-    // Fetch the raw statement record so the edit dialog has document_id, etc.
-    const { data: statementDetail } = useStatement(statementId ?? null);
-
     // AI reconciliation summary for unmatched lines
     const { data: aiSummaryData, isLoading: aiSummaryLoading } =
         useReconciliationAISummary(statementId ?? null);
@@ -1068,8 +1078,13 @@ export function DashboardMonth({
     }, [allReceipts, receiptFilter, receiptSearch]);
 
     const receiptColumns = React.useMemo(
-        () => makeReceiptColumns(account.currency, canMutate),
-        [account.currency, canMutate],
+        () =>
+            makeReceiptColumns(
+                account.currency,
+                canMutateStatement,
+                !isStatementArchived,
+            ),
+        [account.currency, canMutateStatement, isStatementArchived],
     );
 
     const matchedReceiptCount = React.useMemo(
@@ -1126,7 +1141,8 @@ export function DashboardMonth({
                     />
                 </div>
                 {/* Action buttons */}
-                {canMutate && Object.keys(rowSelection).length > 0 && (
+                {canMutateStatement &&
+                    Object.keys(rowSelection).length > 0 && (
                     <AlertDialog>
                         <AlertDialogTrigger asChild>
                             <Button
@@ -1335,7 +1351,14 @@ export function DashboardMonth({
                 subtitle="Bank statement reconciliation detail"
                 onBack={onBack}
                 badges={
-                    monthData.reconciled ? (
+                    isStatementArchived ? (
+                        <Badge
+                            variant="secondary"
+                            className="text-[10px] h-5 px-2 text-muted-foreground"
+                        >
+                            Archived
+                        </Badge>
+                    ) : monthData.reconciled ? (
                         <Badge
                             variant="default"
                             className="text-[10px] h-5 px-2"
@@ -1363,7 +1386,9 @@ export function DashboardMonth({
                 }
                 actions={
                     <div className="flex items-center gap-2">
-                        {canMutate && statementId != null && statementDetail && (
+                        {canMutateStatement &&
+                            statementId != null &&
+                            statementDetail && (
                             <Button
                                 variant="outline"
                                 size="sm"
@@ -1377,7 +1402,7 @@ export function DashboardMonth({
                                 Edit Statement
                             </Button>
                         )}
-                        {canMutate && (
+                        {canMutateStatement && (
                             <UploadDialog
                                 title="Upload Receipts"
                                 description="Upload receipt images or PDFs for reconciliation matching."
@@ -1392,7 +1417,7 @@ export function DashboardMonth({
                                 }}
                             />
                         )}
-                        {canMutate && statementId != null && (
+                        {canMutateStatement && statementId != null && (
                             <>
                                 <Button
                                     variant="outline"
@@ -1437,10 +1462,24 @@ export function DashboardMonth({
                             monthData={monthData}
                             statementId={statementId}
                             rawLines={rawLines}
+                            isStatementArchived={isStatementArchived}
                         />
                     </div>
                 }
             />
+
+            {isStatementArchived && (
+                <div
+                    className="rounded-none border border-border bg-muted/40 px-3 py-2 text-xs text-muted-foreground"
+                    role="status"
+                >
+                    This statement is archived: reconciliation, uploads, edits,
+                    and original files are unavailable. You can still review
+                    parsed data and use{" "}
+                    <span className="font-medium text-foreground">Export</span>{" "}
+                    to download the matching results CSV.
+                </div>
+            )}
 
             {/* Summary Cards */}
             <div className="shrink-0 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -1613,7 +1652,7 @@ export function DashboardMonth({
                             }
                             globalFilter={receiptSearch}
                             onGlobalFilterChange={setReceiptSearch}
-                            {...(canMutate
+                            {...(canMutateStatement
                                 ? {
                                       rowSelection,
                                       onRowSelectionChange: setRowSelection,
@@ -1648,14 +1687,16 @@ export function DashboardMonth({
                     if (!open) setSelectedReceipt(null);
                 }}
                 currency={account.currency}
-                readOnly={!canMutate}
+                readOnly={!canMutateStatement}
+                hideSourceFile={isStatementArchived}
             />
             <StatementEditDialog
                 statement={statementDetail ?? null}
                 open={stmtEditDialogOpen}
                 onOpenChange={setStmtEditDialogOpen}
                 onDeleted={onBack}
-                readOnly={!canMutate}
+                readOnly={!canMutateStatement}
+                hideOriginalFile={isStatementArchived}
             />
             <StatementLineDialog
                 line={selectedLine}
@@ -1664,7 +1705,7 @@ export function DashboardMonth({
                 statementId={statementId}
                 currency={account.currency}
                 initialReceiptFilter={lineDialogInitialFilter}
-                readOnly={!canMutate}
+                readOnly={!canMutateStatement}
                 open={lineDialogOpen}
                 onOpenChange={(open) => {
                     setLineDialogOpen(open);

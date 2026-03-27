@@ -59,9 +59,12 @@ import type {
     UserRead,
     UserRole,
     AccountBookRead,
+    AccountBookUpdate,
     AccountType,
     MemberRead,
 } from "@/lib/types";
+
+const DEFAULT_ARCHIVE_AFTER_MONTHS_ADMIN = 18;
 import { lookupUserByEmail } from "@/lib/api";
 import {
     useAdminUsers,
@@ -783,6 +786,9 @@ function EditAccountDialog({
 
     const members: MemberRead[] = membersData?.members ?? [];
 
+    const displayArchiveAfterMonths =
+        account.archive_after_months ?? DEFAULT_ARCHIVE_AFTER_MONTHS_ADMIN;
+
     const hasChanges =
         accountName.trim() !== account.account_name ||
         bankName.trim() !== account.bank_name ||
@@ -802,7 +808,7 @@ function EditAccountDialog({
         if (!account || !canSubmit || updateAccount.isPending) return;
         setError(null);
         try {
-            const body: Record<string, string> = {};
+            const body: AccountBookUpdate = {};
             if (accountName.trim() !== account.account_name)
                 body.account_name = accountName.trim();
             if (bankName.trim() !== account.bank_name)
@@ -939,6 +945,21 @@ function EditAccountDialog({
                                 </SelectItem>
                             </SelectContent>
                         </Select>
+                    </div>
+                    <div className="grid gap-2">
+                        <Label id="edit-archive-months-admin-label">
+                            Archive statements after (months)
+                        </Label>
+                        <div
+                            className="flex h-9 items-center rounded-none border border-input bg-muted/50 px-3 font-mono text-sm tabular-nums"
+                            aria-labelledby="edit-archive-months-admin-label"
+                        >
+                            {displayArchiveAfterMonths}
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                            Set at account creation only; cannot be changed
+                            after.
+                        </p>
                     </div>
 
                     {error && (

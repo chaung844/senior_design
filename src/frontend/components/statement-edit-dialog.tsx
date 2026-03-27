@@ -61,6 +61,8 @@ interface StatementEditDialogProps {
     onDeleted?: () => void;
     /** When true, edits and delete are hidden (viewer). */
     readOnly?: boolean;
+    /** When true, hide opening the original statement file (e.g. archived / purged). */
+    hideOriginalFile?: boolean;
 }
 
 export function StatementEditDialog({
@@ -69,6 +71,7 @@ export function StatementEditDialog({
     onOpenChange,
     onDeleted,
     readOnly = false,
+    hideOriginalFile = false,
 }: StatementEditDialogProps) {
     const updateMutation = useUpdateStatement();
     const deleteMutation = useDeleteStatement();
@@ -110,6 +113,11 @@ export function StatementEditDialog({
 
     if (!statement) return null;
 
+    const isArchived = statement.status === "archived";
+    const effectiveReadOnly = readOnly || isArchived;
+    const showOriginalFile =
+        Boolean(statement.file_name) && !hideOriginalFile && !isArchived;
+
     const isDirty =
         month !== String(statement.month) ||
         year !== String(statement.year) ||
@@ -118,7 +126,7 @@ export function StatementEditDialog({
     // totalAmount !== String(statement.total_amount);
 
     function handleSave() {
-        if (!statement || readOnly) return;
+        if (!statement || effectiveReadOnly) return;
         setError(null);
 
         const body: BankStatementUpdate = {};
@@ -189,7 +197,7 @@ export function StatementEditDialog({
     }
 
     function handleDelete() {
-        if (!statement || !statement.document_id || readOnly) return;
+        if (!statement || !statement.document_id || effectiveReadOnly) return;
         setError(null);
 
         deleteMutation.mutate(statement.document_id, {
@@ -209,9 +217,18 @@ export function StatementEditDialog({
 
     const canDelete = statement.document_id !== null;
     const isBusy =
-        updateMutation.isPending || deleteMutation.isPending || readOnly;
+        updateMutation.isPending ||
+        deleteMutation.isPending ||
+        effectiveReadOnly;
 
-    const reconcileLabel = statement.reconciled ? (
+    const statementStatusBadge = isArchived ? (
+        <Badge
+            variant="secondary"
+            className="text-[9px] h-4 px-1.5 text-muted-foreground"
+        >
+            Archived
+        </Badge>
+    ) : statement.reconciled ? (
         <Badge variant="default" className="text-[9px] h-4 px-1.5">
             <HugeiconsIcon
                 icon={Tick02Icon}
@@ -241,15 +258,17 @@ export function StatementEditDialog({
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className="sm:max-w-lg">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        {readOnly ? "Statement" : "Edit Statement"}
-                        {reconcileLabel}
+                    <DialogTitle className="flex flex-wrap items-center gap-2">
+                        {effectiveReadOnly ? "Statement" : "Edit Statement"}
+                        {statementStatusBadge}
                     </DialogTitle>
                     <DialogDescription>
-                        {readOnly
-                            ? "Bank statement metadata for this period."
-                            : "Modify the bank statement metadata below."}{" "}
-                        {statement.file_name && (
+                        {isArchived
+                            ? "This statement is archived. Original files have been removed; metadata and exports remain available."
+                            : effectiveReadOnly
+                              ? "Bank statement metadata for this period."
+                              : "Modify the bank statement metadata below."}{" "}
+                        {statement.file_name && showOriginalFile && (
                             <>
                                 Source file:{" "}
                                 <span className="font-mono text-foreground">
@@ -258,7 +277,7 @@ export function StatementEditDialog({
                             </>
                         )}
                     </DialogDescription>
-                    {statement.file_name && (
+                    {showOriginalFile && (
                         <Button
                             variant="outline"
                             size="xs"
@@ -394,7 +413,7 @@ export function StatementEditDialog({
                 <Separator />
 
                 <DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-between">
-                    {!readOnly && (
+                    {!effectiveReadOnly && (
                         <AlertDialog>
                             <AlertDialogTrigger asChild>
                                 <Button
@@ -449,7 +468,7 @@ export function StatementEditDialog({
 
                     <div
                         className={
-                            readOnly
+                            effectiveReadOnly
                                 ? "flex w-full items-center justify-end gap-2"
                                 : "flex items-center gap-2"
                         }
@@ -459,16 +478,16 @@ export function StatementEditDialog({
                                 variant="outline"
                                 size="sm"
                                 disabled={
-                                    readOnly
+                                    effectiveReadOnly
                                         ? false
                                         : updateMutation.isPending ||
                                           deleteMutation.isPending
                                 }
                             >
-                                {readOnly ? "Close" : "Cancel"}
+                                {effectiveReadOnly ? "Close" : "Cancel"}
                             </Button>
                         </DialogClose>
-                        {!readOnly && (
+                        {!effectiveReadOnly && (
                             <Button
                                 size="sm"
                                 onClick={handleSave}

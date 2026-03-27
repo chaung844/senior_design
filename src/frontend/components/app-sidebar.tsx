@@ -59,6 +59,7 @@ import {
     UserIcon,
     Mail01Icon,
     ShieldUserIcon,
+    Archive03Icon,
 } from "@hugeicons/core-free-icons";
 
 interface AppSidebarProps {
@@ -308,7 +309,7 @@ export function AppSidebar({
                                                             variant={getMatchRateBadgeVariant(
                                                                 yearData.overallMatchRate,
                                                             )}
-                                                            className="ml-auto text-[9px] h-4 px-1"
+                                                            className="ml-auto text-[9px] h-4 px-1 pt-1"
                                                         >
                                                             {
                                                                 yearData.overallMatchRate
@@ -357,7 +358,20 @@ export function AppSidebar({
                                                                             }
                                                                         </span>
                                                                         <span className="ml-auto flex items-center gap-1">
-                                                                            {monthData.reconciled ? (
+                                                                            {monthData.isStatementArchived ? (
+                                                                                // <span className="text-[9px] font-medium uppercase tracking-tight text-muted-foreground">
+                                                                                //     Arc
+                                                                                // </span>
+                                                                                <HugeiconsIcon
+                                                                                    icon={
+                                                                                        Archive03Icon
+                                                                                    }
+                                                                                    strokeWidth={
+                                                                                        2.5
+                                                                                    }
+                                                                                    className="size-3 text-muted-foreground"
+                                                                                />
+                                                                            ) : monthData.reconciled ? (
                                                                                 <HugeiconsIcon
                                                                                     icon={
                                                                                         Tick02Icon

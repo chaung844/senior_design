@@ -35,6 +35,8 @@ export type MonthData = {
     matchRate: number;
     statementCount: number;
     reconciled: boolean;
+    /** True when the bank statement for this month is server-archived (files purged). */
+    isStatementArchived: boolean;
 };
 
 export type YearData = {
