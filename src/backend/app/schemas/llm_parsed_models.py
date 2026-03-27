@@ -29,6 +29,9 @@ class ReceiptParsingYAML(BaseModel):
         if isinstance(v, date):
             return v
         if isinstance(v, str):
+            s = v.strip()
+            if s.lower() == "n/a" or s == "":
+                return date.today()  # default to today if vlm cannot provide a date
             from app.utils.date_parsing import parse_iso_date
 
             return parse_iso_date(v, field_name="date")
