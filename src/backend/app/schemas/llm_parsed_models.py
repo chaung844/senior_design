@@ -44,11 +44,13 @@ class ReceiptParsingYAML(BaseModel):
 
         return parse_money_amount(v, field_name="total")
 
-    @field_validator("vendor")
+    @field_validator("vendor", mode="before")
     @classmethod
     def vendor_required(cls, v: str) -> str:
-        if not v or v.strip().lower() in ("n/a", "unknown"):
-            raise ValueError("vendor is required and must not be empty or placeholder")
+        if not v or v.strip().lower() in ("n/a", "unknown") or v.strip() == "":
+            # raise ValueError("vendor is required and must not be empty or placeholder")
+            # default to "unknown"
+            return "unknown vendor"
         return v.strip()
 
     @field_validator("invoice_number", "purchase_desc", mode="before")
