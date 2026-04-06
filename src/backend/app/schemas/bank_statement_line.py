@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.enums import MatchStatus
 
@@ -23,6 +23,23 @@ class BankStatementLineRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class BankStatementLineCreate(BaseModel):
+    """Request body for manually adding a new line to a statement.
+
+    ``line_number`` is auto-assigned by the server (MAX + 1).
+    ``reference_number`` defaults to ``"MANUAL"`` when not supplied.
+    """
+
+    transaction_date: date
+    posting_date: date
+    description: str = Field(..., max_length=512)
+    vendor: str = Field(..., max_length=255)
+    charge: Decimal
+    currency: str = Field(default="USD", min_length=3, max_length=3)
+    mcc: Optional[str] = Field(default=None, max_length=10)
+    reference_number: str = Field(default="MANUAL", max_length=255)
 
 
 class BankStatementLineUpdate(BaseModel):

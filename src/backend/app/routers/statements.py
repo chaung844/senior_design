@@ -18,6 +18,7 @@ from app.schemas.bank_statement import (
     BankStatementUpdate,
 )
 from app.schemas.bank_statement_line import (
+    BankStatementLineCreate,
     BankStatementLineListResponse,
     BankStatementLineRead,
     BankStatementLineUpdate,
@@ -218,6 +219,87 @@ async def list_statement_lines(
         offset=offset,
         limit=limit,
     )
+
+
+@router.post(
+    "/{statement_id}/lines",
+    response_model=BankStatementLineRead,
+    status_code=201,
+    dependencies=[Depends(verify_csrf_token)],
+)
+async def create_statement_line(
+    statement_id: int,
+    body: BankStatementLineCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Manually add a new line to a bank statement.
+
+    Enforces: authentication, CSRF, viewer rejection, and archived-statement guard
+    via *get_owned_statement* with *write=True*.
+    The ``line_number`` is auto-assigned as MAX(line_number) + 1 for the statement.
+    """
+    await get_owned_statement(statement_id, current_user, db, write=True)
+
+    max_result = await db.execute(
+        select(func.max(BankStatementLine.line_number)).where(
+            BankStatementLine.statement_id == statement_id
+        )
+    )
+    current_max: int = max_result.scalar_one() or 0
+    next_line_number = current_max + 1
+
+    new_line = BankStatementLine(
+        statement_id=statement_id,
+        line_number=next_line_number,
+        reference_number=body.reference_number,
+        transaction_date=body.transaction_date,
+        posting_date=body.posting_date,
+        description=body.description,
+        vendor=body.vendor,
+        charge=body.charge,
+        currency=body.currency,
+        mcc=body.mcc,
+        match_status=MatchStatus.unmatched,
+    )
+    db.add(new_line)
+    await db.commit()
+    await db.refresh(new_line)
+
+    return BankStatementLineRead.model_validate(new_line)
+
+
+@router.delete(
+    "/{statement_id}/lines/{line_id}",
+    status_code=204,
+    dependencies=[Depends(verify_csrf_token)],
+)
+async def delete_statement_line(
+    statement_id: int,
+    line_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Delete an unmatched statement line.
+
+    Returns **409 Conflict** when the line has an active reconciliation match
+    to prevent orphaning match records.
+    """
+    line = await get_owned_statement_line(
+        statement_id, line_id, current_user, db, write=True
+    )
+
+    if line.match_status != MatchStatus.unmatched:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                "This line has an active reconciliation match and cannot be deleted. "
+                "Remove the match first."
+            ),
+        )
+
+    await db.delete(line)
+    await db.commit()
 
 
 @router.patch(

@@ -15,6 +15,7 @@ from .bank_statement import (
     BankStatementRead,
 )
 from .bank_statement_line import (
+    BankStatementLineCreate,
     BankStatementLineListResponse,
     BankStatementLineRead,
     BankStatementLineUpdate,
@@ -45,6 +46,7 @@ __all__ = [
     "BankStatementRead",
     "BankStatementDetailRead",
     "BankStatementListResponse",
+    "BankStatementLineCreate",
     "BankStatementLineRead",
     "BankStatementLineUpdate",
     "BankStatementLineListResponse",
