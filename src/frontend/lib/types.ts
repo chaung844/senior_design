@@ -242,6 +242,17 @@ export interface BankStatementLineUpdate {
     mcc?: string;
 }
 
+export interface BankStatementLineCreate {
+    transaction_date: string;
+    posting_date: string;
+    description: string;
+    vendor: string;
+    charge: number;
+    currency?: string;
+    mcc?: string;
+    reference_number?: string;
+}
+
 export interface BankStatementLineListResponse {
     lines: BankStatementLineRead[];
     total: number;

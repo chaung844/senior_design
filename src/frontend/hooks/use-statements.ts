@@ -6,6 +6,8 @@ import {
     getStatement,
     listStatementLines,
     updateStatementLine,
+    createStatementLine,
+    deleteStatementLine,
     updateStatement,
     deleteDocument,
     getStatementFileUrl,
@@ -13,6 +15,7 @@ import {
 import type {
     BankStatementListParams,
     BankStatementLineListParams,
+    BankStatementLineCreate,
     BankStatementLineUpdate,
     BankStatementUpdate,
 } from "@/lib/types";
@@ -84,6 +87,50 @@ export function useUpdateStatementLine() {
     });
 }
 
+export function useCreateStatementLine() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            statementId,
+            body,
+        }: {
+            statementId: number;
+            body: BankStatementLineCreate;
+        }) => createStatementLine(statementId, body),
+        onSuccess: (_data, vars) => {
+            qc.invalidateQueries({
+                queryKey: statementKeys.detail(vars.statementId),
+            });
+            qc.invalidateQueries({
+                queryKey: statementKeys.lines(vars.statementId),
+            });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+        },
+    });
+}
+
+export function useDeleteStatementLine() {
+    const qc = useQueryClient();
+    return useMutation({
+        mutationFn: ({
+            statementId,
+            lineId,
+        }: {
+            statementId: number;
+            lineId: number;
+        }) => deleteStatementLine(statementId, lineId),
+        onSuccess: (_data, vars) => {
+            qc.invalidateQueries({
+                queryKey: statementKeys.detail(vars.statementId),
+            });
+            qc.invalidateQueries({
+                queryKey: statementKeys.lines(vars.statementId),
+            });
+            qc.invalidateQueries({ queryKey: accountKeys.all });
+        },
+    });
+}
+
 export function useUpdateStatement() {
     const qc = useQueryClient();
     return useMutation({
@@ -126,3 +173,4 @@ export function useStatementFileUrl(statementId: number | null) {
         staleTime: 55 * 60 * 1000, // presigned URL valid ~1hr
     });
 }
+

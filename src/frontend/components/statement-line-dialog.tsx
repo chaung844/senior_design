@@ -10,6 +10,17 @@ import {
     DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog";
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -35,7 +46,7 @@ import {
     File01Icon,
 } from "@hugeicons/core-free-icons";
 import { cn } from "@/lib/utils";
-import { useUpdateStatementLine } from "@/hooks/use-statements";
+import { useUpdateStatementLine, useDeleteStatementLine } from "@/hooks/use-statements";
 import {
     useMatchesByLine,
     useCreateManualMatch,
@@ -164,6 +175,7 @@ interface LineEditPaneProps {
     statementId: number;
     currency: string;
     onSaved: () => void;
+    onDeleted: () => void;
     readOnly?: boolean;
 }
 
@@ -172,9 +184,11 @@ function LineEditPane({
     statementId,
     currency,
     onSaved,
+    onDeleted,
     readOnly = false,
 }: LineEditPaneProps) {
     const updateMutation = useUpdateStatementLine();
+    const deleteMutation = useDeleteStatementLine();
 
     const [vendor, setVendor] = React.useState(line.vendor);
     const [description, setDescription] = React.useState(line.description);
@@ -491,7 +505,64 @@ function LineEditPane({
 
             <Separator />
 
-            <div className="px-4 py-3 flex items-center justify-end gap-2">
+            <div className="px-4 py-3 flex items-center justify-between gap-2">
+                {/* Delete button — only for unmatched lines when not read-only */}
+                {!readOnly && line.match_status === "unmatched" ? (
+                    <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="gap-1 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                disabled={deleteMutation.isPending}
+                            >
+                                {deleteMutation.isPending ? (
+                                    <span
+                                        className="size-3 border-[1.5px] border-current border-t-transparent rounded-full animate-spin"
+                                        aria-hidden
+                                    />
+                                ) : (
+                                    <HugeiconsIcon
+                                        icon={Delete02Icon}
+                                        strokeWidth={2}
+                                        className="size-3"
+                                    />
+                                )}
+                                Delete
+                            </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                            <AlertDialogHeader>
+                                <AlertDialogTitle>
+                                    Delete this statement line?
+                                </AlertDialogTitle>
+                                <AlertDialogDescription>
+                                    This will permanently remove line #{line.line_number}{" "}
+                                    ({line.vendor} — {line.description}). This action cannot be
+                                    undone.
+                                </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                <AlertDialogAction
+                                    variant="destructive"
+                                    onClick={() =>
+                                        deleteMutation.mutate(
+                                            { statementId, lineId: line.line_id },
+                                            { onSuccess: () => onDeleted() },
+                                        )
+                                    }
+                                >
+                                    Delete Line
+                                </AlertDialogAction>
+                            </AlertDialogFooter>
+                        </AlertDialogContent>
+                    </AlertDialog>
+                ) : (
+                    <div /> /* spacer */
+                )}
+
+                <div className="flex items-center gap-2">
                 {readOnly ? (
                     <DialogClose asChild>
                         <Button variant="outline" size="sm">
@@ -524,6 +595,7 @@ function LineEditPane({
                         </Button>
                     </>
                 )}
+                </div>
             </div>
         </div>
     );
@@ -1024,6 +1096,7 @@ export function StatementLineDialog({
                             currency={currency}
                             readOnly={readOnly}
                             onSaved={() => onOpenChange(false)}
+                            onDeleted={() => onOpenChange(false)}
                         />
                     </div>
 

@@ -40,12 +40,14 @@ import {
     ArrowDataTransferHorizontalIcon,
     Settings01Icon,
     TransactionHistoryIcon,
+    Add01Icon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
 import { DataTable } from "@/components/data-table";
 import { DashboardHeader } from "@/components/dashboard-header";
 import { UploadDialog } from "@/components/upload-dialog";
 import { ExportDialog } from "@/components/export-dialog";
+import { CreateStatementLineDialog } from "@/components/create-statement-line-dialog";
 import { useReceipts, useReceiptFileUrl } from "@/hooks/use-receipts";
 import { ReceiptEditDialog } from "@/components/receipt-edit-dialog";
 import { StatementEditDialog } from "@/components/statement-edit-dialog";
@@ -988,6 +990,7 @@ export function DashboardMonth({
     const [editDialogOpen, setEditDialogOpen] = React.useState(false);
     const [rowSelection, setRowSelection] = React.useState({});
     const [stmtEditDialogOpen, setStmtEditDialogOpen] = React.useState(false);
+    const [createLineDialogOpen, setCreateLineDialogOpen] = React.useState(false);
 
     // AI reconciliation summary for unmatched lines
     const { data: aiSummaryData, isLoading: aiSummaryLoading } =
@@ -1143,69 +1146,69 @@ export function DashboardMonth({
                 {/* Action buttons */}
                 {canMutateStatement &&
                     Object.keys(rowSelection).length > 0 && (
-                    <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                            <Button
-                                variant="outline"
-                                size="xs"
-                                className="h-7 px-2 gap-1.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
-                                disabled={deleteDoc.isPending}
-                            >
-                                <HugeiconsIcon
-                                    icon={Delete02Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Delete {Object.keys(rowSelection).length}{" "}
-                                selected
-                            </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                            <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                    Delete {Object.keys(rowSelection).length}{" "}
-                                    {Object.keys(rowSelection).length === 1
-                                        ? "receipt"
-                                        : "receipts"}
-                                    ?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                    This will permanently delete{" "}
-                                    {Object.keys(rowSelection).length === 1
-                                        ? "the selected receipt"
-                                        : `all ${Object.keys(rowSelection).length} selected receipts`}{" "}
-                                    and their associated files. This action
-                                    cannot be undone.
-                                </AlertDialogDescription>
-                            </AlertDialogHeader>
-                            <AlertDialogFooter>
-                                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                                <AlertDialogAction
-                                    variant="destructive"
-                                    onClick={async () => {
-                                        const ids =
-                                            Object.keys(rowSelection).map(
-                                                Number,
-                                            );
-                                        for (const id of ids) {
-                                            const receipt = allReceipts.find(
-                                                (r) => r.receipt_id === id,
-                                            );
-                                            if (receipt?.document_id) {
-                                                await deleteDoc.mutateAsync(
-                                                    receipt.document_id,
-                                                );
-                                            }
-                                        }
-                                        setRowSelection({});
-                                    }}
+                        <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                                <Button
+                                    variant="outline"
+                                    size="xs"
+                                    className="h-7 px-2 gap-1.5 text-xs text-destructive border-destructive/40 hover:bg-destructive/10"
+                                    disabled={deleteDoc.isPending}
                                 >
-                                    Delete
-                                </AlertDialogAction>
-                            </AlertDialogFooter>
-                        </AlertDialogContent>
-                    </AlertDialog>
-                )}
+                                    <HugeiconsIcon
+                                        icon={Delete02Icon}
+                                        strokeWidth={2}
+                                        className="size-3.5"
+                                    />
+                                    Delete {Object.keys(rowSelection).length}{" "}
+                                    selected
+                                </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                                <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                        Delete {Object.keys(rowSelection).length}{" "}
+                                        {Object.keys(rowSelection).length === 1
+                                            ? "receipt"
+                                            : "receipts"}
+                                        ?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                        This will permanently delete{" "}
+                                        {Object.keys(rowSelection).length === 1
+                                            ? "the selected receipt"
+                                            : `all ${Object.keys(rowSelection).length} selected receipts`}{" "}
+                                        and their associated files. This action
+                                        cannot be undone.
+                                    </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                        variant="destructive"
+                                        onClick={async () => {
+                                            const ids =
+                                                Object.keys(rowSelection).map(
+                                                    Number,
+                                                );
+                                            for (const id of ids) {
+                                                const receipt = allReceipts.find(
+                                                    (r) => r.receipt_id === id,
+                                                );
+                                                if (receipt?.document_id) {
+                                                    await deleteDoc.mutateAsync(
+                                                        receipt.document_id,
+                                                    );
+                                                }
+                                            }
+                                            setRowSelection({});
+                                        }}
+                                    >
+                                        Delete
+                                    </AlertDialogAction>
+                                </AlertDialogFooter>
+                            </AlertDialogContent>
+                        </AlertDialog>
+                    )}
                 {/* Filter buttons */}
                 <div className="flex items-center border border-input rounded-none">
                     <Button
@@ -1265,12 +1268,27 @@ export function DashboardMonth({
                 </h3>
                 <p className="text-xs text-muted-foreground">
                     {filteredTransactions.length ===
-                    monthData.transactions.length
+                        monthData.transactions.length
                         ? `Showing all ${formatNumber(filteredTransactions.length)} transactions`
                         : `Showing ${formatNumber(filteredTransactions.length)} of ${formatNumber(monthData.transactions.length)} transactions`}
                 </p>
             </div>
             <div className="flex items-center gap-2">
+                {canMutateStatement && statementId != null && (
+                    <Button
+                        variant="outline"
+                        size="xs"
+                        className="h-7 px-2 gap-1.5 text-xs"
+                        onClick={() => setCreateLineDialogOpen(true)}
+                    >
+                        <HugeiconsIcon
+                            icon={Add01Icon}
+                            strokeWidth={2}
+                            className="size-3.5"
+                        />
+                        New Line
+                    </Button>
+                )}
                 {columnToggle}
                 {/* Search */}
                 <div className="relative">
@@ -1389,19 +1407,19 @@ export function DashboardMonth({
                         {canMutateStatement &&
                             statementId != null &&
                             statementDetail && (
-                            <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setStmtEditDialogOpen(true)}
-                            >
-                                <HugeiconsIcon
-                                    icon={Settings01Icon}
-                                    strokeWidth={2}
-                                    className="size-3.5"
-                                />
-                                Edit Statement
-                            </Button>
-                        )}
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setStmtEditDialogOpen(true)}
+                                >
+                                    <HugeiconsIcon
+                                        icon={Settings01Icon}
+                                        strokeWidth={2}
+                                        className="size-3.5"
+                                    />
+                                    Edit Statement
+                                </Button>
+                            )}
                         {canMutateStatement && (
                             <UploadDialog
                                 title="Upload Receipts"
@@ -1654,9 +1672,9 @@ export function DashboardMonth({
                             onGlobalFilterChange={setReceiptSearch}
                             {...(canMutateStatement
                                 ? {
-                                      rowSelection,
-                                      onRowSelectionChange: setRowSelection,
-                                  }
+                                    rowSelection,
+                                    onRowSelectionChange: setRowSelection,
+                                }
                                 : {})}
                             getRowId={(row) => String(row.receipt_id)}
                             onRowClick={(row) => {
@@ -1715,6 +1733,14 @@ export function DashboardMonth({
                     }
                 }}
             />
+            {canMutateStatement && statementId != null && (
+                <CreateStatementLineDialog
+                    statementId={statementId}
+                    currency={account.currency}
+                    open={createLineDialogOpen}
+                    onOpenChange={setCreateLineDialogOpen}
+                />
+            )}
         </div>
     );
 }

@@ -33,6 +33,7 @@ import type {
     BankStatementListParams,
     BankStatementUpdate,
     BankStatementLineRead,
+    BankStatementLineCreate,
     BankStatementLineUpdate,
     BankStatementLineListResponse,
     BankStatementLineListParams,
@@ -341,6 +342,30 @@ export async function updateStatementLine(
     );
 }
 
+export async function createStatementLine(
+    statementId: number,
+    body: BankStatementLineCreate,
+): Promise<BankStatementLineRead> {
+    return request<BankStatementLineRead>(
+        `/statements/${statementId}/lines`,
+        {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+        },
+    );
+}
+
+export async function deleteStatementLine(
+    statementId: number,
+    lineId: number,
+): Promise<void> {
+    return requestNoContent(
+        `/statements/${statementId}/lines/${lineId}`,
+        { method: "DELETE" },
+    );
+}
+
 export async function updateStatement(
     statementId: number,
     body: BankStatementUpdate,
@@ -588,6 +613,8 @@ export const apiClient = {
     getStatement,
     listStatementLines,
     updateStatementLine,
+    createStatementLine,
+    deleteStatementLine,
     getStatementFileUrl,
     // Accounts
     listAccounts,
