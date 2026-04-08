@@ -32,7 +32,7 @@
 
 ## Project Description
 
-## Team JaPolCha
+### Team JaPolCha
 ```
      .-./`)     ____    .-------.     ,-----.      .---.        _______   .---.  .---.    ____     
      \ '_ .') .'  __ `. \  _(`)_ \  .'  .-,  '.    | ,_|       /   __  \  |   |  |_ _|  .'  __ `.  
@@ -58,7 +58,7 @@
 - Midea sponsored project: A system to automate the matching process for bank statements along with receipts. **UPDATE THIS**
 
 ## User Interface and Specifications
-
+... NEED UPDATE
 
 ## Test Plan and Results
 [Test plan](https://github.com/chaung844/senior_design/blob/main/Documents/Matcha_Capstone_Test_Plan.pdf)
