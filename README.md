@@ -19,34 +19,18 @@
 
 ```
 ## Table of Contents 
-1. [Team names (including Advisor) and Project Abstract](#team-names-including-advisor-and-project-abstract)
-2. [Project Description](project_descriptions.md)
-3. [User Stories & Design Diagrams](./Documents/Design_Diagrams/Senior_Design_Assignment_4.pdf)
-    - [User Stories](./Documents/Design_Diagrams/User_Stories.md)
-    - Design Diagrams:
-        - [Level 0](/Documents/Design_Diagrams/d0_diagram.png)
-        - [Level 1](/Documents/Design_Diagrams/d1_diagram.png)
-        - [Level 2](/Documents/Design_Diagrams/d2_diagram.png)
-4. Tasks, Timeline & Effort Matrix
-    - [Task List](./Documents/Tasklist.md)
-    - [Timeline](./Documents/timeline_table.png%20.png)
-    - [Effort Matrix](./Documents/effort_matrix.png)
-5. [ABET Concerns Essay](./Documents/Senior_Design_Assignment_7_Project_Constraints.pdf)
-6. [PPT Slideshow](./Documents/Senior_Design_Assignment_8_Slide_Deck.pdf)
-7. Self-Assessment Essays
-    - [Tiep Tran's Assessment](./Documents/Capstone_Assessments/TiepTran_capstone_assessment.md)
-    - [Jack Nguyen's Assessment](./Documents/Capstone_Assessments/JackNguyen_capstone_assessment.md)
-    - [Chau Nguyen's Assessment](./Documents/Capstone_Assessments/ChauNguyen_capstone_assessment.md)
-8. Professional Biographies
-    - [Tiep Tran's Biography](./Professional_bios/TiepTran_professional_bio.md)
-    - [Jack Nguyen's Biography](./Professional_bios/LongNguyen_professional_bio.md)
-    - [Chau Nguyen's Biography](./Professional_bios/ChauNguyen_professional_bio.md)
-9. [Budget](./Documents/budget.md)
-10. Appendix
-    - [Midea project proposal slides](https://mailuc-my.sharepoint.com/:p:/g/personal/tran2tp_mail_uc_edu/Eco2b7lw3Q9Ntb0eswqJq_UBNOusbNZco1s2Mnr52X-n2A?e=bap2SZ)
-    - [Link to team planner used for task assignment and project tracking](https://github.com/users/chaung844/projects/1/views/3)
+1. [Project Description](#project-description) (updated to include 400-character abstract and should reflect final version of the project)
+2. User Interface Specification (optional inclusion of UI design)
+3. [Test Plan and Results](#test-plan-and-results)
+4. [Matcha Docs Page](#matcha-docs-page)
+5. [Link to Spring final presentation](https://docs.google.com/presentation/d/1sw_oC3WZhbq-6qRZyEqjGtKMVnaSyBNfV1IztxLbw5U/edit?slide=id.g3bee7031db0_0_0#slide=id.g3bee7031db0_0_0)
+6. [Link to the final EXPO poster](https://github.com/chaung844/senior_design/blob/main/Documents/tran2tp_EXPO.pdf)
+7. [Assessments](#assessments) - **UPDATE FOR INDIVIDUAL ASSESSMENT (DONT PUT THE TEAM ASSESSMENT IN)**
+8.
+9. [Budget](./Documents/budget.md) - **REVIEW AND UPDATE for AWS SERVICES (S3, Bedrock, SQS) COST: ~50$ sponsored by Midea**
+10. [Appendix](#appendix)
 
-## Team Names (Including Advisor) and Project Abstract
+## Project Description
 
 Team: JaPolCha
 ### Teammates
@@ -59,5 +43,35 @@ Team: JaPolCha
 
 ### Project Abstract
 - Project Name: Matcha
-- Midea sponsored project: A system to automate the matching process for bank statements along with receipts. 
+- Midea sponsored project: A system to automate the matching process for bank statements along with receipts.
 
+
+## Test Plan and Results
+[Test plan](https://github.com/chaung844/senior_design/blob/main/Documents/Matcha_Capstone_Test_Plan.pdf)
+
+Results:
+![matcha backend pytest results](Documents/matcha_backend_pytest_results.png)
+
+## Matcha Docs Page
+[link](https://chaung844.github.io/senior_design/)
+![matcha docs page screenshot](Documents/matcha-docs-page-screenshot.png)
+
+## Assessments
+
+### Tiep Tran's assessments
+[Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/TiepTran_capstone_assessment.md)
+[Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/TiepTran_final_self_assessment.md)
+
+### Chau Nguyen's assessments
+[Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/ChauNguyen_capstone_assessment.md)
+[Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/ChauNguyen_final_self_assessment.md)
+
+### Jack Nguyen's assessments
+[Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/JackNguyen_capstone_assessment.md)
+[Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/JackNguyen_final_self_assessment.md)
+
+## Appendix
+
+- [Code repo](https://github.com/chaung844/senior_design)
+- [Midea project proposal slides](https://mailuc-my.sharepoint.com/:p:/g/personal/tran2tp_mail_uc_edu/Eco2b7lw3Q9Ntb0eswqJq_UBNOusbNZco1s2Mnr52X-n2A?e=bap2SZ)
+- [Link to team planner used for task assignment and project tracking](https://github.com/users/chaung844/projects/1/views/3)
