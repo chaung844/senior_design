@@ -32,7 +32,7 @@
 
 ## Project Description
 
-# Team JaPolCha
+## Team JaPolCha
 ```
      .-./`)     ____    .-------.     ,-----.      .---.        _______   .---.  .---.    ____     
      \ '_ .') .'  __ `. \  _(`)_ \  .'  .-,  '.    | ,_|       /   __  \  |   |  |_ _|  .'  __ `.  
@@ -67,22 +67,22 @@ Results:
 ![matcha backend pytest results](Documents/matcha_backend_pytest_results.png)
 
 ## Matcha Docs Page
-[link](https://chaung844.github.io/senior_design/)
+[Matcha dev/user doc page](https://chaung844.github.io/senior_design/)
 ![matcha docs page screenshot](Documents/matcha-docs-page-screenshot.png)
 
 ## Assessments
 
 ### Tiep Tran's assessments
-[Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/TiepTran_capstone_assessment.md)
-[Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/TiepTran_final_self_assessment.md)
+- [Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/TiepTran_capstone_assessment.md)
+- [Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/TiepTran_final_self_assessment.md)
 
 ### Chau Nguyen's assessments
-[Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/ChauNguyen_capstone_assessment.md)
-[Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/ChauNguyen_final_self_assessment.md)
+- [Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/ChauNguyen_capstone_assessment.md)
+- [Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/ChauNguyen_final_self_assessment.md)
 
 ### Jack Nguyen's assessments
-[Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/JackNguyen_capstone_assessment.md)
-[Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/JackNguyen_final_self_assessment.md)
+- [Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/JackNguyen_capstone_assessment.md)
+- [Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/JackNguyen_final_self_assessment.md)
 
 ## Summary of Hours and Justification
 
