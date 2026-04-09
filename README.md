@@ -73,15 +73,15 @@ Results:
 ## Assessments
 
 ### Tiep Tran's assessments
-- [Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/TiepTran_capstone_assessment.md)
+- [Initial assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/TiepTran_capstone_assessment.md)
 - [Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/TiepTran_final_self_assessment.md)
 
 ### Chau Nguyen's assessments
-- [Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/ChauNguyen_capstone_assessment.md)
+- [Initial assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/ChauNguyen_capstone_assessment.md)
 - [Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/ChauNguyen_final_self_assessment.md)
 
 ### Jack Nguyen's assessments
-- [Inital assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/JackNguyen_capstone_assessment.md)
+- [Initial assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Fall2025_assessments/JackNguyen_capstone_assessment.md)
 - [Final assessment](https://github.com/chaung844/senior_design/blob/main/Documents/Capstone_Assessments/Spring2026_assessments/JackNguyen_final_self_assessment.md)
 
 ## Summary of Hours and Justification
