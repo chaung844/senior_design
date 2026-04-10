@@ -19,7 +19,7 @@
 
 ```
 ## Table of Contents 
-1. [Project Description](#project-description) **(updated to include 400-character abstract and should reflect final version of the project)**
+1. [Project Description](#project-description)
 2. [User Interface Specification](https://github.com/chaung844/senior_design/blob/main/Documents/matcha_ui_specifications.md)
 3. [Test Plan and Results](#test-plan-and-results)
 4. [Matcha Docs Page](#matcha-docs-page)
@@ -54,8 +54,17 @@
 - Ryan Persaud - Project Leader at Midea - ryan.persaud@midea.com
 
 ### Project Abstract
-- Project Name: Matcha
-- Midea sponsored project: A system to automate the matching process for bank statements along with receipts. **UPDATE THIS**
+
+Bank statement reconciliation is a time-consuming, error-prone task that remains largely manual for small businesses or accounting teams. Matcha addresses this challenge by combining AI-powered document parsing with configurable reconciliation algorithms to automate the matching workflow and surface actionable insights for unmatched transactions.
+
+The system accepts bank statements and receipts document as PDF or images format, extracting structured data using vision-language models (VLM) via AWS Bedrock. Parsed transactions and receipts are then matched through a multi-pass algorithm that considers multiple signals: amount, date windows, and vendor similarity, with support for bundle matching where multiple receipts combine to satisfy a single transaction line. Unmatched items are analyzed by AI to generate human-readable summaries explaining potential discrepancies and suggesting resolution paths.
+
+Matcha is built as a full-stack web application. The backend uses FastAPI with asynchronous SQLAlchemy, PostgreSQL for persistent storage, AWS S3 for document storage, and SQS for background job processing. The frontend is a Next.js application featuring a drill-down dashboard (Account/Year/Month/Transactions) with interactive tables, charts, and real-time job status tracking. Authentication is cookie-based with CSRF protection, and role-based access control supports admin, developer, and viewer roles.
+
+Key features include automated statement and receipt parsing, configurable reconciliation thresholds, AI-generated unmatched transaction analysis, multi-tenant account management with member permissions, automatic statement archival after configurable retention periods, and a read-only viewer mode for auditors and stakeholders. The system is designed for deployment on AWS infrastructure with App Runner, ECS Fargate, RDS, and S3.
+
+Matcha demonstrates how modern AI capabilities can be integrated into financial workflows to reduce manual effort while preserving human oversight for edge cases and exceptions. The project is developed as a senior capstone in partnership with industry advisor Midea.
+
 
 ## Test Plan and Results
 [Test plan](https://github.com/chaung844/senior_design/blob/main/Documents/Matcha_Capstone_Test_Plan.pdf)
