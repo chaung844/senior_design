@@ -20,7 +20,7 @@
 ```
 ## Table of Contents 
 1. [Project Description](#project-description) **(updated to include 400-character abstract and should reflect final version of the project)**
-2. [User Interface Specification](user-interface-specification) (optional inclusion of UI design)
+2. [User Interface Specification](https://github.com/chaung844/senior_design/blob/main/Documents/matcha_ui_specification.md)
 3. [Test Plan and Results](#test-plan-and-results)
 4. [Matcha Docs Page](#matcha-docs-page)
 5. [Link to Spring final presentation](https://docs.google.com/presentation/d/1sw_oC3WZhbq-6qRZyEqjGtKMVnaSyBNfV1IztxLbw5U/edit?slide=id.g3bee7031db0_0_0#slide=id.g3bee7031db0_0_0)
@@ -56,9 +56,6 @@
 ### Project Abstract
 - Project Name: Matcha
 - Midea sponsored project: A system to automate the matching process for bank statements along with receipts. **UPDATE THIS**
-
-## User Interface and Specifications
-... NEED UPDATE
 
 ## Test Plan and Results
 [Test plan](https://github.com/chaung844/senior_design/blob/main/Documents/Matcha_Capstone_Test_Plan.pdf)
