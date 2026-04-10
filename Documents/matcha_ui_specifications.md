@@ -242,22 +242,22 @@ Upload → pending_upload → pending_processing → processing → parsed/faile
 ## 15. UI Screenshots
 
 ### Landing Page
-![matcha-landing-page](Documents/UI_screenshots/matcha-landing-page.png)
+![matcha-landing-page](UI_screenshots/matcha-landing-page.png)
 
 ### Admin Dashboard
-![matcha-admin-dashboard](Documents/UI_screenshots/matcha-admin-dashboard.png)
+![matcha-admin-dashboard](UI_screenshots/matcha-admin-dashboard.png)
 
 ### Edit Statement Dialog
-![matcha-edit-statement-dialog](Documents/UI_screenshots/matcha-edit-statement-dialog.png)
+![matcha-edit-statement-dialog](UI_screenshots/matcha-edit-statement-dialog.png)
 
 ### Reconciliation Summary
-![matcha-reconciliation-summary](Documents/UI_screenshots/matcha-reconciliation-summary.png)
+![matcha-reconciliation-summary](UI_screenshots/matcha-reconciliation-summary.png)
 
 ### Statement Archival 
-![matcha-archived-statement](Documents/UI_screenshots/matcha-archived-statement.png)
+![matcha-archived-statement](UI_screenshots/matcha-archived-statement.png)
 
 ### Viewer Dashboard
-![matcha-viewer-dashboard](Documents/UI_screenshots/matcha-viewer-dashboard.png)
+![matcha-viewer-dashboard](UI_screenshots/matcha-viewer-dashboard.png)
 
 ### Global Admin Dashboard
-![matcha-global-admin-dashboard](Documents/UI_screenshots/matcha-global-admin-dashboard.png)
+![matcha-global-admin-dashboard](UI_screenshots/matcha-global-admin-dashboard.png)
