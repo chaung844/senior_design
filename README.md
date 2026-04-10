@@ -83,9 +83,9 @@ Results:
 
 ## Summary of Hours and Justification
 
-[Tiep Tran hours and justification](https://github.com/chaung844/senior_design/blob/main/Documents/Individual_Hours_Justification/TiepTran_hours.md)
-[Chau Nguyen hours and justification](https://github.com/chaung844/senior_design/blob/main/Documents/Individual_Hours_Justification/ChauNguyen_hours.md)
-[Jack Nguyen hours and justification](https://github.com/chaung844/senior_design/blob/main/Documents/Individual_Hours_Justification/JackNguyen_hours.md)
+- [Tiep Tran hours and justification](https://github.com/chaung844/senior_design/blob/main/Documents/Individual_Hours_Justification/TiepTran_hours.md)
+- [Chau Nguyen hours and justification](https://github.com/chaung844/senior_design/blob/main/Documents/Individual_Hours_Justification/ChauNguyen_hours.md)
+- [Jack Nguyen hours and justification](https://github.com/chaung844/senior_design/blob/main/Documents/Individual_Hours_Justification/JackNguyen_hours.md)
 
 > In-person team meeting (major task blocks, update, assignment) occurs weekly after Senior Design class. Online disucssion and small task update occurs regularly thorughout the week via Discord. 
 
