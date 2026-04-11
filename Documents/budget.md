@@ -1,7 +1,9 @@
 ## Budget
 
 ### Expenses to Date
-There have been no expenses to date for this project.
+The expense for this project includes:
+- Amazon Web Services (AWS) cloud services (AWS Bedrock, AWS S3, AWS SQS) - sponsored by Midea.
+- Modal AI inference service testing - free credit by Modal.
 
 ### Donated Items
 No physical or monetary items were donated to the team.  

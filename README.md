@@ -25,9 +25,9 @@
 4. [Matcha Docs Page](#matcha-docs-page)
 5. [Link to Spring final presentation](https://docs.google.com/presentation/d/1sw_oC3WZhbq-6qRZyEqjGtKMVnaSyBNfV1IztxLbw5U/edit?slide=id.g3bee7031db0_0_0#slide=id.g3bee7031db0_0_0)
 6. [Link to the final EXPO poster](https://github.com/chaung844/senior_design/blob/main/Documents/tran2tp_EXPO.pdf)
-7. [Assessments](#assessments) - **UPDATE FOR INDIVIDUAL ASSESSMENT (DONT PUT THE TEAM ASSESSMENT IN)**
-8. [Summary of Hours and Justification](#summary-of-hours-and-justification) **(one per individual team member)**
-9. [Budget](./Documents/budget.md) - **REVIEW AND UPDATE for AWS SERVICES (S3, Bedrock, SQS) COST: ~50$ sponsored by Midea**
+7. [Assessments](#assessments)
+8. [Summary of Hours and Justification](#summary-of-hours-and-justification)
+9. [Budget](./Documents/budget.md) 
 10. [Appendix](#appendix)
 
 ## Project Description
