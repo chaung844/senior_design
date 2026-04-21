@@ -7,7 +7,6 @@ import {
     DialogHeader,
     DialogTitle,
     DialogDescription,
-    DialogFooter,
     DialogClose,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ import { HugeiconsIcon } from "@hugeicons/react";
 import {
     Tick02Icon,
     Alert02Icon,
-    Cancel01Icon,
     LinkSquare02Icon,
     Calendar03Icon,
     ArrowDataTransferHorizontalIcon,
@@ -394,7 +392,9 @@ function LineEditPane({
                                             : undefined
                                     }
                                     onSelect={(d) => {
-                                        setTransactionDate(d ? isoFromDate(d) : "");
+                                        setTransactionDate(
+                                            d ? isoFromDate(d) : "",
+                                        );
                                         setTxCalOpen(false);
                                     }}
                                     initialFocus
@@ -406,7 +406,10 @@ function LineEditPane({
                     {/* Posting date */}
                     <div className="grid gap-1.5">
                         <Label className="text-xs">Posting Date</Label>
-                        <Popover open={postCalOpen} onOpenChange={setPostCalOpen}>
+                        <Popover
+                            open={postCalOpen}
+                            onOpenChange={setPostCalOpen}
+                        >
                             <PopoverTrigger asChild>
                                 <Button
                                     variant="outline"
@@ -444,12 +447,16 @@ function LineEditPane({
                                     toYear={2100}
                                     selected={
                                         postingDate
-                                            ? new Date(postingDate + "T00:00:00")
+                                            ? new Date(
+                                                  postingDate + "T00:00:00",
+                                              )
                                             : undefined
                                     }
                                     defaultMonth={
                                         postingDate
-                                            ? new Date(postingDate + "T00:00:00")
+                                            ? new Date(
+                                                  postingDate + "T00:00:00",
+                                              )
                                             : undefined
                                     }
                                     onSelect={(d) => {
@@ -501,7 +508,11 @@ function LineEditPane({
                 ) : (
                     <>
                         <DialogClose asChild>
-                            <Button variant="outline" size="sm" disabled={isBusy}>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                disabled={isBusy}
+                            >
                                 Cancel
                             </Button>
                         </DialogClose>
@@ -677,7 +688,8 @@ function ReceiptCard({
                                     "border-amber-400/60 text-amber-700 hover:bg-amber-50 dark:text-amber-400 dark:hover:bg-amber-950/30",
                             )}
                             disabled={
-                                isLinking || (isLinkedElsewhere && !canBundleLink)
+                                isLinking ||
+                                (isLinkedElsewhere && !canBundleLink)
                             }
                             title={
                                 canBundleLink

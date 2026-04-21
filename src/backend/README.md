@@ -31,8 +31,8 @@ src/backend/
 │   ├── enums.py                # Shared enums (document, job, match, roles, …)
 │   ├── logging_setup.py        # Rich logging (API + worker)
 │   ├── models/                 # SQLAlchemy models
-│   ├── routers/                # Route modules: auth, admin, accounts, documents,
-│   │                           # jobs, receipts, reconciliation, statements
+│   ├── routers/                # Route modules: auth, admin, accounts, export_router,
+│   │                           # documents, jobs, receipts, reconciliation, statements
 │   ├── schemas/                # Pydantic schemas
 │   ├── services/               # AWS, parsing, reconciliation matching/runner, cleanup, archival
 │   ├── tasks/                  # CLI management commands (archival, etc.)
@@ -303,6 +303,8 @@ The following mirrors the main routers. All routes except `/`, `/health`, and `/
 ### Tier 5 — Accounts & admin
 
 **`/accounts`**, **`/accounts/{id}/members`** — Account books and membership (access rules in `app/utils/access.py`).
+
+- [x] `GET /accounts/{account_id}/export/vendor-sheet` — Query: **`start_year`**, **`start_month`**, **`end_year`**, **`end_month`** (inclusive `(year, month)` range per statement; span capped at **120** inclusive months). Downloads a **vendor sheet** CSV of **matched** statement lines (structured fields only — no uploaded documents). Archived statements are included. At **most 1,000,000** data rows: **`text/csv`** attachment. **More than 1,000,000** rows: **`application/zip`** with `vendor-sheet-part-001.csv`, … (header repeated; at most 1M data rows per part). **GET** — no CSRF; any account member (including **viewer**) with access may call.
 
 **`/admin/users`** — Developer-only user CRUD (see router).
 

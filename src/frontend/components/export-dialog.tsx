@@ -12,15 +12,12 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
-import { HugeiconsIcon, type IconSvgElement } from "@hugeicons/react";
+import { HugeiconsIcon } from "@hugeicons/react";
 import {
     Download04Icon,
     FileZipIcon,
     PdfIcon,
     Invoice02Icon,
-    Tick02Icon,
-    Alert02Icon,
-    Loading03Icon,
 } from "@hugeicons/core-free-icons";
 import {
     getStatementFileUrl,
@@ -28,17 +25,10 @@ import {
     listReceipts,
     listMatchesByLine,
 } from "@/lib/api";
+import { triggerDownload } from "@/lib/trigger-download";
+import { ExportRow, type ExportItemState } from "@/components/export/export-row";
 import type { MonthData, AccountBook, Transaction } from "@/lib/domain-types";
 import type { BankStatementLineRead } from "@/lib/types";
-
-// ── Types ─────────────────────────────────────────────────────────────
-
-type ExportItemStatus = "idle" | "loading" | "done" | "error";
-
-interface ExportItemState {
-    status: ExportItemStatus;
-    error?: string;
-}
 
 interface ExportDialogProps {
     account: AccountBook;
@@ -149,18 +139,6 @@ async function buildReceiptDescriptionMap(
     });
 
     return map;
-}
-
-function triggerDownload(blob: Blob, filename: string) {
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    // Revoke after a short delay to allow the download to start
-    setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 async function fetchAsBlob(url: string): Promise<Blob> {
@@ -468,103 +446,6 @@ function downloadMatchingCsv(
     const csv = transactionsToCsv(transactions, currency, receiptDescriptions);
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
     triggerDownload(blob, filename);
-}
-
-// ── Export row component ──────────────────────────────────────────────
-
-interface ExportRowProps {
-    icon: IconSvgElement;
-    title: string;
-    description: string;
-    state: ExportItemState;
-    onDownload: () => void;
-}
-
-function ExportRow({
-    icon,
-    title,
-    description,
-    state,
-    onDownload,
-}: ExportRowProps) {
-    const isLoading = state.status === "loading";
-    const isDone = state.status === "done";
-    const isError = state.status === "error";
-
-    return (
-        <div className="flex items-start gap-3 py-3">
-            {/* Icon */}
-            <div className="mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-none border border-border bg-muted text-muted-foreground">
-                <HugeiconsIcon
-                    icon={icon}
-                    strokeWidth={1.5}
-                    className="size-4"
-                />
-            </div>
-
-            {/* Text */}
-            <div className="flex flex-1 flex-col gap-0.5 min-w-0">
-                <span className="text-xs font-medium leading-none">
-                    {title}
-                </span>
-                {isError ? (
-                    <span className="text-[11px] text-destructive leading-relaxed">
-                        {state.error ?? "Export failed. Please try again."}
-                    </span>
-                ) : isDone ? (
-                    <span className="text-[11px] text-primary leading-relaxed">
-                        Download started.
-                    </span>
-                ) : (
-                    <span className="text-[11px] text-muted-foreground leading-relaxed">
-                        {description}
-                    </span>
-                )}
-            </div>
-
-            {/* Action button */}
-            <Button
-                size="sm"
-                variant={isError ? "destructive" : "default"}
-                disabled={isLoading}
-                onClick={onDownload}
-                className="shrink-0"
-            >
-                {isLoading ? (
-                    <HugeiconsIcon
-                        icon={Loading03Icon}
-                        strokeWidth={2}
-                        className="size-3.5 animate-spin"
-                    />
-                ) : isDone ? (
-                    <HugeiconsIcon
-                        icon={Tick02Icon}
-                        strokeWidth={2.5}
-                        className="size-3.5"
-                    />
-                ) : isError ? (
-                    <HugeiconsIcon
-                        icon={Alert02Icon}
-                        strokeWidth={2}
-                        className="size-3.5"
-                    />
-                ) : (
-                    <HugeiconsIcon
-                        icon={Download04Icon}
-                        strokeWidth={2}
-                        className="size-3.5"
-                    />
-                )}
-                {isLoading
-                    ? "Preparing…"
-                    : isDone
-                        ? "Downloaded"
-                        : isError
-                            ? "Retry"
-                            : "Download"}
-            </Button>
-        </div>
-    );
 }
 
 // ── Main dialog ───────────────────────────────────────────────────────

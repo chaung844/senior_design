@@ -54,6 +54,7 @@ import type {
     ManualMatchCreateResponse,
     DeleteMatchResponse,
 } from "@/lib/types";
+import { triggerDownload } from "@/lib/trigger-download";
 
 // ── Internals ────────────────────────────────────────────────────────
 
@@ -402,6 +403,65 @@ export async function deleteAccount(accountId: number): Promise<void> {
     });
 }
 
+/** Inclusive statement period for `downloadAccountVendorSheet` (month 1–12). */
+export interface AccountVendorSheetRange {
+    start_year: number;
+    start_month: number;
+    end_year: number;
+    end_month: number;
+}
+
+function parseContentDispositionFilename(header: string | null): string | null {
+    if (!header) return null;
+    const star = /filename\*=(?:UTF-8''|utf-8'')([^;\s]+)/i.exec(header);
+    if (star?.[1]) {
+        try {
+            return decodeURIComponent(star[1].replace(/^["']|["']$/g, ""));
+        } catch {
+            /* ignore */
+        }
+    }
+    const quoted = /filename="((?:\\.|[^"\\])*)"/i.exec(header);
+    if (quoted?.[1]) {
+        return quoted[1].replace(/\\(.)/g, "$1");
+    }
+    const plain = /filename=([^;\s]+)/i.exec(header);
+    if (plain?.[1]) {
+        return plain[1].replace(/^["']|["']$/g, "");
+    }
+    return null;
+}
+
+/**
+ * Download vendor-sheet CSV or ZIP for matched lines across statement months
+ * in the account book (GET /accounts/{id}/export/vendor-sheet).
+ */
+export async function downloadAccountVendorSheet(
+    accountId: number,
+    range: AccountVendorSheetRange,
+): Promise<void> {
+    const query = qs({
+        start_year: range.start_year,
+        start_month: range.start_month,
+        end_year: range.end_year,
+        end_month: range.end_month,
+    });
+    const res = await baseFetch(
+        `/accounts/${accountId}/export/vendor-sheet${query}`,
+        { method: "GET" },
+    );
+    const blob = await res.blob();
+    const contentType = res.headers.get("Content-Type") ?? "";
+    const fallbackExt = contentType.includes("zip") ? "zip" : "csv";
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const fallbackName = `vendor-sheet-${accountId}-${range.start_year}${pad(range.start_month)}-${range.end_year}${pad(range.end_month)}.${fallbackExt}`;
+    const filename =
+        parseContentDispositionFilename(
+            res.headers.get("Content-Disposition"),
+        ) ?? fallbackName;
+    triggerDownload(blob, filename);
+}
+
 // ── Jobs ─────────────────────────────────────────────────────────────
 
 /**
@@ -595,6 +655,7 @@ export const apiClient = {
     createAccount,
     updateAccount,
     deleteAccount,
+    downloadAccountVendorSheet,
     // Account members
     lookupUserByEmail,
     listAccountMembers,

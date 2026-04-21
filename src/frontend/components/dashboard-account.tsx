@@ -22,7 +22,6 @@ import {
     Calendar01Icon,
     MoneyReceiveSquareIcon,
     MoneySendSquareIcon,
-    BarChartIcon,
     TransactionHistoryIcon,
 } from "@hugeicons/core-free-icons";
 import { type ColumnDef } from "@tanstack/react-table";
@@ -30,6 +29,7 @@ import { DataTable } from "@/components/data-table";
 import { UploadDialog } from "@/components/upload-dialog";
 import { useTrackedDocumentUpload } from "@/hooks/use-tracked-document-upload";
 import { EditAccountDialog } from "@/components/edit-account-dialog";
+import { AccountExportDialog } from "@/components/account-export-dialog";
 import type { AccountBookRead } from "@/lib/types";
 import type { UserRole } from "@/lib/types";
 
@@ -269,6 +269,10 @@ export function DashboardAccount({
                                 }}
                             />
                         )}
+                        <AccountExportDialog
+                            key={account.id}
+                            account={account}
+                        />
                     </div>
                 </div>
                 <p className="text-xs text-muted-foreground">

@@ -23,6 +23,7 @@ from app.routers import (
     admin,
     auth,
     documents,
+    export_router,
     jobs,
     receipts,
     reconciliation,
@@ -100,6 +101,7 @@ app.include_router(receipts.router)
 app.include_router(reconciliation.router)
 app.include_router(statements.router)
 app.include_router(accounts.router)
+app.include_router(export_router.router)
 app.include_router(admin.router)
 
 
