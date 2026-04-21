@@ -1,0 +1,1695 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://chaung844.github.io/senior_design/user-guide/">
+      
+      
+        <link rel="prev" href="../dev-guides/">
+      
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Matcha User Guide - Matcha Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#matcha-user-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Matcha Docs" class="md-header__button md-logo" aria-label="Matcha Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Matcha Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Matcha User Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="matcha" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/chaung844/senior_design" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    JaPolCha/Matcha-Capstone
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Matcha Docs" class="md-nav__button md-logo" aria-label="Matcha Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Matcha Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/chaung844/senior_design" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    JaPolCha/Matcha-Capstone
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome to Matcha
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../dev-guides/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matcha Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matcha User Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matcha User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#welcome-to-matcha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Welcome to Matcha
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Started
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting Started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logging-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging In
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#your-first-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your First Login
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding the Dashboard
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding the Dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#navigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Navigation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#breadcrumb-bar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breadcrumb Bar
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#user-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Roles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uploading-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploading Documents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Uploading Documents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uploading-a-bank-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploading a Bank Statement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uploading-receipts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploading Receipts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upload-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upload Progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viewing-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing Your Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Viewing Your Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#account-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#year-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Year Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#month-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Month Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-match-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding Match Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Reconciliation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running Reconciliation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-run-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Run Reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happens-during-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happens During Reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-reconciliation-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Reconciliation Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editing-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Editing Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Editing Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#correcting-a-transaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correcting a Transaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#correcting-a-receipt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correcting a Receipt
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Accounts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Accounts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#viewing-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing Accounts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-members-admin-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account Members (Admin Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#statement-archival" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Statement Archival
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#developer-console-developers-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Developer Console (Developers Only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logging-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging Out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#match-status-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Match Status Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-for-best-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips for Best Results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#need-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Need Help?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#welcome-to-matcha" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Welcome to Matcha
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#getting-started" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Getting Started
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Getting Started">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#logging-in" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging In
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#your-first-login" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Your First Login
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-the-dashboard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding the Dashboard
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Understanding the Dashboard">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#navigation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Navigation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#breadcrumb-bar" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Breadcrumb Bar
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#user-roles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        User Roles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#uploading-documents" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploading Documents
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Uploading Documents">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#uploading-a-bank-statement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploading a Bank Statement
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#uploading-receipts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Uploading Receipts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#upload-progress" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Upload Progress
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#viewing-your-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing Your Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Viewing Your Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#account-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#year-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Year Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#month-level" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Month Level
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#understanding-match-status" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Understanding Match Status
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#running-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Running Reconciliation
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Running Reconciliation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#how-to-run-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        How to Run Reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-happens-during-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What Happens During Reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ai-reconciliation-summary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        AI Reconciliation Summary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#editing-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Editing Data
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Editing Data">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#correcting-a-transaction" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correcting a Transaction
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#correcting-a-receipt" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Correcting a Receipt
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#managing-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Managing Accounts
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Managing Accounts">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#viewing-accounts" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Viewing Accounts
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#account-members-admin-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Account Members (Admin Only)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#statement-archival" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Statement Archival
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#developer-console-developers-only" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Developer Console (Developers Only)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#logging-out" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Logging Out
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Troubleshooting
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Troubleshooting">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#common-issues" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Common Issues
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#match-status-tips" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Match Status Tips
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tips-for-best-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tips for Best Results
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#glossary" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Glossary
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#need-help" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Need Help?
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="matcha-user-guide">Matcha User Guide</h1>
+<blockquote>
+<p>AI-Assisted Bank Statement Reconciliation System</p>
+</blockquote>
+<hr />
+<h2 id="welcome-to-matcha">Welcome to Matcha</h2>
+<p>Matcha helps you reconcile bank statements with receipts using AI. Upload your bank statements and receipts, and Matcha will automatically match transactions, flag discrepancies, and provide AI-powered insights for unmatched items.</p>
+<hr />
+<h2 id="getting-started">Getting Started</h2>
+<h3 id="logging-in">Logging In</h3>
+<ol>
+<li>Go to the Matcha website</li>
+<li>Click <strong>Log In</strong> on the landing page</li>
+<li>Enter your email and password</li>
+<li>Click <strong>Sign In</strong></li>
+</ol>
+<blockquote>
+<p><strong>Note:</strong> New user registration is currently closed during active development. Contact your administrator to get an account.</p>
+</blockquote>
+<h3 id="your-first-login">Your First Login</h3>
+<p>After logging in, you will be taken to the <strong>Dashboard</strong>. If you have multiple bank accounts set up, you will see your first account by default. Use the sidebar on the left to switch between accounts.</p>
+<hr />
+<h2 id="understanding-the-dashboard">Understanding the Dashboard</h2>
+<h3 id="navigation">Navigation</h3>
+<p>The left sidebar shows your <strong>account books</strong> organized by year and month:</p>
+<ul>
+<li>Click an <strong>account name</strong> to see all years of data</li>
+<li>Click a <strong>year</strong> to see a monthly breakdown</li>
+<li>Click a <strong>month</strong> to see individual transactions</li>
+</ul>
+<p>The URL in your browser updates as you navigate, so you can bookmark specific views or share links with teammates.</p>
+<h3 id="breadcrumb-bar">Breadcrumb Bar</h3>
+<p>At the top of the main content area, a breadcrumb shows your current location (e.g., <strong>Account Name &gt; 2024 &gt; March</strong>). Click any part of the breadcrumb to navigate back.</p>
+<hr />
+<h2 id="user-roles">User Roles</h2>
+<p>Your role determines what you can do in Matcha:</p>
+<table>
+<thead>
+<tr>
+<th>Role</th>
+<th>What You Can Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Admin</strong></td>
+<td>Upload documents, edit data, run reconciliation, manage accounts and members</td>
+</tr>
+<tr>
+<td><strong>Developer</strong></td>
+<td>All admin capabilities plus manage tenants and user accounts</td>
+</tr>
+<tr>
+<td><strong>Viewer</strong></td>
+<td>Browse data and view reports only (read-only mode)</td>
+</tr>
+</tbody>
+</table>
+<blockquote>
+<p><strong>Viewers:</strong> If you have a Viewer role, you will see an amber banner at the top of the dashboard reminding you that you are in read-only mode.</p>
+</blockquote>
+<hr />
+<h2 id="uploading-documents">Uploading Documents</h2>
+<h3 id="uploading-a-bank-statement">Uploading a Bank Statement</h3>
+<ol>
+<li>Navigate to the account you want to upload for</li>
+<li>Click the <strong>Upload</strong> button in the dashboard</li>
+<li>Select <strong>Bank Statement</strong> as the document type</li>
+<li>Drag and drop your PDF file, or click to browse</li>
+<li>Wait for the upload to complete</li>
+</ol>
+<p>The system will begin parsing your statement automatically. You can track progress using the <strong>Job Status</strong> widget in the bottom-right corner.</p>
+<h3 id="uploading-receipts">Uploading Receipts</h3>
+<ol>
+<li>Click the <strong>Upload</strong> button in the dashboard</li>
+<li>Select <strong>Receipt</strong> as the document type</li>
+<li>Drag and drop your receipt image(s), or click to browse</li>
+<li>(Optional) Link the receipt to an existing statement</li>
+<li>Wait for the upload to complete</li>
+</ol>
+<p>Receipts are parsed using AI to extract vendor, date, amount, and line items.</p>
+<h3 id="upload-progress">Upload Progress</h3>
+<p>After uploading, a floating widget appears in the bottom-right corner showing:</p>
+<ul>
+<li><strong>Parsing jobs:</strong> Shows how many documents have been processed</li>
+<li><strong>Reconciliation jobs:</strong> Shows matching progress</li>
+</ul>
+<p>Completed jobs disappear after 15 seconds. You can collapse the widget if you prefer.</p>
+<hr />
+<h2 id="viewing-your-data">Viewing Your Data</h2>
+<h3 id="account-level">Account Level</h3>
+<p>Shows an overview of all years for the selected account:</p>
+<ul>
+<li>Total transactions per year</li>
+<li>Match rate (percentage of transactions matched to receipts)</li>
+<li>Visual charts showing spending trends</li>
+</ul>
+<h3 id="year-level">Year Level</h3>
+<p>Shows a monthly breakdown for the selected year:</p>
+<ul>
+<li>Monthly transaction counts</li>
+<li>Monthly match rates</li>
+<li>Charts comparing income vs. expenses</li>
+</ul>
+<h3 id="month-level">Month Level</h3>
+<p>Shows the detailed transaction table for the selected month:</p>
+<ul>
+<li><strong>Transaction list</strong> with date, description, amount, and match status</li>
+<li><strong>AI Reconciliation Summary</strong> tab with insights on unmatched transactions</li>
+<li>Sortable columns and pagination</li>
+</ul>
+<hr />
+<h2 id="understanding-match-status">Understanding Match Status</h2>
+<p>Each transaction is labeled with a match status:</p>
+<table>
+<thead>
+<tr>
+<th>Status</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Unmatched</strong></td>
+<td>No matching receipt found</td>
+</tr>
+<tr>
+<td><strong>Perfect Matched</strong></td>
+<td>One receipt matches this transaction exactly</td>
+</tr>
+<tr>
+<td><strong>Bundle Matched</strong></td>
+<td>Multiple receipts together match this transaction</td>
+</tr>
+<tr>
+<td><strong>Manual</strong></td>
+<td>Matched manually by a user</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="running-reconciliation">Running Reconciliation</h2>
+<p>Reconciliation matches your bank statement transactions to uploaded receipts.</p>
+<h3 id="how-to-run-reconciliation">How to Run Reconciliation</h3>
+<ol>
+<li>Navigate to the <strong>month</strong> you want to reconcile</li>
+<li>Click the <strong>Reconcile</strong> button</li>
+<li>Wait for the process to complete (progress shown in the Job Status widget)</li>
+<li>Review the results in the transaction table and AI Summary tab</li>
+</ol>
+<h3 id="what-happens-during-reconciliation">What Happens During Reconciliation</h3>
+<ol>
+<li>Matcha compares each transaction to available receipts</li>
+<li>Transactions are matched based on amount, date, and vendor similarity</li>
+<li>AI analyzes unmatched transactions and provides suggestions</li>
+<li>Results are displayed in your dashboard</li>
+</ol>
+<hr />
+<h2 id="ai-reconciliation-summary">AI Reconciliation Summary</h2>
+<p>After reconciliation, switch to the <strong>AI Summary</strong> tab in the month view to see:</p>
+<ul>
+<li>Analysis of unmatched transactions</li>
+<li>Possible reasons why transactions did not match</li>
+<li>Suggestions for resolving discrepancies</li>
+</ul>
+<p>This is especially useful for investigating transactions that need manual review.</p>
+<hr />
+<h2 id="editing-data">Editing Data</h2>
+<h3 id="correcting-a-transaction">Correcting a Transaction</h3>
+<ol>
+<li>Navigate to the month containing the transaction</li>
+<li>Find the transaction in the table</li>
+<li>Click on the transaction to open the edit dialog</li>
+<li>Make your corrections</li>
+<li>Save changes</li>
+</ol>
+<blockquote>
+<p><strong>Viewers:</strong> Editing is not available in read-only mode.</p>
+</blockquote>
+<h3 id="correcting-a-receipt">Correcting a Receipt</h3>
+<ol>
+<li>Find the receipt you want to edit</li>
+<li>Open the receipt detail view</li>
+<li>Click <strong>Edit</strong></li>
+<li>Update the parsed information</li>
+<li>Save changes</li>
+</ol>
+<hr />
+<h2 id="managing-accounts">Managing Accounts</h2>
+<h3 id="viewing-accounts">Viewing Accounts</h3>
+<p>Your available accounts appear in the left sidebar. Click any account to view its data.</p>
+<h3 id="account-members-admin-only">Account Members (Admin Only)</h3>
+<p>Admins can add or remove members from an account:</p>
+<ol>
+<li>Go to account settings</li>
+<li>View current members</li>
+<li>Add new members by email</li>
+<li>Remove members as needed</li>
+</ol>
+<hr />
+<h2 id="statement-archival">Statement Archival</h2>
+<p>Statements are automatically archived after a set retention period (default: 18 months). When a statement is archived:</p>
+<ul>
+<li>Original files are removed from storage</li>
+<li>All transaction data and matches are preserved</li>
+<li>The statement cannot be edited or used for new reconciliation</li>
+<li>You can still view the transaction data in the dashboard</li>
+</ul>
+<blockquote>
+<p>Archival happens automatically. There is no action required from you.</p>
+</blockquote>
+<hr />
+<h2 id="developer-console-developers-only">Developer Console (Developers Only)</h2>
+<p>If you have a Developer role, you can access the <strong>Developer Console</strong> to:</p>
+<ul>
+<li>View all tenants and their account books</li>
+<li>Manage user accounts (create, edit, deactivate)</li>
+<li>Assign roles and permissions</li>
+<li>Manage account book memberships</li>
+</ul>
+<p>Access the console from the dashboard landing page or via the direct link.</p>
+<hr />
+<h2 id="logging-out">Logging Out</h2>
+<p>Click the <strong>Logout</strong> button in the sidebar to end your session.</p>
+<hr />
+<h2 id="troubleshooting">Troubleshooting</h2>
+<h3 id="common-issues">Common Issues</h3>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>What to Do</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Upload seems stuck</strong></td>
+<td>Check the Job Status widget. If it shows an error, try uploading again.</td>
+</tr>
+<tr>
+<td><strong>No data showing</strong></td>
+<td>Make sure you have selected the correct account, year, and month in the sidebar.</td>
+</tr>
+<tr>
+<td><strong>Cannot edit data</strong></td>
+<td>Check if you have a Viewer role (look for the amber banner). Contact an admin for edit access.</td>
+</tr>
+<tr>
+<td><strong>Cannot log in</strong></td>
+<td>Verify your email and password. Contact your administrator if you do not have an account.</td>
+</tr>
+<tr>
+<td><strong>Reconciliation not completing</strong></td>
+<td>Ensure receipts have been uploaded and fully parsed before running reconciliation.</td>
+</tr>
+</tbody>
+</table>
+<h3 id="match-status-tips">Match Status Tips</h3>
+<ul>
+<li><strong>High unmatched rate:</strong> Upload more receipts for the period</li>
+<li><strong>Bundle matches:</strong> Multiple small receipts may combine to match a single transaction</li>
+<li><strong>Manual matches:</strong> Review and confirm manually matched transactions are correct</li>
+</ul>
+<hr />
+<h2 id="tips-for-best-results">Tips for Best Results</h2>
+<ol>
+<li><strong>Upload statements first</strong> before uploading receipts for the same period</li>
+<li><strong>Use clear, readable PDFs</strong> for bank statements</li>
+<li><strong>Upload complete receipt images</strong> — blurry or cropped images may not parse correctly</li>
+<li><strong>Run reconciliation after all documents are parsed</strong> — check the Job Status widget</li>
+<li><strong>Review the AI Summary</strong> for unmatched transactions before manually correcting</li>
+<li><strong>Bookmark important views</strong> — the URL reflects your current location in the dashboard</li>
+</ol>
+<hr />
+<h2 id="glossary">Glossary</h2>
+<table>
+<thead>
+<tr>
+<th>Term</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Account Book</strong></td>
+<td>A bank account you are tracking</td>
+</tr>
+<tr>
+<td><strong>Bank Statement</strong></td>
+<td>A monthly statement from your bank showing all transactions</td>
+</tr>
+<tr>
+<td><strong>Receipt</strong></td>
+<td>A proof of purchase that gets matched to a bank transaction</td>
+</tr>
+<tr>
+<td><strong>Transaction</strong></td>
+<td>A single line item on your bank statement</td>
+</tr>
+<tr>
+<td><strong>Reconciliation</strong></td>
+<td>The process of matching transactions to receipts</td>
+</tr>
+<tr>
+<td><strong>Match Rate</strong></td>
+<td>The percentage of transactions that have been matched to receipts</td>
+</tr>
+<tr>
+<td><strong>Job</strong></td>
+<td>A background task (parsing or reconciliation) running in the system</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="need-help">Need Help?</h2>
+<p>Contact your system administrator or the Matcha development team for assistance.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.instant.progress", "navigation.tracking"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

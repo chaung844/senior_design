@@ -1,0 +1,1914 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://chaung844.github.io/senior_design/dev-guides/">
+      
+      
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../user-guide/">
+      
+      
+        
+      
+      
+      <link rel="icon" href="../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+    
+    
+      
+        <title>Matcha Developer Guide - Matcha Docs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#matcha-developer-guide" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="Matcha Docs" class="md-header__button md-logo" aria-label="Matcha Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Matcha Docs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Matcha Developer Guide
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="matcha" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="indigo" data-md-color-accent="indigo"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/chaung844/senior_design" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    JaPolCha/Matcha-Capstone
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="Matcha Docs" class="md-nav__button md-logo" aria-label="Matcha Docs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54"/></svg>
+
+    </a>
+    Matcha Docs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/chaung844/senior_design" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M439.6 236.1 244 40.5c-5.4-5.5-12.8-8.5-20.4-8.5s-15 3-20.4 8.4L162.5 81l51.5 51.5c27.1-9.1 52.7 16.8 43.4 43.7l49.7 49.7c34.2-11.8 61.2 31 35.5 56.7-26.5 26.5-70.2-2.9-56-37.3L240.3 199v121.9c25.3 12.5 22.3 41.8 9.1 55-6.4 6.4-15.2 10.1-24.3 10.1s-17.8-3.6-24.3-10.1c-17.6-17.6-11.1-46.9 11.2-56v-123c-20.8-8.5-24.6-30.7-18.6-45L142.6 101 8.5 235.1C3 240.6 0 247.9 0 255.5s3 15 8.5 20.4l195.6 195.7c5.4 5.4 12.7 8.4 20.4 8.4s15-3 20.4-8.4l194.7-194.7c5.4-5.4 8.4-12.8 8.4-20.4s-3-15-8.4-20.4"/></svg>
+  </div>
+  <div class="md-source__repository">
+    JaPolCha/Matcha-Capstone
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Welcome to Matcha
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matcha Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matcha Developer Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-project-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Project Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Project Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-windows-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Windows Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5 Windows Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wsl-2-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WSL 2 (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-docker-desktop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Docker Desktop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-backend-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Backend Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Backend Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-install-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Install Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-start-local-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Start Local PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-configure-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Configure Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-run-migrations-seed-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Run Migrations &amp; Seed Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-start-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Start API Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-start-sqs-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Start SQS Worker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-verify-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Verify Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-frontend-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Frontend Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Frontend Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-install-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Install Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-configure-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Configure Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-start-development-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Start Development Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-useful-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Useful Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-running-the-full-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Running the Full Application
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Running the Full Application">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-application-current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Application Current State
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Application Current State">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-implemented-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Implemented Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-planned-features-not-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Planned Features (Not Implemented)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Known Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-key-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Key Workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Key Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-document-upload-parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Document Upload &amp; Parsing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-statement-archival" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Statement Archival
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-development-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Development Conventions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Development Conventions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-api-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New API Endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-production-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Production Deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Production Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../user-guide/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Matcha User Guide
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-project-overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        1. Project Overview
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="1. Project Overview">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#architecture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Architecture
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-prerequisites" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2. Prerequisites
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#25-windows-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        2.5 Windows Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2.5 Windows Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#wsl-2-recommended" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        WSL 2 (Recommended)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#install-docker-desktop" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Install Docker Desktop
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-backend-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Backend Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Backend Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#31-install-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Install Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#32-start-local-postgresql" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.2 Start Local PostgreSQL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#33-configure-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.3 Configure Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#34-run-migrations-seed-data" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.4 Run Migrations &amp; Seed Data
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#35-start-api-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.5 Start API Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#36-start-sqs-worker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.6 Start SQS Worker
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#37-verify-backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.7 Verify Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-frontend-setup" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4. Frontend Setup
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="4. Frontend Setup">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#41-install-dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.1 Install Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#42-configure-environment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.2 Configure Environment
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#43-start-development-server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.3 Start Development Server
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#44-useful-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        4.4 Useful Commands
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-running-the-full-application" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        5. Running the Full Application
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="5. Running the Full Application">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#development-workflow" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Development Workflow
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-application-current-state" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6. Application Current State
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="6. Application Current State">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#61-implemented-features" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.1 Implemented Features
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#62-planned-features-not-implemented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.2 Planned Features (Not Implemented)
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#63-known-limitations" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        6.3 Known Limitations
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-key-workflows" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7. Key Workflows
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="7. Key Workflows">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#71-document-upload-parsing" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.1 Document Upload &amp; Parsing
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#72-reconciliation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.2 Reconciliation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#73-statement-archival" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        7.3 Statement Archival
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#8-development-conventions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        8. Development Conventions
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="8. Development Conventions">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-a-new-api-endpoint" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a New API Endpoint
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#9-troubleshooting" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        9. Troubleshooting
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#10-production-deployment" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        10. Production Deployment
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="10. Production Deployment">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#backend_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Backend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#frontend_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Frontend
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#production-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Production Checklist
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+  
+
+
+<h1 id="matcha-developer-guide">Matcha Developer Guide</h1>
+<blockquote>
+<p>AI-Assisted Bank Statement Reconciliation System</p>
+</blockquote>
+<hr />
+<h2 id="1-project-overview">1. Project Overview</h2>
+<p>Matcha is an AI-powered bank statement reconciliation system that:
+- Parses bank statements (PDFs) and receipts (images) using AWS Bedrock LLMs/VLMs
+- Matches transactions to receipts via configurable reconciliation algorithms
+- Provides a dashboard for viewing, editing, and managing reconciliation results
+- Supports multi-tenant account management with role-based access control</p>
+<h3 id="architecture">Architecture</h3>
+<div class="highlight"><pre><span></span><code>┌─────────────────┐     ┌──────────────────┐
+│   Frontend      │     │   Backend        │
+│   Next.js 16    │◄───►│   FastAPI        │
+│   (Port 3000)   │     │   (Port 8000)    │
+└─────────────────┘     └────────┬─────────┘
+                                 │
+              ┌──────────────────┼──────────────────┐
+              ▼                  ▼                  ▼
+        ┌──────────┐      ┌──────────┐      ┌──────────┐
+        │PostgreSQL│      │   S3     │      │   SQS    │
+        │  (Docker)│      │(Storage) │      │ (Queue)  │
+        └──────────┘      └──────────┘      └────┬─────┘
+                                                  │
+                                                  ▼
+                                           ┌──────────┐
+                                           │  Worker  │
+                                           │(Process) │
+                                           └──────────┘
+</code></pre></div>
+<hr />
+<h2 id="2-prerequisites">2. Prerequisites</h2>
+<table>
+<thead>
+<tr>
+<th>Tool</th>
+<th>Version</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Node.js</td>
+<td>Latest LTS</td>
+<td>Frontend development</td>
+</tr>
+<tr>
+<td>Python</td>
+<td>3.13+</td>
+<td>Backend development</td>
+</tr>
+<tr>
+<td>uv</td>
+<td>Latest</td>
+<td>Python package management</td>
+</tr>
+<tr>
+<td>Docker</td>
+<td>Latest</td>
+<td>Local PostgreSQL</td>
+</tr>
+<tr>
+<td>Docker Compose</td>
+<td>Latest</td>
+<td>Local PostgreSQL orchestration</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="25-windows-setup">2.5 Windows Setup</h2>
+<p>Windows users have a few extra considerations. For a more streamlined Unix-based setup, please use the Windows Subsystem for Linux (<strong>WSL 2</strong>), all commands should work as-is on a unix-based system.</p>
+<h3 id="wsl-2-recommended">WSL 2 (Recommended)</h3>
+<p>For the closest experience to the Unix-based setup, use WSL 2. Full installation guide: <a href="https://learn.microsoft.com/en-us/windows/wsl/install">Microsoft — Install WSL</a></p>
+<ol>
+<li>
+<p>Open <strong>PowerShell as Administrator</strong> and run:
+   <div class="highlight"><pre><span></span><code><span class="n">wsl</span> <span class="p">-</span><span class="n">-install</span>
+</code></pre></div>
+   This enables the WSL feature, downloads the WSL 2 Linux kernel, and installs Ubuntu by default. <strong>Restart your machine</strong> when prompted.</p>
+</li>
+<li>
+<p>If Ubuntu was not installed automatically:
+   <div class="highlight"><pre><span></span><code><span class="n">wsl</span> <span class="p">-</span><span class="n">-install</span> <span class="n">-d</span> <span class="n">Ubuntu</span>
+</code></pre></div></p>
+</li>
+<li>
+<p>Launch <strong>Ubuntu</strong> from the Start Menu and create a UNIX username/password when prompted.</p>
+</li>
+<li>
+<p>Inside WSL 2, install the required tools:</p>
+<blockquote>
+<p>sources: <a href="https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-wsl">Microsoft - nodejs on wsl</a></p>
+</blockquote>
+</li>
+</ol>
+<div class="highlight"><pre><span></span><code><span class="c1"># --- uv ---</span>
+curl<span class="w"> </span>-LsSf<span class="w"> </span>https://astral.sh/uv/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>sh
+<span class="nb">source</span><span class="w"> </span>~/.bashrc
+
+<span class="c1">#  --- Node.js (via nvm) --- </span>
+<span class="c1">## Install nvm</span>
+sudo<span class="w"> </span>apt<span class="w"> </span>update<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>sudo<span class="w"> </span>apt<span class="w"> </span>upgrade<span class="w"> </span>-y
+sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>curl<span class="w"> </span>-y
+curl<span class="w"> </span>-o-<span class="w"> </span>https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh<span class="w"> </span><span class="p">|</span><span class="w"> </span>bash
+<span class="c1">### Confirm</span>
+<span class="nb">command</span><span class="w"> </span>-v<span class="w"> </span>nvm
+
+<span class="c1">## Install Nodejs</span>
+nvm<span class="w"> </span>install<span class="w"> </span>--lts
+<span class="c1">### Confirm </span>
+node<span class="w"> </span>--version
+npm<span class="w"> </span>--version
+</code></pre></div>
+<ol>
+<li>Docker Desktop: open <strong>Settings</strong> → <strong>Resources</strong> → <strong>WSL Integration</strong> → enable integration for your Ubuntu distro.</li>
+</ol>
+<p>Inside WSL 2, all commands in this guide work as written, including <code>--loop uvloop --http httptools</code>.</p>
+<h3 id="install-docker-desktop">Install Docker Desktop</h3>
+<p>Docker Desktop is required on Windows (not just the CLI). Enable the <strong>WSL 2 backend</strong> in Docker Desktop settings:</p>
+<ol>
+<li>Install <a href="https://docs.docker.com/desktop/install/windows-install/">Docker Desktop for Windows</a></li>
+<li>Open Docker Desktop → <strong>Settings</strong> → <strong>General</strong> → ensure <strong>Use the WSL 2 based engine</strong> is checked</li>
+<li>Restart Docker Desktop</li>
+</ol>
+<hr />
+<h2 id="3-backend-setup">3. Backend Setup</h2>
+<h3 id="31-install-dependencies">3.1 Install Dependencies</h3>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>src/backend
+uv<span class="w"> </span>sync
+</code></pre></div>
+<h3 id="32-start-local-postgresql">3.2 Start Local PostgreSQL</h3>
+<div class="highlight"><pre><span></span><code>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div>
+<h3 id="33-configure-environment">3.3 Configure Environment</h3>
+<p>Copy <code>env.example</code> to <code>.env</code>:</p>
+<div class="highlight"><pre><span></span><code>cp<span class="w"> </span>env.example<span class="w"> </span>.env
+</code></pre></div>
+<p>Required environment variables:</p>
+<table>
+<thead>
+<tr>
+<th>Variable</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AWS_BEDROCK_API_KEY</code></td>
+<td>Bedrock API key for LLM/VLM inference</td>
+</tr>
+<tr>
+<td><code>AWS_ACCESS_KEY_ID</code></td>
+<td>AWS access key for S3/SQS</td>
+</tr>
+<tr>
+<td><code>AWS_SECRET_ACCESS_KEY</code></td>
+<td>AWS secret key for S3/SQS</td>
+</tr>
+<tr>
+<td><code>S3_BUCKET_NAME</code></td>
+<td>S3 bucket for document storage</td>
+</tr>
+<tr>
+<td><code>AWS_SQS_URL</code></td>
+<td>SQS queue URL for async jobs</td>
+</tr>
+<tr>
+<td><code>DATABASE_URL</code></td>
+<td>Async PostgreSQL URL (e.g., <code>postgresql+asyncpg://...</code>)</td>
+</tr>
+<tr>
+<td><code>JWT_SECRET_KEY</code></td>
+<td>Secret for signing JWT tokens</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Important for local development:</strong></p>
+<div class="highlight"><pre><span></span><code>COOKIE_SECURE=false
+</code></pre></div>
+<p>Without this, browsers will drop auth cookies on plain HTTP (<code>http://localhost:8000</code>), causing 401 errors.</p>
+<h3 id="34-run-migrations-seed-data">3.4 Run Migrations &amp; Seed Data</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>alembic<span class="w"> </span>upgrade<span class="w"> </span>head
+uv<span class="w"> </span>run<span class="w"> </span>seed.py
+</code></pre></div>
+<h3 id="35-start-api-server">3.5 Start API Server</h3>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </span>app.main:app<span class="w"> </span>--reload<span class="w"> </span>--loop<span class="w"> </span>uvloop<span class="w"> </span>--http<span class="w"> </span>httptools
+</code></pre></div>
+<p>Access Swagger UI at <strong>http://127.0.0.1:8000/docs</strong></p>
+<h3 id="36-start-sqs-worker">3.6 Start SQS Worker</h3>
+<p>Required for document parsing and reconciliation:</p>
+<div class="highlight"><pre><span></span><code>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>app.worker.main
+</code></pre></div>
+<h3 id="37-verify-backend">3.7 Verify Backend</h3>
+<div class="highlight"><pre><span></span><code>curl<span class="w"> </span>http://127.0.0.1:8000/health
+</code></pre></div>
+<p>Expected response: <code>{"status": "ok"}</code></p>
+<hr />
+<h2 id="4-frontend-setup">4. Frontend Setup</h2>
+<h3 id="41-install-dependencies">4.1 Install Dependencies</h3>
+<div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>src/frontend
+npm<span class="w"> </span>install
+</code></pre></div>
+<h3 id="42-configure-environment">4.2 Configure Environment</h3>
+<p>Create <code>.env.local</code>:</p>
+<div class="highlight"><pre><span></span><code>NEXT_PUBLIC_API_URL=http://localhost:8000
+</code></pre></div>
+<h3 id="43-start-development-server">4.3 Start Development Server</h3>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>dev
+</code></pre></div>
+<p>Access the app at <strong>http://localhost:3000</strong></p>
+<h3 id="44-useful-commands">4.4 Useful Commands</h3>
+<div class="highlight"><pre><span></span><code>npm<span class="w"> </span>run<span class="w"> </span>build<span class="w">    </span><span class="c1"># Production build</span>
+npm<span class="w"> </span>run<span class="w"> </span>start<span class="w">    </span><span class="c1"># Serve production build</span>
+npm<span class="w"> </span>run<span class="w"> </span>lint<span class="w">     </span><span class="c1"># Run ESLint</span>
+</code></pre></div>
+<hr />
+<h2 id="5-running-the-full-application">5. Running the Full Application</h2>
+<h3 id="development-workflow">Development Workflow</h3>
+<ol>
+<li>
+<p><strong>Terminal 1</strong> — PostgreSQL:
+   <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>src/backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>docker<span class="w"> </span>compose<span class="w"> </span>up<span class="w"> </span>-d
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Terminal 2</strong> — Backend API:
+   <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>src/backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>uvicorn<span class="w"> </span>app.main:app<span class="w"> </span>--reload<span class="w"> </span>--loop<span class="w"> </span>uvloop<span class="w"> </span>--http<span class="w"> </span>httptools
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Terminal 3</strong> — SQS Worker:
+   <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>src/backend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>uv<span class="w"> </span>run<span class="w"> </span>python<span class="w"> </span>-m<span class="w"> </span>app.worker.main
+</code></pre></div></p>
+</li>
+<li>
+<p><strong>Terminal 4</strong> — Frontend:
+   <div class="highlight"><pre><span></span><code><span class="nb">cd</span><span class="w"> </span>src/frontend<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>npm<span class="w"> </span>run<span class="w"> </span>dev
+</code></pre></div></p>
+</li>
+</ol>
+<hr />
+<h2 id="6-application-current-state">6. Application Current State</h2>
+<h3 id="61-implemented-features">6.1 Implemented Features</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Authentication</strong></td>
+<td>✅ Complete</td>
+<td>Cookie-based (HttpOnly JWT + CSRF), role-based access</td>
+</tr>
+<tr>
+<td><strong>Landing Page</strong></td>
+<td>✅ Complete</td>
+<td>Public marketing page</td>
+</tr>
+<tr>
+<td><strong>Login</strong></td>
+<td>✅ Complete</td>
+<td>Email + password form</td>
+</tr>
+<tr>
+<td><strong>Registration</strong></td>
+<td>⚠️ Closed</td>
+<td>WIP notice shown; original form preserved at <code>app/auth/_signup/</code></td>
+</tr>
+<tr>
+<td><strong>Document Upload</strong></td>
+<td>✅ Complete</td>
+<td>Presigned S3 URLs, drag-and-drop UI</td>
+</tr>
+<tr>
+<td><strong>Statement Parsing</strong></td>
+<td>✅ Complete</td>
+<td>PDF parsing via pdfplumber + Bedrock</td>
+</tr>
+<tr>
+<td><strong>Receipt Parsing</strong></td>
+<td>✅ Complete</td>
+<td>Image parsing via VLM + categorization</td>
+</tr>
+<tr>
+<td><strong>Reconciliation</strong></td>
+<td>✅ Complete</td>
+<td>Matching algorithm + AI summaries</td>
+</tr>
+<tr>
+<td><strong>Dashboard (Account)</strong></td>
+<td>✅ Complete</td>
+<td>Year overview</td>
+</tr>
+<tr>
+<td><strong>Dashboard (Year)</strong></td>
+<td>✅ Complete</td>
+<td>Monthly breakdown</td>
+</tr>
+<tr>
+<td><strong>Dashboard (Month)</strong></td>
+<td>✅ Complete</td>
+<td>Transaction table + AI summary tab</td>
+</tr>
+<tr>
+<td><strong>Job Status Tracking</strong></td>
+<td>✅ Complete</td>
+<td>Floating widget with polling (3s interval)</td>
+</tr>
+<tr>
+<td><strong>Account Management</strong></td>
+<td>✅ Complete</td>
+<td>CRUD + member management</td>
+</tr>
+<tr>
+<td><strong>Viewer Role</strong></td>
+<td>✅ Complete</td>
+<td>Read-only mode with banner</td>
+</tr>
+<tr>
+<td><strong>Developer Console</strong></td>
+<td>✅ Complete</td>
+<td>Tenant management</td>
+</tr>
+<tr>
+<td><strong>Statement Archival</strong></td>
+<td>✅ Complete</td>
+<td>Auto-archive after configurable retention (default 18 months)</td>
+</tr>
+</tbody>
+</table>
+<h3 id="62-planned-features-not-implemented">6.2 Planned Features (Not Implemented)</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Dashboard Summary</strong></td>
+<td>❌ Planned</td>
+<td><code>GET /dashboard/summary</code>, <code>GET /dashboard/jobs</code></td>
+</tr>
+<tr>
+<td><strong>Export</strong></td>
+<td>❌ Planned</td>
+<td><code>GET /export/jobs/{job_id}/csv</code>, <code>GET /export/jobs/{job_id}/report</code></td>
+</tr>
+<tr>
+<td><strong>Bedrock Health Check</strong></td>
+<td>❌ Planned</td>
+<td><code>GET /health/bedrock</code></td>
+</tr>
+<tr>
+<td><strong>User Registration</strong></td>
+<td>❌ Closed</td>
+<td>Registration currently disabled during active development</td>
+</tr>
+</tbody>
+</table>
+<h3 id="63-known-limitations">6.3 Known Limitations</h3>
+<ul>
+<li><strong>Cross-domain cookies</strong>: <code>SameSite=Lax</code> is hardcoded. For fully different domains (e.g., Vercel + App Runner), <code>SameSite=None</code> would require a code change.</li>
+<li><strong>Reconciliation job documents</strong>: Job status endpoint returns empty <code>documents[]</code> for reconciliation jobs (poll results separately).</li>
+<li><strong>No test framework</strong>: Neither backend nor frontend has test coverage configured.</li>
+<li><strong>Statement archival is irreversible</strong>: No UI for restoring archived statements.</li>
+</ul>
+<hr />
+<h2 id="7-key-workflows">7. Key Workflows</h2>
+<h3 id="71-document-upload-parsing">7.1 Document Upload &amp; Parsing</h3>
+<div class="highlight"><pre><span></span><code>User uploads file → Get presigned URL → Upload to S3 → Confirm upload
+    → Create parsing job → Enqueue SQS → Worker parses → Document status: parsed
+</code></pre></div>
+<h3 id="72-reconciliation">7.2 Reconciliation</h3>
+<div class="highlight"><pre><span></span><code>User starts reconciliation → Create reconciliation job → Enqueue SQS
+    → Worker runs matching → AI generates summaries → UI polls for results
+</code></pre></div>
+<h3 id="73-statement-archival">7.3 Statement Archival</h3>
+<div class="highlight"><pre><span></span><code>Daily cron/EventBridge → Run archive task → Statements past retention period
+    → Set status: archived → Delete S3 objects → Preserve structured data
+</code></pre></div>
+<hr />
+<h2 id="8-development-conventions">8. Development Conventions</h2>
+<h3 id="backend">Backend</h3>
+<ul>
+<li>Async SQLAlchemy with <code>asyncpg</code></li>
+<li>Pydantic schemas for request/response validation</li>
+<li>Rich logging with configurable levels</li>
+<li>Rate limiting on login (10 req/min/IP via slowapi)</li>
+<li>CSRF protection via double-submit cookie pattern</li>
+</ul>
+<h3 id="frontend">Frontend</h3>
+<ul>
+<li>Next.js App Router with React Server Components</li>
+<li>Cookie-based auth (no localStorage tokens)</li>
+<li>TanStack React Query for server state</li>
+<li>URL-driven dashboard navigation</li>
+<li>Tailwind CSS with semantic color tokens</li>
+<li>shadcn/ui components (do not edit <code>components/ui/</code> manually)</li>
+</ul>
+<h3 id="adding-a-new-api-endpoint">Adding a New API Endpoint</h3>
+<ol>
+<li>Add types to <code>lib/types.ts</code> (snake_case, match backend)</li>
+<li>Add function to <code>lib/api.ts</code> (no token parameter)</li>
+<li>Create React Query hook in <code>hooks/use-&lt;domain&gt;.ts</code></li>
+<li>Add transform to <code>lib/transforms.ts</code> if needed</li>
+<li>Update <code>AGENTS.md</code> endpoint table</li>
+</ol>
+<hr />
+<h2 id="9-troubleshooting">9. Troubleshooting</h2>
+<table>
+<thead>
+<tr>
+<th>Issue</th>
+<th>Solution</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>401 on localhost</strong></td>
+<td>Set <code>COOKIE_SECURE=false</code> in backend <code>.env</code></td>
+</tr>
+<tr>
+<td><strong>CSRF 403 errors</strong></td>
+<td>Ensure <code>X-CSRF-Token</code> header is sent with mutating requests</td>
+</tr>
+<tr>
+<td><strong>CORS errors</strong></td>
+<td>Check <code>CORS_ORIGINS</code> includes frontend URL</td>
+</tr>
+<tr>
+<td><strong>S3 upload fails</strong></td>
+<td>Verify S3 CORS config includes frontend origin</td>
+</tr>
+<tr>
+<td><strong>Parsing not working</strong></td>
+<td>Ensure SQS worker is running</td>
+</tr>
+<tr>
+<td><strong>Reconciliation stuck</strong></td>
+<td>Check SQS worker logs; verify <code>AWS_SQS_URL</code> is correct</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="10-production-deployment">10. Production Deployment</h2>
+<h3 id="backend_1">Backend</h3>
+<ul>
+<li><strong>App Runner</strong> or similar for FastAPI</li>
+<li><strong>ECS Fargate</strong> for SQS worker</li>
+<li><strong>RDS</strong> for PostgreSQL</li>
+<li><strong>S3</strong> for document storage</li>
+<li><strong>SQS</strong> for async job queue</li>
+</ul>
+<h3 id="frontend_1">Frontend</h3>
+<ul>
+<li>Deployable to <strong>Vercel</strong> or any Next.js-compatible platform</li>
+<li>Set <code>NEXT_PUBLIC_API_URL</code> to production backend URL</li>
+<li>Ensure <code>COOKIE_SECURE=true</code> for HTTPS deployments</li>
+<li>Configure <code>CORS_ORIGINS</code> with exact frontend URL(s)</li>
+</ul>
+<h3 id="production-checklist">Production Checklist</h3>
+<ul>
+<li>[ ] <code>COOKIE_SECURE=true</code> on HTTPS deployments</li>
+<li>[ ] <code>CORS_ORIGINS</code> includes exact production frontend URL(s)</li>
+<li>[ ] API served over HTTPS</li>
+<li>[ ] S3 CORS includes production origin(s)</li>
+<li>[ ] <code>JWT_SECRET_KEY</code> is a long random secret</li>
+<li>[ ] Archive task scheduled (cron or EventBridge)</li>
+</ul>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+      <div class="md-progress" data-md-component="progress" role="progressbar"></div>
+    
+    
+    
+      
+      
+      <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.instant.prefetch", "navigation.instant.progress", "navigation.tracking"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      
+    
+  </body>
+</html>

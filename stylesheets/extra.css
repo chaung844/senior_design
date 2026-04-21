@@ -1,0 +1,54 @@
+/*=======================
+ ==== COLOR SCHEME ======
+ ========================
+*/
+[data-md-color-scheme="matcha"] {
+    /* Primary (header, top bar) */
+    --md-primary-fg-color: #6baf45;
+    --md-primary-fg-color--light: #8fcb6b;
+    --md-primary-fg-color--dark: #4e8e2e;
+
+    /* Accent (links, buttons) */
+    --md-accent-fg-color: #4caf50;
+
+    /* Background */
+    --md-default-bg-color: #fafff7;
+
+    /* Links inside content */
+    --md-typeset-a-color: #3e7c2e;
+}
+
+[data-md-color-scheme="slate"] {
+    /* Primary */
+    --md-primary-fg-color: #355e3b;
+    --md-primary-fg-color--light: #4a7c59;
+    --md-primary-fg-color--dark: #1f3d24;
+
+    /* Accent */
+    --md-accent-fg-color: #9ccc65;
+
+    /* Background */
+    --md-default-bg-color: #0f1a12;
+
+    /* Text colors */
+    --md-default-fg-color: #fafafa;
+
+    /* Content background cards */
+    --md-code-bg-color: #16241a;
+
+    /* Links */
+    --md-typeset-a-color: #a5d6a7;
+}
+
+/*=======================
+ ===== FOOTER CSS =======
+ ========================
+*/
+.md-footer {
+    display: none;
+}
+
+/* Or for specific sections like the "previous/next" buttons */
+.md-footer__inner {
+    display: none;
+}
