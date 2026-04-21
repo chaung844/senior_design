@@ -49,6 +49,64 @@ Matcha is an AI-powered bank statement reconciliation system that:
 
 ---
 
+## 2.5 Windows Setup
+
+Windows users have a few extra considerations. For a more streamlined Unix-based setup, please use the Windows Subsystem for Linux (**WSL 2**), all commands should work as-is on a unix-based system.
+
+### WSL 2 (Recommended)
+
+For the closest experience to the Unix-based setup, use WSL 2. Full installation guide: [Microsoft — Install WSL](https://learn.microsoft.com/en-us/windows/wsl/install)
+
+1. Open **PowerShell as Administrator** and run:
+   ```powershell
+   wsl --install
+   ```
+   This enables the WSL feature, downloads the WSL 2 Linux kernel, and installs Ubuntu by default. **Restart your machine** when prompted.
+
+2. If Ubuntu was not installed automatically:
+   ```powershell
+   wsl --install -d Ubuntu
+   ```
+
+3. Launch **Ubuntu** from the Start Menu and create a UNIX username/password when prompted.
+
+4. Inside WSL 2, install the required tools:
+> sources: [Microsoft - nodejs on wsl](https://learn.microsoft.com/en-us/windows/dev-environment/javascript/nodejs-on-wsl)
+
+   ```bash
+   # --- uv ---
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   source ~/.bashrc
+
+   #  --- Node.js (via nvm) --- 
+   ## Install nvm
+   sudo apt update && sudo apt upgrade -y
+   sudo apt install curl -y
+   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/master/install.sh | bash
+   ### Confirm
+   command -v nvm
+   
+   ## Install Nodejs
+   nvm install --lts
+   ### Confirm 
+   node --version
+   npm --version
+   ```
+
+5. Docker Desktop: open **Settings** → **Resources** → **WSL Integration** → enable integration for your Ubuntu distro.
+
+Inside WSL 2, all commands in this guide work as written, including `--loop uvloop --http httptools`.
+
+### Install Docker Desktop
+
+Docker Desktop is required on Windows (not just the CLI). Enable the **WSL 2 backend** in Docker Desktop settings:
+
+1. Install [Docker Desktop for Windows](https://docs.docker.com/desktop/install/windows-install/)
+2. Open Docker Desktop → **Settings** → **General** → ensure **Use the WSL 2 based engine** is checked
+3. Restart Docker Desktop
+
+---
+
 ## 3. Backend Setup
 
 ### 3.1 Install Dependencies
